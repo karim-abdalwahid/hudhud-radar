@@ -91,11 +91,17 @@ class MetaLiveFeedSync:
             logger.error(f"Error saving live meta posts cache to Supabase: {e}")
 
     async def _fetch_facebook_video_metrics(self, client: httpx.AsyncClient, video_id: str, token: str) -> Dict[str, Any]:
-        """Fetches real views, picture thumbnail, and likes count for a specific Facebook video/reel object."""
+        """Fetches real views, picture thumbnail, likes, and comments count for a specific Facebook video/reel object."""
+        views = 0
+        likes = 0
+        comments = 0
+        picture = None
+
+        # 1. First attempt: fetch views, picture, likes, and comments count together
         try:
             url = f"{self.base_url}/{video_id}"
             params = {
-                "fields": "id,views,picture,likes.summary(true)",
+                "fields": "id,views,picture,likes.summary(true),comments.summary(true)",
                 "access_token": token
             }
             res = await client.get(url, params=params)
@@ -103,11 +109,26 @@ class MetaLiveFeedSync:
                 data = res.json()
                 views = data.get("views", 0) or 0
                 likes = data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
+                comments = data.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
                 picture = data.get("picture")
-                return {"views": views, "likes": likes, "comments": 0, "picture": picture}
+                return {"views": views, "likes": likes, "comments": comments, "picture": picture}
+            elif res.status_code == 403 or "Missing Permissions" in res.text:
+                # 2. Fallback when pages_read_user_content permission is missing on token:
+                # Fetch views, picture, and likes without failing
+                params_fallback = {
+                    "fields": "id,views,picture,likes.summary(true)",
+                    "access_token": token
+                }
+                res_fb = await client.get(url, params=params_fallback)
+                if res_fb.status_code == 200:
+                    data = res_fb.json()
+                    views = data.get("views", 0) or 0
+                    likes = data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
+                    picture = data.get("picture")
+                    return {"views": views, "likes": likes, "comments": 0, "picture": picture}
         except Exception as e:
             logger.debug(f"Error fetching FB video metrics for {video_id}: {e}")
-        return {"views": 0, "likes": 0, "comments": 0, "picture": None}
+        return {"views": views, "likes": likes, "comments": comments, "picture": picture}
 
     async def fetch_facebook_reels(self, limit: int = 100, shares_by_target: Optional[Dict[str, int]] = None, max_total: int = 5000) -> List[Dict[str, Any]]:
         """Fetches real published video reels directly from Facebook Page video_reels endpoint with thumbnails and live metrics, automatically paginating through all available reels."""
@@ -142,7 +163,7 @@ class MetaLiveFeedSync:
                     url = data.get("paging", {}).get("next")
                     params = None
                 
-                # Concurrently enrich all reels with views, pictures, and likes
+                # Concurrently enrich all reels with views, pictures, likes, and comments
                 sem = asyncio.Semaphore(10)
                 async def enrich_reel(item):
                     reel_id = str(item.get("id") or item.get("video_id") or "")
@@ -171,7 +192,7 @@ class MetaLiveFeedSync:
                         "permalink": purl,
                         "published_at": item.get("created_time"),
                         "likes_count": metrics.get("likes", 0),
-                        "comments_count": 0,
+                        "comments_count": metrics.get("comments", 0),
                         "shares_count": shares,
                         "views_count": metrics.get("views", 0),
                         "is_live_meta": True
@@ -196,7 +217,7 @@ class MetaLiveFeedSync:
         rate_limiter.check_and_acquire("facebook")
         url = f"{self.base_url}/{page_id}/published_posts"
         params = {
-            "fields": "id,message,created_time,permalink_url,full_picture,shares,attachments{media_type,type,url,unshimmed_url,title,target}",
+            "fields": "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),comments.summary(true),attachments{media_type,type,url,unshimmed_url,title,target}",
             "limit": min(limit, 100),
             "access_token": token
         }
@@ -208,8 +229,17 @@ class MetaLiveFeedSync:
                     resp = await client.get(url, params=params)
                     rate_limiter.update_from_headers("facebook", dict(resp.headers))
                     if resp.status_code != 200:
-                        logger.error(f"Failed to fetch Facebook posts: {resp.text}")
-                        break
+                        # Fallback if comments.summary(true) fails due to missing pages_read_user_content permission
+                        if params and "comments.summary" in params.get("fields", ""):
+                            logger.info("Retrying Facebook posts fetch without comments field due to permissions...")
+                            params["fields"] = "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),attachments{media_type,type,url,unshimmed_url,title,target}"
+                            resp = await client.get(url, params=params)
+                            if resp.status_code != 200:
+                                logger.error(f"Failed to fetch Facebook posts on fallback: {resp.text}")
+                                break
+                        else:
+                            logger.error(f"Failed to fetch Facebook posts: {resp.text}")
+                            break
 
                     data = resp.json()
                     items = data.get("data", [])
@@ -219,6 +249,8 @@ class MetaLiveFeedSync:
                     for item in items:
                         caption = item.get("message") or ""
                         shares = item.get("shares", {}).get("count", 0) or 0
+                        likes = item.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
+                        comments = item.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
                         attachments = item.get("attachments", {}).get("data", [])
                         
                         is_reel = False
@@ -246,8 +278,8 @@ class MetaLiveFeedSync:
                             "media_url": item.get("full_picture"),
                             "permalink": permalink,
                             "published_at": item.get("created_time"),
-                            "likes_count": 0,
-                            "comments_count": 0,
+                            "likes_count": likes,
+                            "comments_count": comments,
                             "shares_count": shares,
                             "views_count": 0,
                             "is_live_meta": True
