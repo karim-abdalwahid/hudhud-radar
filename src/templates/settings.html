@@ -169,7 +169,10 @@
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
                             <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.callback_label">Verified Meta Webhook Callback URL:</div>
-                            <code class="mono" style="color: var(--accent-blue);">https://your-domain.com/webhooks/meta</code>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                                <code id="webhook-callback-display" class="mono" style="color: var(--accent-blue); word-break: break-all;">https://hudhud-radar.vercel.app/api/webhook/meta</code>
+                                <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 12px; cursor: pointer;" onclick="copyWebhookUrl()">📋 Copy</button>
+                            </div>
                         </div>
 
                         <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
@@ -216,6 +219,12 @@
                 document.getElementById('status-ig-id').textContent = data.instagram_account_id || '-';
                 document.getElementById('status-supabase').textContent = data.supabase_connected ? t('set.supabase_connected') : t('set.supabase_local');
 
+                // Update webhook display to current origin if available
+                const webhookDisplay = document.getElementById('webhook-callback-display');
+                if (webhookDisplay && window.location.origin && window.location.origin !== 'null') {
+                    webhookDisplay.textContent = window.location.origin + '/api/webhook/meta';
+                }
+
                 // Fill inputs if available
                 if (data.page_id && !document.getElementById('input-page-id').value) {
                     document.getElementById('input-page-id').value = data.page_id;
@@ -229,6 +238,17 @@
             } catch (e) {
                 console.error("Error loading settings status:", e);
             }
+        }
+
+        function copyWebhookUrl() {
+            const display = document.getElementById('webhook-callback-display');
+            const url = display ? display.textContent.trim() : 'https://hudhud-radar.vercel.app/api/webhook/meta';
+            navigator.clipboard.writeText(url).then(() => {
+                const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                alert(isAr ? '✅ تم نسخ رابط الـ Webhook إلى الحافظة!' : '✅ Webhook URL copied to clipboard!');
+            }).catch(() => {
+                prompt("Copy Webhook URL:", url);
+            });
         }
 
         async function saveMetaConfig() {
