@@ -511,6 +511,16 @@ async def list_content_posts(
     return content_studio_service.list_posts(status=status, platform=platform, limit=limit)
 
 
+@app.get("/api/studio/posts", tags=["Content Studio"])
+async def alias_list_studio_posts(
+    status: Optional[ContentStatus] = None,
+    platform: Optional[ContentPlatform] = None,
+    limit: int = Query(50, ge=1, le=100)
+):
+    """Alias for /api/content/posts for backward compatibility with frontend dashboard."""
+    return content_studio_service.list_posts(status=status, platform=platform, limit=limit)
+
+
 @app.get("/api/content/posts/{post_id}", response_model=ContentPostResponse, tags=["Content Studio"])
 async def get_content_post(post_id: str):
     """Fetches a specific post by ID."""

@@ -318,60 +318,58 @@
             }
         }
 
-        // Meta Facebook SDK Initialization
-        window.fbAsyncInit = function() {
-            const appId = (document.getElementById('input-app-id') && document.getElementById('input-app-id').value.trim()) || '2092880431308591';
-            if (window.FB) {
-                FB.init({
-                    appId: appId,
-                    cookie: true,
-                    xfbml: true,
-                    version: 'v21.0'
-                });
-                console.log("✅ Meta Facebook SDK Initialized with App ID:", appId);
+        // Bulletproof Facebook OAuth: Direct Dialog + Popup Communication
+        function checkUrlHashForToken() {
+            if (window.location.hash && window.location.hash.includes('access_token=')) {
+                const hash = window.location.hash.substring(1);
+                const params = new URLSearchParams(hash);
+                const token = params.get('access_token');
+                if (token) {
+                    if (window.opener && !window.opener.closed) {
+                        try {
+                            window.opener.postMessage({ type: 'FB_AUTH_TOKEN', token: token }, window.location.origin);
+                            window.close();
+                            return;
+                        } catch (e) {
+                            console.warn("Could not postMessage to opener:", e);
+                        }
+                    }
+                    // Clean hash from address bar
+                    window.history.replaceState(null, '', window.location.pathname);
+                    fetchAndDisplayUserPages(token);
+                }
             }
-        };
+        }
 
-        (function(d, s, id){
-            var js, fjs = d.getElementsByTagName(s)[0];
-            if (d.getElementById(id)) {return;}
-            js = d.createElement(s); js.id = id;
-            js.src = "https://connect.facebook.net/en_US/sdk.js";
-            fjs.parentNode.insertBefore(js, fjs);
-        }(document, 'script', 'facebook-jssdk'));
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'FB_AUTH_TOKEN' && event.data.token) {
+                const statusMsg = document.getElementById('fb-login-status-msg');
+                const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                statusMsg.className = 'success-text';
+                statusMsg.textContent = isAr ? '✅ تم استلام تصريح الدخول من فيسبوك بنجاح! جاري جلب صفحاتك...' : '✅ Authorized by Facebook! Fetching your Pages...';
+                fetchAndDisplayUserPages(event.data.token);
+            }
+        });
 
-        async function startFacebookSdkLogin() {
+        function startFacebookSdkLogin() {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
             const statusMsg = document.getElementById('fb-login-status-msg');
+            const appId = (document.getElementById('input-app-id') && document.getElementById('input-app-id').value.trim()) || '2092880431308591';
+            const redirectUri = window.location.origin + '/settings';
+            const scopes = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments';
+            const oauthUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+
             statusMsg.className = 'muted-text';
-            statusMsg.textContent = isAr ? '⏳ جاري فتح نافذة تسجيل دخول فيسبوك الرسمية...' : '⏳ Opening official Facebook login dialog...';
+            statusMsg.textContent = isAr ? '⏳ جاري فتح نافذة فيسبوك الرسمية لاختيار صفحتك...' : '⏳ Opening official Facebook dialog to select your page...';
 
-            if (typeof FB === 'undefined') {
-                statusMsg.className = 'error-text';
-                statusMsg.textContent = isAr ? 
-                    '❌ تعذر الاتصال بـ Facebook SDK. تأكد من إيقاف أي مانع إعلانات (AdBlock).' : 
-                    '❌ Could not load Facebook SDK. Please disable AdBlock and check internet connection.';
-                return;
-            }
-
-            FB.login(function(response) {
-                if (response.authResponse && response.authResponse.accessToken) {
-                    const userToken = response.authResponse.accessToken;
-                    statusMsg.className = 'muted-text';
-                    statusMsg.textContent = isAr ? 
-                        '✅ تم تسجيل الدخول بنجاح! جاري جلب صفحاتك وحسابات إنستجرام التابعة...' : 
-                        '✅ Logged in successfully! Fetching your Pages and linked Instagram accounts...';
-                    fetchAndDisplayUserPages(userToken);
-                } else {
-                    statusMsg.className = 'error-text';
-                    statusMsg.textContent = isAr ? 
-                        '❌ تم إلغاء تسجيل الدخول أو لم تكتمل الصلاحيات المطلوبة.' : 
-                        '❌ Facebook login was cancelled or permissions were not granted.';
+            // Open standard OAuth popup
+            const popup = window.open(oauthUrl, 'fb_oauth', 'width=650,height=750,status=yes,scrollbars=yes');
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                // If browser strictly blocked popup, redirect directly
+                if (confirm(isAr ? 'المتصفح منع فتح النافذة المنبثقة تلقائياً. هل تريد فتح نافذة فيسبوك الآن للموافقة؟' : 'Browser blocked popup. Redirect directly to Facebook to authorize?')) {
+                    window.location.href = oauthUrl;
                 }
-            }, {
-                scope: 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments',
-                return_scopes: true
-            });
+            }
         }
 
         async function fetchAndDisplayUserPages(userToken) {
@@ -510,7 +508,10 @@
             loadSettingsStatus();
         });
 
-        document.addEventListener('DOMContentLoaded', loadSettingsStatus);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettingsStatus();
+            checkUrlHashForToken();
+        });
     </script>
 </body>
 </html>
