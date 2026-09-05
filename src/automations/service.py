@@ -233,7 +233,10 @@ class AutomationsService:
 
     def _load_from_disk(self):
         """Loads workflows from JSON file or initializes defaults."""
-        STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
         if STORE_PATH.exists():
             try:
                 data = json.loads(STORE_PATH.read_text(encoding="utf-8"))
@@ -255,7 +258,10 @@ class AutomationsService:
     def _save_to_disk(self):
         """Saves workflows to disk."""
         try:
-            STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                pass
             payload = {
                 "updated_at": datetime.now(timezone.utc).isoformat(),
                 "total_count": len(self._workflows),
@@ -263,7 +269,7 @@ class AutomationsService:
             }
             STORE_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as e:
-            logger.error(f"Error saving automations store: {e}")
+            logger.warning(f"Could not persist automations store to disk (ephemeral/serverless environment): {e}")
 
     def list_workflows(self) -> List[Workflow]:
         return list(self._workflows.values())

@@ -15,9 +15,15 @@ from src.knowledge.utils import sanitize_safe_filename
 class KnowledgeBaseManager:
     """Reads, manages, and structures markdown knowledge files for AI context & RAG."""
 
-    def __init__(self, kb_dir: str = "docs/KNOWLEDGE_BASE"):
-        self.kb_dir = Path(kb_dir)
-        self.kb_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, kb_dir: Optional[str] = None):
+        if kb_dir:
+            self.kb_dir = Path(kb_dir)
+        else:
+            self.kb_dir = Path(__file__).resolve().parent.parent.parent / "docs" / "KNOWLEDGE_BASE"
+        try:
+            self.kb_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
         self.knowledge_cache: Dict[str, str] = {}
         self.reload()
 
