@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: Optional[str] = Field(default=None, description="Supabase service role key")
 
     # Meta Graph API Settings
-    META_GRAPH_API_BASE_URL: str = Field(default="https://graph.facebook.com/v20.0", description="Base URL for Meta Graph API")
+    META_GRAPH_API_BASE_URL: str = Field(default="https://graph.facebook.com/v26.0", description="Base URL for Meta Graph API")
     META_APP_ID: Optional[str] = Field(default=None, description="Meta App ID")
     META_APP_SECRET: Optional[str] = Field(default=None, description="Meta App Secret for webhook HMAC verification")
     META_PAGE_ID: Optional[str] = Field(default=None, description="Facebook Page ID")
@@ -52,21 +52,13 @@ class Settings(BaseSettings):
     )
 
     def validate_security(self):
-        """Validates critical security settings for production deployments without crashing."""
-        try:
-            if self.APP_ENV.lower() == "production":
-                if "dev-secret-key" in self.SECRET_KEY:
-                    logger.warning("SECURITY ADVISORY: Default SECRET_KEY detected in production. Recommended to set a random key.")
-                if not self.META_APP_SECRET:
-                    logger.warning("SECURITY ADVISORY: META_APP_SECRET is not configured.")
-        except Exception:
-            pass
+        """Validates critical security settings for production deployments."""
+        if self.APP_ENV.lower() == "production":
+            if "dev-secret-key" in self.SECRET_KEY:
+                raise ValueError("CRITICAL SECURITY ERROR: Cannot run in production with default SECRET_KEY.")
+            if not self.META_APP_SECRET:
+                raise ValueError("CRITICAL SECURITY ERROR: META_APP_SECRET is required in production.")
 
 
 settings = Settings()
-try:
-    settings.validate_security()
-except Exception:
-    pass
-
-
+settings.validate_security()

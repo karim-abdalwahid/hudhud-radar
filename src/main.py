@@ -296,7 +296,7 @@ async def get_meta_status():
 async def get_live_meta_posts(
     platform: Optional[str] = Query("all"),
     post_type: Optional[str] = Query("all"),
-    limit: int = Query(50, ge=1, le=100)
+    limit: int = Query(150, ge=1, le=500)
 ):
     """Returns currently cached real published posts and reels from Facebook & Instagram."""
     posts = meta_feed_sync.get_synced_posts(platform=platform, post_type=post_type, limit=limit)
@@ -317,7 +317,7 @@ async def get_live_meta_posts(
 @app.post("/api/meta/sync-posts", tags=["Meta Integration"])
 async def sync_live_meta_posts():
     """Triggers live synchronization with Meta Graph API for Facebook posts and Instagram reels."""
-    result = await meta_feed_sync.sync_all_live_content()
+    result = await meta_feed_sync.sync_all_live_content(limit_per_platform=100)
     return result
 
 

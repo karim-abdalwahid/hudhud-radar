@@ -1449,7 +1449,7 @@
         async function ensureMetaPostsLoaded() {
             if (_liveMetaPostsCache.length > 0) return;
             try {
-                const res = await fetch('/api/meta/posts?limit=100&platform=all');
+                const res = await fetch('/api/meta/posts?limit=150&platform=all');
                 const data = await res.json();
                 _liveMetaPostsCache = data.posts || [];
             } catch (err) {
@@ -1470,8 +1470,8 @@
             select.innerHTML = '<option value="">-- Choose from live published posts & reels --</option>' +
                 posts.map(p => {
                     const icon = p.platform === 'instagram' ? '📸 IG' : '📘 FB';
-                    const typeLabel = (p.type || 'post').toUpperCase();
-                    const snippet = (p.message || p.caption || 'No caption').slice(0, 45).replace(/\n/g, ' ');
+                    const typeLabel = (p.post_type || p.type || 'post').toUpperCase();
+                    const snippet = (p.content_text || p.message || p.caption || 'No caption').slice(0, 45).replace(/\n/g, ' ');
                     return `<option value="${p.id}">${icon} [${typeLabel}] ${escapeHtml(snippet)}...</option>`;
                 }).join('');
         }

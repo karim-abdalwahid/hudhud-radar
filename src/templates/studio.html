@@ -511,7 +511,7 @@
             grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted);">${t('st.loading_live')}</div>`;
 
             try {
-                const res = await fetch('/api/meta/posts?limit=100&platform=all');
+                const res = await fetch('/api/meta/posts?limit=150&platform=all');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 _allLiveMetaPosts = data.posts || [];
