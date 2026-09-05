@@ -25,30 +25,64 @@ class MetaLiveFeedSync:
         self._cache_updated_at: Optional[str] = None
         self._load_cache_from_disk()
 
+    def _get_credentials(self) -> Dict[str, str]:
+        """Resolves active Meta credentials dynamically from Supabase or settings."""
+        token = settings.META_PAGE_ACCESS_TOKEN or ""
+        page_id = settings.META_PAGE_ID or ""
+        ig_id = settings.META_INSTAGRAM_ACCOUNT_ID or ""
+        try:
+            from src.core.supabase_client import supabase_db
+            cached = supabase_db.get_setting("meta_credentials")
+            if cached and isinstance(cached, dict):
+                token = cached.get("page_access_token") or token
+                page_id = cached.get("page_id") or page_id
+                ig_id = cached.get("instagram_account_id") or ig_id
+        except Exception as e:
+            logger.debug(f"Could not load dynamic credentials from Supabase: {e}")
+        return {"token": token, "page_id": page_id, "ig_id": ig_id}
+
     def _load_cache_from_disk(self):
-        """Loads cached posts from disk if available."""
+        """Loads cached posts from disk or Supabase if available."""
         if CACHE_FILE.exists():
             try:
                 data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
                 self._cached_posts = data.get("posts", [])
                 self._cache_updated_at = data.get("updated_at")
             except Exception as e:
-                logger.error(f"Error loading live meta posts cache: {e}")
+                logger.error(f"Error loading live meta posts cache from disk: {e}")
+
+        # Fallback to Supabase cloud cache (crucial for Vercel serverless cold starts)
+        if not self._cached_posts:
+            try:
+                from src.core.supabase_client import supabase_db
+                data = supabase_db.get_setting("meta_cached_posts")
+                if data and isinstance(data, dict):
+                    self._cached_posts = data.get("posts", [])
+                    self._cache_updated_at = data.get("updated_at")
+            except Exception as e:
+                logger.debug(f"Could not load meta posts from Supabase: {e}")
 
     def _save_cache_to_disk(self):
-        """Persists cached posts to disk for instant offline/dev rendering."""
+        """Persists cached posts to disk and Supabase for instant rendering."""
+        payload = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "total_count": len(self._cached_posts),
+            "posts": self._cached_posts
+        }
         try:
             CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
             CACHE_FILE.write_text(
-                json.dumps({
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                    "total_count": len(self._cached_posts),
-                    "posts": self._cached_posts
-                }, ensure_ascii=False, indent=2),
+                json.dumps(payload, ensure_ascii=False, indent=2),
                 encoding="utf-8"
             )
         except Exception as e:
-            logger.error(f"Error saving live meta posts cache: {e}")
+            logger.error(f"Error saving live meta posts cache to disk: {e}")
+
+        try:
+            from src.core.supabase_client import supabase_db
+            supabase_db.set_setting("meta_cached_posts", payload)
+        except Exception as e:
+            logger.error(f"Error saving live meta posts cache to Supabase: {e}")
 
     async def _fetch_facebook_video_metrics(self, client: httpx.AsyncClient, video_id: str, token: str) -> Dict[str, int]:
         """Fetches views, likes, and comments count for a specific Facebook video/reel object."""
@@ -71,8 +105,9 @@ class MetaLiveFeedSync:
 
     async def fetch_facebook_posts(self, limit: int = 25) -> List[Dict[str, Any]]:
         """Fetches real published posts and reels from Facebook Page with live engagement metrics."""
-        page_id = settings.META_PAGE_ID
-        token = settings.META_PAGE_ACCESS_TOKEN
+        creds = self._get_credentials()
+        page_id = creds["page_id"]
+        token = creds["token"]
         if not page_id or not token or token.startswith("your-"):
             logger.warning("Facebook Page credentials missing or mock.")
             return []
@@ -80,7 +115,7 @@ class MetaLiveFeedSync:
         rate_limiter.check_and_acquire("facebook")
         url = f"{self.base_url}/{page_id}/published_posts"
         params = {
-            "fields": "id,message,created_time,permalink_url,full_picture,shares,attachments{media_type,type,url,unshimmed_url,title,target}",
+            "fields": "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),comments.summary(true),attachments{media_type,type,url,unshimmed_url,title,target}",
             "limit": limit,
             "access_token": token
         }
@@ -98,6 +133,11 @@ class MetaLiveFeedSync:
                 for item in data:
                     caption = item.get("message") or ""
                     shares = item.get("shares", {}).get("count", 0) or 0
+                    direct_likes = item.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
+                    direct_comments = item.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
+                    likes_count = direct_likes
+                    comments_count = direct_comments
+                    views_count = 0
                     attachments = item.get("attachments", {}).get("data", [])
                     
                     is_reel = False
@@ -115,15 +155,13 @@ class MetaLiveFeedSync:
                             video_id = att.get("target", {}).get("id")
                             break
 
-                    views_count = 0
-                    likes_count = 0
-                    comments_count = 0
-
                     if video_id:
                         metrics = await self._fetch_facebook_video_metrics(client, video_id, token)
                         views_count = metrics["views"]
-                        likes_count = metrics["likes"]
-                        comments_count = metrics["comments"]
+                        if metrics["likes"] > likes_count:
+                            likes_count = metrics["likes"]
+                        if metrics["comments"] > comments_count:
+                            comments_count = metrics["comments"]
 
                     posts.append({
                         "id": item["id"],
@@ -148,8 +186,9 @@ class MetaLiveFeedSync:
 
     async def fetch_facebook_reels(self, limit: int = 25, existing_video_ids: Optional[set] = None) -> List[Dict[str, Any]]:
         """Fetches real published video reels directly from Facebook Page video_reels endpoint with thumbnails."""
-        page_id = settings.META_PAGE_ID
-        token = settings.META_PAGE_ACCESS_TOKEN
+        creds = self._get_credentials()
+        page_id = creds["page_id"]
+        token = creds["token"]
         if not page_id or not token or token.startswith("your-"):
             return []
 
@@ -215,10 +254,37 @@ class MetaLiveFeedSync:
             logger.debug(f"Error fetching FB video_reels: {e}")
             return []
 
+    async def _fetch_instagram_video_views(self, client: httpx.AsyncClient, media_id: str, token: str) -> int:
+        """Fetches real views or plays for an Instagram Reel/video using Graph API insights."""
+        try:
+            url = f"{self.base_url}/{media_id}/insights"
+            # In Graph API v19-v23, 'plays' is standard for Reels, while 'views'/'impressions' apply to videos/posts
+            for metric_name in ["plays", "views", "impressions", "reach"]:
+                try:
+                    res = await client.get(url, params={"metric": metric_name, "access_token": token})
+                    if res.status_code == 200:
+                        data = res.json().get("data", [])
+                        if data:
+                            m = data[0]
+                            values = m.get("values", [])
+                            if values and values[-1].get("value") is not None:
+                                val = int(values[-1].get("value", 0) or 0)
+                                if val > 0:
+                                    return val
+                            total_val = m.get("total_value", {}).get("value")
+                            if total_val is not None and int(total_val) > 0:
+                                return int(total_val)
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.debug(f"Error fetching IG video views for {media_id}: {e}")
+        return 0
+
     async def fetch_instagram_media(self, limit: int = 25) -> List[Dict[str, Any]]:
-        """Fetches real published reels and media from Instagram Account with like and comment counts."""
-        ig_id = settings.META_INSTAGRAM_ACCOUNT_ID
-        token = settings.META_PAGE_ACCESS_TOKEN
+        """Fetches real published reels and media from Instagram Account with like, comment, and view counts."""
+        creds = self._get_credentials()
+        ig_id = creds["ig_id"]
+        token = creds["token"]
         if not ig_id or not token or token.startswith("your-"):
             logger.warning("Instagram Account ID missing or mock.")
             return []
@@ -250,6 +316,10 @@ class MetaLiveFeedSync:
                     post_type = "reel" if is_reel else "post"
                     thumb = item.get("thumbnail_url") or item.get("media_url")
 
+                    views_count = 0
+                    if is_reel or mtype == "VIDEO":
+                        views_count = await self._fetch_instagram_video_views(client, item["id"], token)
+
                     items.append({
                         "id": item["id"],
                         "platform": "instagram",
@@ -262,7 +332,7 @@ class MetaLiveFeedSync:
                         "likes_count": item.get("like_count", 0) or 0,
                         "comments_count": item.get("comments_count", 0) or 0,
                         "shares_count": 0,
-                        "views_count": 0,
+                        "views_count": views_count,
                         "is_live_meta": True
                     })
                 return items
@@ -336,6 +406,8 @@ class MetaLiveFeedSync:
         limit: int = 50
     ) -> List[Dict[str, Any]]:
         """Returns currently cached real posts with optional platform and post_type filters."""
+        if not self._cached_posts:
+            self._load_cache_from_disk()
         posts = self._cached_posts
         if platform and platform != "all":
             posts = [p for p in posts if p.get("platform") == platform]
@@ -345,6 +417,8 @@ class MetaLiveFeedSync:
 
     def get_cache_metadata(self) -> Dict[str, Any]:
         """Returns cache statistics and last-sync timestamp."""
+        if not self._cached_posts:
+            self._load_cache_from_disk()
         fb = [p for p in self._cached_posts if p.get("platform") == "facebook"]
         ig = [p for p in self._cached_posts if p.get("platform") == "instagram"]
         reels = [p for p in self._cached_posts if p.get("post_type") == "reel"]
