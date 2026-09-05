@@ -28,7 +28,28 @@
                 <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
                 <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
                 <a href="/leads" class="nav-item"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
-                <a href="/studio" class="nav-item active"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <div class="nav-group open" id="nav-group-studio">
+                    <a href="javascript:void(0)" class="nav-item has-subnav active" onclick="toggleStudioSubnav(event)" id="nav-item-studio">
+                        <div class="nav-item-content">
+                            <span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span>
+                        </div>
+                        <span class="subnav-arrow">▼</span>
+                    </a>
+                    <div class="sidebar-subnav" id="studio-subnav">
+                        <a href="javascript:void(0)" class="subnav-item active" onclick="switchStudioView('ai')" id="subnav-ai">
+                            <span class="subnav-icon">✨</span> <span data-i18n="st.subnav_ai">AI Content Creator</span>
+                        </a>
+                        <a href="javascript:void(0)" class="subnav-item" onclick="switchStudioView('publisher')" id="subnav-publisher">
+                            <span class="subnav-icon">🚀</span> <span data-i18n="st.subnav_publisher">Create & Publish</span>
+                        </a>
+                        <a href="javascript:void(0)" class="subnav-item" onclick="switchStudioView('queue')" id="subnav-queue">
+                            <span class="subnav-icon">📋</span> <span data-i18n="st.subnav_queue">Queue & Drafts</span>
+                        </a>
+                        <a href="javascript:void(0)" class="subnav-item" onclick="switchStudioView('feed')" id="subnav-feed">
+                            <span class="subnav-icon">📺</span> <span data-i18n="st.subnav_feed">Live Feed & Archive</span>
+                        </a>
+                    </div>
+                </div>
                 <a href="/automations" class="nav-item"><span class="nav-icon">⚡</span> <span data-i18n="nav.automations">Automations</span></a>
                 <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
                 <a href="/identity" class="nav-item"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
@@ -52,186 +73,212 @@
                 <div class="topbar-breadcrumb">
                     <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
                     <span class="crumb-sep">/</span>
-                    <span class="crumb-current" data-i18n="st.title">Content Studio & Live Post Scheduler</span>
+                    <span class="crumb-current" data-i18n="st.title">Content Studio</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" id="studio-crumb-view" style="color:var(--accent-blue);" data-i18n="st.subnav_ai">AI Content Creator</span>
                 </div>
                 <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
                     <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
                         <span data-i18n="lang.switch_btn">🌐 العربية</span>
                     </button>
                     <button class="btn-primary" onclick="syncLiveMetaPosts()" id="btn-sync-meta-feed" data-i18n="st.sync_live_btn">🔄 Sync Live Posts & Reels</button>
-                    <button class="btn-secondary" onclick="triggerSchedulerTick()" data-i18n="st.scheduler_check_btn">⚡ Trigger Scheduler Tick</button>
+                    <button class="btn-secondary" onclick="triggerSchedulerTick()" data-i18n="st.scheduler_check_btn">⚡ Check Scheduled Queue</button>
                 </div>
             </header>
 
             <div class="app-content">
-                <!-- Top AI Generator Box -->
-                <div class="panel-section">
-                    <div class="panel-header">
-                        <div>
-                            <h2 class="panel-title" data-i18n="st.ai_gen_title">1. AI Content & Reels Generator</h2>
-                            <div class="panel-desc" data-i18n="st.ai_gen_desc">Generate high-converting social posts & reel scripts with AIDA framework and targeted CTAs</div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group" style="grid-column: span 2;">
-                            <label for="gen-topic" data-i18n="st.topic_label">Topic or Marketing Angle</label>
-                            <input type="text" id="gen-topic" data-i18n-placeholder="st.topic_placeholder" placeholder="e.g. 20% discount on summer collections with free express delivery...">
-                        </div>
-                        <div class="form-group">
-                            <label for="gen-type" data-i18n="st.type_label">Format Type</label>
-                            <select id="gen-type">
-                                <option value="post" data-i18n="st.type_post">Marketing Post</option>
-                                <option value="reel_script" data-i18n="st.type_reel">Full Reels Script</option>
-                                <option value="story_sequence" data-i18n="st.type_story">Story Sequence</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="gen-platform" data-i18n="st.platform_label">Target Platform</label>
-                            <select id="gen-platform">
-                                <option value="facebook" data-i18n="st.platform_fb">Facebook</option>
-                                <option value="instagram" data-i18n="st.platform_ig">Instagram</option>
-                                <option value="both" data-i18n="st.platform_both">Facebook & Instagram</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="gen-cta" data-i18n="st.cta_label">CTA Trigger Keyword</label>
-                            <input type="text" id="gen-cta" value="Start" data-i18n-placeholder="st.cta_placeholder" placeholder="Start, Details, Deal...">
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                        <button class="btn-primary" id="btn-gen-ai" onclick="generateAIContent()" data-i18n="st.generate_btn">✨ Generate Social Copy</button>
-                        <div id="ai-result-actions" style="display:none;">
-                            <button class="btn-secondary" onclick="copyAIToPublish()" data-i18n="st.copy_to_editor">Transfer to Publisher Editor Below ↓</button>
-                        </div>
-                    </div>
-                    <div id="ai-result-box" style="display:none; margin-top:14px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:14px; font-size:13px; white-space:pre-wrap; line-height:1.6;"></div>
+                <!-- Studio Navigation Tabs Bar -->
+                <div class="studio-tab-bar" id="studio-tab-bar">
+                    <button type="button" class="studio-tab-btn active" id="tab-btn-ai" onclick="switchStudioView('ai')">
+                        <span>✨</span> <span data-i18n="st.subnav_ai">AI Content Creator</span>
+                    </button>
+                    <button type="button" class="studio-tab-btn" id="tab-btn-publisher" onclick="switchStudioView('publisher')">
+                        <span>🚀</span> <span data-i18n="st.subnav_publisher">Create & Publish</span>
+                    </button>
+                    <button type="button" class="studio-tab-btn" id="tab-btn-queue" onclick="switchStudioView('queue')">
+                        <span>📋</span> <span data-i18n="st.subnav_queue">Queue & Drafts</span>
+                    </button>
+                    <button type="button" class="studio-tab-btn" id="tab-btn-feed" onclick="switchStudioView('feed')">
+                        <span>📺</span> <span data-i18n="st.subnav_feed">Live Feed & Archive</span>
+                    </button>
                 </div>
 
-                <!-- Editor & Publisher Panel with Ruflo Compliance Audit -->
-                <div class="panel-section">
-                    <div class="panel-header">
-                        <div>
-                            <h2 class="panel-title" data-i18n="st.editor_title">2. Publisher & Ruflo Policy Gatekeeper</h2>
-                            <div class="panel-desc" data-i18n="st.editor_desc">Audit content against Meta commerce & advertising policies before publishing</div>
-                        </div>
-                        <button class="btn-secondary" onclick="runComplianceCheck()" data-i18n="st.audit_btn">🛡️ Run Policy Audit</button>
-                    </div>
-
-                    <!-- Compliance Verdict Box -->
-                    <div id="compliance-verdict-box" style="display:none; margin-bottom:14px; padding:12px 16px; border-radius:var(--radius-sm); font-size:12px;"></div>
-
-                    <div class="form-group" style="margin-bottom:12px;">
-                        <label for="post-content" data-i18n="st.content_label">Final Post Content or Script</label>
-                        <textarea id="post-content" style="height:140px;" data-i18n-placeholder="st.content_placeholder" placeholder="Write or review your final social post or reel script here..."></textarea>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="post-media" data-i18n="st.media_label">Media URL (Image or Video - Required for Instagram)</label>
-                            <input type="url" id="post-media" placeholder="https://example.com/image.jpg">
-                        </div>
-                        <div class="form-group">
-                            <label for="post-platform" data-i18n="st.platform_label">Target Platform</label>
-                            <select id="post-platform">
-                                <option value="facebook" data-i18n="st.platform_fb">Facebook</option>
-                                <option value="instagram" data-i18n="st.platform_ig">Instagram</option>
-                                <option value="both" data-i18n="st.platform_both">Facebook & Instagram</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="post-type" data-i18n="st.type_label">Format Type</label>
-                            <select id="post-type">
-                                <option value="post" data-i18n="st.type_post">Marketing Post</option>
-                                <option value="reel_script" data-i18n="st.type_reel">Full Reels Script</option>
-                                <option value="story_sequence" data-i18n="st.type_story">Story Sequence</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="post-schedule-time" data-i18n="st.schedule_time_label">Scheduled Publish Time (Optional)</label>
-                            <input type="datetime-local" id="post-schedule-time">
-                        </div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
-                        <div class="btn-group">
-                            <button class="btn-primary" onclick="submitPost('publish_now')" data-i18n="st.publish_now_btn">🚀 Publish Now</button>
-                            <button class="btn-secondary" onclick="submitPost('schedule')" data-i18n="st.schedule_btn">📅 Schedule Post</button>
-                            <button class="btn-secondary" onclick="submitPost('draft')" data-i18n="st.save_draft_btn">💾 Save Draft</button>
-                        </div>
-                        <div id="publish-status-msg" style="font-size:12px;"></div>
-                    </div>
-                </div>
-
-                <!-- History & Queue Table -->
-                <div class="panel-section">
-                    <div class="panel-header">
-                        <div>
-                            <h3 class="panel-title" data-i18n="st.history_title">3. Scheduled Queue & Content Drafts</h3>
-                            <div class="panel-desc" data-i18n="st.history_desc">Locally scheduled and drafted content awaiting publishing</div>
-                        </div>
-                        <button class="btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="loadContentPosts()" data-i18n="st.refresh_btn">🔄 Refresh</button>
-                    </div>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th data-i18n="st.th_id">ID</th>
-                                    <th data-i18n="st.th_type">Type</th>
-                                    <th data-i18n="st.th_platform">Platform</th>
-                                    <th data-i18n="st.th_snippet">Snippet</th>
-                                    <th data-i18n="st.th_media">Media</th>
-                                    <th data-i18n="st.th_status">Status</th>
-                                    <th data-i18n="st.th_timing">Timing</th>
-                                    <th data-i18n="st.th_meta_id">Meta ID</th>
-                                    <th data-i18n="st.th_actions">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="posts-table-body">
-                                <tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 24px;" data-i18n="st.loading_history">Loading post history...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Live Meta Content Section (Archive & Published Content at Bottom) -->
-                <div class="panel-section" id="meta-live-section" style="border-inline-start: 4px solid var(--accent-blue);">
-                    <div class="panel-header">
-                        <div>
-                            <h2 class="panel-title" style="display:flex; align-items:center; gap:8px;">
-                                <span data-i18n="st.live_title">4. Live Meta Posts & Reels Archive</span>
-                                <span class="badge badge-success num" id="badge-meta-total">0 posts</span>
-                            </h2>
-                            <div class="panel-desc" data-i18n="st.live_desc">Real posts and reels synced live from your connected accounts</div>
-                        </div>
-                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
-                            <!-- Type Filters -->
-                            <div class="btn-group" id="filter-type-group">
-                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterType('all')" id="flt-type-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Content</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterType('reel')" id="flt-type-reels" data-i18n="st.filter_reels">🎬 Reels Only</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterType('post')" id="flt-type-posts" data-i18n="st.filter_posts">📝 Posts Only</button>
-                            </div>
-                            <!-- Platform Filters -->
-                            <div class="btn-group" id="filter-platform-group">
-                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterPlatform('all')" id="flt-plat-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Platforms</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('instagram')" id="flt-plat-ig" data-i18n="st.filter_ig">📸 Instagram</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('facebook')" id="flt-plat-fb" data-i18n="st.filter_fb">📘 Facebook</button>
+                <!-- View 1: AI Content & Script Creator (Default active) -->
+                <div class="studio-view-pane active" id="studio-pane-ai">
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title" data-i18n="st.ai_gen_title">AI Content & Script Creator</h2>
+                                <div class="panel-desc" data-i18n="st.ai_gen_desc">Generate high-converting social posts & reel scripts with AIDA framework and targeted CTAs</div>
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label for="gen-topic" data-i18n="st.topic_label">Topic or Marketing Angle</label>
+                                <input type="text" id="gen-topic" data-i18n-placeholder="st.topic_placeholder" placeholder="e.g. 20% discount on summer collections with free express delivery...">
+                            </div>
+                            <div class="form-group">
+                                <label for="gen-type" data-i18n="st.type_label">Format Type</label>
+                                <select id="gen-type">
+                                    <option value="post" data-i18n="st.type_post">Marketing Post</option>
+                                    <option value="reel_script" data-i18n="st.type_reel">Full Reels Script</option>
+                                    <option value="story_sequence" data-i18n="st.type_story">Story Sequence</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="gen-platform" data-i18n="st.platform_label">Target Platform</label>
+                                <select id="gen-platform">
+                                    <option value="facebook" data-i18n="st.platform_fb">Facebook</option>
+                                    <option value="instagram" data-i18n="st.platform_ig">Instagram</option>
+                                    <option value="both" data-i18n="st.platform_both">Facebook & Instagram</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="gen-cta" data-i18n="st.cta_label">CTA Trigger Keyword</label>
+                                <input type="text" id="gen-cta" value="Start" data-i18n-placeholder="st.cta_placeholder" placeholder="Start, Details, Deal...">
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                            <button class="btn-primary" id="btn-gen-ai" onclick="generateAIContent()" data-i18n="st.generate_btn">✨ Generate Social Copy</button>
+                            <div id="ai-result-actions" style="display:none;">
+                                <button class="btn-secondary" onclick="copyAIToPublish()" data-i18n="st.copy_to_editor">Transfer to Publisher Editor ↓</button>
+                            </div>
+                        </div>
+                        <div id="ai-result-box" style="display:none; margin-top:14px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:14px; font-size:13px; white-space:pre-wrap; line-height:1.6;"></div>
                     </div>
+                </div>
 
-                    <div id="live-media-status-msg" style="display:none; font-size:12px; margin-bottom:10px;"></div>
+                <!-- View 2: Create & Publish -->
+                <div class="studio-view-pane" id="studio-pane-publisher">
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title" data-i18n="st.editor_title">Create & Publish Post</h2>
+                                <div class="panel-desc" data-i18n="st.editor_desc">Audit content against Meta advertising policies and publish or schedule across channels</div>
+                            </div>
+                            <button class="btn-secondary" onclick="runComplianceCheck()" data-i18n="st.audit_btn">🛡️ Check Policy Safety</button>
+                        </div>
 
-                    <!-- Cards Grid -->
-                    <div class="meta-feed-grid" id="meta-live-grid">
-                        <div style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--text-muted);" data-i18n="st.loading_live">
-                            Loading live posts and reels from Meta...
+                        <!-- Compliance Verdict Box -->
+                        <div id="compliance-verdict-box" style="display:none; margin-bottom:14px; padding:12px 16px; border-radius:var(--radius-sm); font-size:12px;"></div>
+
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label for="post-content" data-i18n="st.content_label">Final Post Content or Script</label>
+                            <textarea id="post-content" style="height:140px;" data-i18n-placeholder="st.content_placeholder" placeholder="Write or review your final social post or reel script here..."></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="post-media" data-i18n="st.media_label">Media URL (Image or Video - Required for Instagram)</label>
+                                <input type="url" id="post-media" placeholder="https://example.com/image.jpg">
+                            </div>
+                            <div class="form-group">
+                                <label for="post-platform" data-i18n="st.platform_label">Target Platform</label>
+                                <select id="post-platform">
+                                    <option value="facebook" data-i18n="st.platform_fb">Facebook</option>
+                                    <option value="instagram" data-i18n="st.platform_ig">Instagram</option>
+                                    <option value="both" data-i18n="st.platform_both">Facebook & Instagram</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="post-type" data-i18n="st.type_label">Format Type</label>
+                                <select id="post-type">
+                                    <option value="post" data-i18n="st.type_post">Marketing Post</option>
+                                    <option value="reel_script" data-i18n="st.type_reel">Full Reels Script</option>
+                                    <option value="story_sequence" data-i18n="st.type_story">Story Sequence</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="post-schedule-time" data-i18n="st.schedule_time_label">Scheduled Publish Time (Optional)</label>
+                                <input type="datetime-local" id="post-schedule-time">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                            <div class="btn-group">
+                                <button class="btn-primary" onclick="submitPost('publish_now')" data-i18n="st.publish_now_btn">🚀 Publish Now</button>
+                                <button class="btn-secondary" onclick="submitPost('schedule')" data-i18n="st.schedule_btn">📅 Schedule Post</button>
+                                <button class="btn-secondary" onclick="submitPost('draft')" data-i18n="st.save_draft_btn">💾 Save Draft</button>
+                            </div>
+                            <div id="publish-status-msg" style="font-size:12px;"></div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Pagination Controls -->
-                    <div class="pagination-container" id="meta-pagination-container" style="display:none;">
-                        <div class="pagination-info" id="meta-pagination-info"></div>
-                        <div class="pagination-controls" id="meta-pagination-controls"></div>
+                <!-- View 3: Queue & Drafts -->
+                <div class="studio-view-pane" id="studio-pane-queue">
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title" data-i18n="st.history_title">Scheduled Queue & Drafts</h3>
+                                <div class="panel-desc" data-i18n="st.history_desc">Locally scheduled and drafted content awaiting publishing</div>
+                            </div>
+                            <button class="btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="loadContentPosts()" data-i18n="st.refresh_btn">🔄 Refresh</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="st.th_id">ID</th>
+                                        <th data-i18n="st.th_type">Type</th>
+                                        <th data-i18n="st.th_platform">Platform</th>
+                                        <th data-i18n="st.th_snippet">Snippet</th>
+                                        <th data-i18n="st.th_media">Media</th>
+                                        <th data-i18n="st.th_status">Status</th>
+                                        <th data-i18n="st.th_timing">Timing</th>
+                                        <th data-i18n="st.th_meta_id">Meta ID</th>
+                                        <th data-i18n="st.th_actions">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="posts-table-body">
+                                    <tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 24px;" data-i18n="st.loading_history">Loading post history...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View 4: Live Feed & Archive -->
+                <div class="studio-view-pane" id="studio-pane-feed">
+                    <div class="panel-section" id="meta-live-section" style="border-inline-start: 4px solid var(--accent-blue);">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title" style="display:flex; align-items:center; gap:8px;">
+                                    <span data-i18n="st.live_title">Live Posts & Reels Archive</span>
+                                    <span class="badge badge-success num" id="badge-meta-total">0 posts</span>
+                                </h2>
+                                <div class="panel-desc" data-i18n="st.live_desc">Real posts and reels synced live from your connected accounts</div>
+                            </div>
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                                <!-- Type Filters -->
+                                <div class="btn-group" id="filter-type-group">
+                                    <button type="button" class="btn-action active-filter" onclick="setLiveFilterType('all')" id="flt-type-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Content</button>
+                                    <button type="button" class="btn-action" onclick="setLiveFilterType('reel')" id="flt-type-reels" data-i18n="st.filter_reels">🎬 Reels Only</button>
+                                    <button type="button" class="btn-action" onclick="setLiveFilterType('post')" id="flt-type-posts" data-i18n="st.filter_posts">📝 Posts Only</button>
+                                </div>
+                                <!-- Platform Filters -->
+                                <div class="btn-group" id="filter-platform-group">
+                                    <button type="button" class="btn-action active-filter" onclick="setLiveFilterPlatform('all')" id="flt-plat-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Platforms</button>
+                                    <button type="button" class="btn-action" onclick="setLiveFilterPlatform('instagram')" id="flt-plat-ig" data-i18n="st.filter_ig">📸 Instagram</button>
+                                    <button type="button" class="btn-action" onclick="setLiveFilterPlatform('facebook')" id="flt-plat-fb" data-i18n="st.filter_fb">📘 Facebook</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="live-media-status-msg" style="display:none; font-size:12px; margin-bottom:10px;"></div>
+
+                        <!-- Cards Grid -->
+                        <div class="meta-feed-grid" id="meta-live-grid">
+                            <div style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--text-muted);" data-i18n="st.loading_live">
+                                Loading live posts and reels from Meta...
+                            </div>
+                        </div>
+
+                        <!-- Pagination Controls -->
+                        <div class="pagination-container" id="meta-pagination-container" style="display:none;">
+                            <div class="pagination-info" id="meta-pagination-info"></div>
+                            <div class="pagination-controls" id="meta-pagination-controls"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -243,9 +290,50 @@
     <script>
         let currentAIGeneratedText = "";
         let _allLiveMetaPosts = [];
+        let _currentStudioView = 'ai';
 
         function t(key) {
             return window.hudhudI18n ? window.hudhudI18n.t(key) : key;
+        }
+
+        function switchStudioView(viewKey, updateUrl = true) {
+            const validViews = ['feed', 'ai', 'publisher', 'queue'];
+            if (!validViews.includes(viewKey)) viewKey = 'feed';
+            _currentStudioView = viewKey;
+
+            validViews.forEach(vk => {
+                const pane = document.getElementById(`studio-pane-${vk}`);
+                if (pane) pane.classList.toggle('active', vk === viewKey);
+                const tab = document.getElementById(`tab-btn-${vk}`);
+                if (tab) tab.classList.toggle('active', vk === viewKey);
+                const sub = document.getElementById(`subnav-${vk}`);
+                if (sub) sub.classList.toggle('active', vk === viewKey);
+            });
+
+            if (updateUrl && window.history && window.history.replaceState) {
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.set('view', viewKey);
+                window.history.replaceState({}, '', newUrl);
+            }
+
+            const crumb = document.getElementById('studio-crumb-view');
+            if (crumb) {
+                const labelMap = {
+                    feed: t('st.subnav_feed'),
+                    ai: t('st.subnav_ai'),
+                    publisher: t('st.subnav_publisher'),
+                    queue: t('st.subnav_queue')
+                };
+                crumb.textContent = labelMap[viewKey] || '';
+            }
+
+            try { localStorage.setItem('hudhud_studio_active_view', viewKey); } catch(e) {}
+        }
+
+        function toggleStudioSubnav(e) {
+            if (e) e.preventDefault();
+            const grp = document.getElementById('nav-group-studio');
+            if (grp) grp.classList.toggle('open');
         }
 
         async function generateAIContent() {
@@ -297,11 +385,14 @@
 
         function copyAIToPublish() {
             if (!currentAIGeneratedText) return;
+            switchStudioView('publisher');
             document.getElementById('post-content').value = currentAIGeneratedText;
             document.getElementById('post-type').value = document.getElementById('gen-type').value;
             document.getElementById('post-platform').value = document.getElementById('gen-platform').value;
-            document.getElementById('post-content').scrollIntoView({ behavior: 'smooth' });
-            document.getElementById('post-content').focus();
+            setTimeout(() => {
+                document.getElementById('post-content').scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('post-content').focus();
+            }, 100);
         }
 
         async function runComplianceCheck() {
@@ -831,11 +922,27 @@
         }
 
         window.addEventListener('hudhud_lang_change', () => {
+            switchStudioView(_currentStudioView, false);
             loadContentPosts();
             loadLiveMetaPosts();
         });
 
         document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            let initialView = urlParams.get('view');
+            if (!initialView && window.location.hash) {
+                const hash = window.location.hash.replace('#', '');
+                if (['feed', 'ai', 'publisher', 'queue'].includes(hash)) initialView = hash;
+            }
+            if (!initialView) {
+                try { initialView = localStorage.getItem('hudhud_studio_active_view'); } catch(e) {}
+            }
+            if (initialView && ['feed', 'ai', 'publisher', 'queue'].includes(initialView)) {
+                switchStudioView(initialView, false);
+            } else {
+                switchStudioView('ai', false);
+            }
+
             loadContentPosts();
             loadLiveMetaPosts();
         });
