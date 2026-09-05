@@ -296,7 +296,7 @@ async def get_meta_status():
 async def get_live_meta_posts(
     platform: Optional[str] = Query("all"),
     post_type: Optional[str] = Query("all"),
-    limit: int = Query(150, ge=1, le=500)
+    limit: Optional[int] = Query(None, ge=1, le=5000)
 ):
     """Returns currently cached real published posts and reels from Facebook & Instagram."""
     posts = meta_feed_sync.get_synced_posts(platform=platform, post_type=post_type, limit=limit)

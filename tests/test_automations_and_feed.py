@@ -164,6 +164,12 @@ def test_logo_unification_and_automations_page(client):
     assert "brand-dot" in res_studio.text
     assert "flt-type-reels" in res_studio.text
     assert "metrics-pill-group" in res_studio.text
+    assert "meta-pagination-container" in res_studio.text
+    assert "meta-live-section" in res_studio.text
+    # Verify section order: AI Generator before Live Meta Archive
+    ai_gen_idx = res_studio.text.find("st.ai_gen_title")
+    live_idx = res_studio.text.find("meta-live-section")
+    assert ai_gen_idx < live_idx, "AI Generator should appear before Live Meta Archive"
 
     # Check automations page
     res_auto = client.get("/automations")

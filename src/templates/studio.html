@@ -64,42 +64,6 @@
             </header>
 
             <div class="app-content">
-                <!-- Live Meta Content Section -->
-                <div class="panel-section" style="border-inline-start: 4px solid var(--accent-blue);">
-                    <div class="panel-header">
-                        <div>
-                            <h2 class="panel-title" style="display:flex; align-items:center; gap:8px;">
-                                <span data-i18n="st.live_title">📺 Live Meta Posts & Reels from Connected Accounts</span>
-                                <span class="badge badge-success num" id="badge-meta-total">0 posts</span>
-                            </h2>
-                            <div class="panel-desc" data-i18n="st.live_desc">Real posts and reels synced live from your connected accounts</div>
-                        </div>
-                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
-                            <!-- Type Filters -->
-                            <div class="btn-group" id="filter-type-group">
-                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterType('all')" id="flt-type-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Content</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterType('reel')" id="flt-type-reels" data-i18n="st.filter_reels">🎬 Reels Only</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterType('post')" id="flt-type-posts" data-i18n="st.filter_posts">📝 Posts Only</button>
-                            </div>
-                            <!-- Platform Filters -->
-                            <div class="btn-group" id="filter-platform-group">
-                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterPlatform('all')" id="flt-plat-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Platforms</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('instagram')" id="flt-plat-ig" data-i18n="st.filter_ig">📸 Instagram</button>
-                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('facebook')" id="flt-plat-fb" data-i18n="st.filter_fb">📘 Facebook</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="live-media-status-msg" style="display:none; font-size:12px; margin-bottom:10px;"></div>
-
-                    <!-- Cards Grid -->
-                    <div class="meta-feed-grid" id="meta-live-grid">
-                        <div style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--text-muted);" data-i18n="st.loading_live">
-                            Loading live posts and reels from Meta...
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Top AI Generator Box -->
                 <div class="panel-section">
                     <div class="panel-header">
@@ -226,6 +190,48 @@
                                 <tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 24px;" data-i18n="st.loading_history">Loading post history...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <!-- Live Meta Content Section (Archive & Published Content at Bottom) -->
+                <div class="panel-section" id="meta-live-section" style="border-inline-start: 4px solid var(--accent-blue);">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title" style="display:flex; align-items:center; gap:8px;">
+                                <span data-i18n="st.live_title">4. Live Meta Posts & Reels Archive</span>
+                                <span class="badge badge-success num" id="badge-meta-total">0 posts</span>
+                            </h2>
+                            <div class="panel-desc" data-i18n="st.live_desc">Real posts and reels synced live from your connected accounts</div>
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                            <!-- Type Filters -->
+                            <div class="btn-group" id="filter-type-group">
+                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterType('all')" id="flt-type-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Content</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterType('reel')" id="flt-type-reels" data-i18n="st.filter_reels">🎬 Reels Only</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterType('post')" id="flt-type-posts" data-i18n="st.filter_posts">📝 Posts Only</button>
+                            </div>
+                            <!-- Platform Filters -->
+                            <div class="btn-group" id="filter-platform-group">
+                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterPlatform('all')" id="flt-plat-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Platforms</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('instagram')" id="flt-plat-ig" data-i18n="st.filter_ig">📸 Instagram</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('facebook')" id="flt-plat-fb" data-i18n="st.filter_fb">📘 Facebook</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="live-media-status-msg" style="display:none; font-size:12px; margin-bottom:10px;"></div>
+
+                    <!-- Cards Grid -->
+                    <div class="meta-feed-grid" id="meta-live-grid">
+                        <div style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--text-muted);" data-i18n="st.loading_live">
+                            Loading live posts and reels from Meta...
+                        </div>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="pagination-container" id="meta-pagination-container" style="display:none;">
+                        <div class="pagination-info" id="meta-pagination-info"></div>
+                        <div class="pagination-controls" id="meta-pagination-controls"></div>
                     </div>
                 </div>
             </div>
@@ -501,17 +507,22 @@
 
         let _liveFilterType = 'all';     // 'all' | 'reel' | 'post'
         let _liveFilterPlatform = 'all'; // 'all' | 'facebook' | 'instagram'
+        let _currentPage = 1;
+        const _pageSize = 12;            // Clean 12 cards per page (3 rows x 4 cols or 4 rows x 3 cols)
 
         async function loadLiveMetaPosts() {
             const grid = document.getElementById('meta-live-grid');
             const badge = document.getElementById('badge-meta-total');
             const statusMsg = document.getElementById('live-media-status-msg');
+            const pagContainer = document.getElementById('meta-pagination-container');
             if (!grid) return;
 
             grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted);">${t('st.loading_live')}</div>`;
+            if (pagContainer) pagContainer.style.display = 'none';
 
             try {
-                const res = await fetch('/api/meta/posts?limit=150&platform=all');
+                // Fetch all synced items from cache without artificial ceiling
+                const res = await fetch('/api/meta/posts?platform=all');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 _allLiveMetaPosts = data.posts || [];
@@ -524,6 +535,7 @@
                             <div style="margin-top:10px;"><button class="btn-primary" onclick="syncLiveMetaPosts()">${t('st.sync_now')}</button></div>
                         </div>`;
                     if (badge) badge.textContent = '0';
+                    if (pagContainer) pagContainer.style.display = 'none';
                     return;
                 }
 
@@ -547,11 +559,12 @@
                 if (fltTypeReels) fltTypeReels.textContent = `${t('st.filter_reels')} (${reelsCount})`;
                 if (fltTypePosts) fltTypePosts.textContent = `${t('st.filter_posts')} (${postsCount})`;
 
-                if (fltPlatAll) fltPlatAll.textContent = `All (${_allLiveMetaPosts.length})`;
+                if (fltPlatAll) fltPlatAll.textContent = `${t('st.filter_all')} (${_allLiveMetaPosts.length})`;
                 if (fltPlatFb)  fltPlatFb.textContent  = `${t('st.filter_fb')} (${fbCount})`;
                 if (fltPlatIg)  fltPlatIg.textContent  = `${t('st.filter_ig')} (${igCount})`;
 
-                applyLiveFilters();
+                _currentPage = 1;
+                renderLiveMetaView();
 
                 if (data.cache_updated_at) {
                     const dt = new Date(data.cache_updated_at);
@@ -571,6 +584,7 @@
                         <div>Failed to load live posts: ${escapeHtml(String(err))}</div>
                         <div style="margin-top:10px;"><button class="btn-secondary" onclick="syncLiveMetaPosts()">Retry</button></div>
                     </div>`;
+                if (pagContainer) pagContainer.style.display = 'none';
             }
         }
 
@@ -610,7 +624,7 @@
             applyLiveFilters();
         }
 
-        function applyLiveFilters() {
+        function getFilteredLivePosts() {
             let filtered = _allLiveMetaPosts;
             if (_liveFilterPlatform !== 'all') {
                 filtered = filtered.filter(p => p.platform === _liveFilterPlatform);
@@ -618,7 +632,103 @@
             if (_liveFilterType !== 'all') {
                 filtered = filtered.filter(p => p.post_type === _liveFilterType);
             }
-            renderLiveMetaGrid(filtered);
+            return filtered;
+        }
+
+        function applyLiveFilters() {
+            _currentPage = 1;
+            renderLiveMetaView();
+        }
+
+        function goToLivePage(page) {
+            const filtered = getFilteredLivePosts();
+            const totalPages = Math.ceil(filtered.length / _pageSize) || 1;
+            if (page < 1 || page > totalPages) return;
+            _currentPage = page;
+            renderLiveMetaView();
+            const sec = document.getElementById('meta-live-section');
+            if (sec) {
+                sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function renderLiveMetaView() {
+            const filtered = getFilteredLivePosts();
+            const totalCount = filtered.length;
+            const totalPages = Math.ceil(totalCount / _pageSize) || 1;
+
+            if (_currentPage > totalPages) _currentPage = totalPages;
+            if (_currentPage < 1) _currentPage = 1;
+
+            const startIdx = (_currentPage - 1) * _pageSize;
+            const endIdx = Math.min(startIdx + _pageSize, totalCount);
+            const pageItems = filtered.slice(startIdx, endIdx);
+
+            renderLiveMetaGrid(pageItems);
+            renderLivePagination(totalCount, totalPages, startIdx, endIdx);
+        }
+
+        function renderLivePagination(totalCount, totalPages, startIdx, endIdx) {
+            const container = document.getElementById('meta-pagination-container');
+            const infoEl = document.getElementById('meta-pagination-info');
+            const controlsEl = document.getElementById('meta-pagination-controls');
+            if (!container || !infoEl || !controlsEl) return;
+
+            if (totalCount === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'flex';
+
+            const displayStart = totalCount === 0 ? 0 : startIdx + 1;
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const rangeText = isAr
+                ? `عرض <span class="num" style="font-weight:700;color:var(--text-primary);">${displayStart}</span> إلى <span class="num" style="font-weight:700;color:var(--text-primary);">${endIdx}</span> من أصل <span class="num" style="font-weight:700;color:var(--text-primary);">${totalCount}</span> منشور`
+                : `Showing <span class="num" style="font-weight:700;color:var(--text-primary);">${displayStart}</span> to <span class="num" style="font-weight:700;color:var(--text-primary);">${endIdx}</span> of <span class="num" style="font-weight:700;color:var(--text-primary);">${totalCount}</span> posts`;
+            infoEl.innerHTML = rangeText;
+
+            if (totalPages <= 1) {
+                controlsEl.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            const prevDisabled = _currentPage === 1 ? 'disabled' : '';
+            const prevText = isAr ? '‹ السابق' : '‹ Prev';
+            html += `<button type="button" class="page-btn" onclick="goToLivePage(${_currentPage - 1})" ${prevDisabled}>${prevText}</button>`;
+
+            const maxButtons = 5;
+            let startPage = Math.max(1, _currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button type="button" class="page-btn num" onclick="goToLivePage(1)">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="page-ellipsis">…</span>`;
+                }
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const activeClass = p === _currentPage ? 'active' : '';
+                html += `<button type="button" class="page-btn num ${activeClass}" onclick="goToLivePage(${p})">${p}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="page-ellipsis">…</span>`;
+                }
+                html += `<button type="button" class="page-btn num" onclick="goToLivePage(${totalPages})">${totalPages}</button>`;
+            }
+
+            const nextDisabled = _currentPage === totalPages ? 'disabled' : '';
+            const nextText = isAr ? 'التالي ›' : 'Next ›';
+            html += `<button type="button" class="page-btn" onclick="goToLivePage(${_currentPage + 1})" ${nextDisabled}>${nextText}</button>`;
+
+            controlsEl.innerHTML = html;
         }
 
         function renderLiveMetaGrid(posts) {
