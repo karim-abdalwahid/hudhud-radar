@@ -126,8 +126,16 @@ class MetaLiveFeedSync:
                 resp = await client.get(url, params=params)
                 rate_limiter.update_from_headers("facebook", dict(resp.headers))
                 if resp.status_code != 200:
-                    logger.error(f"Failed to fetch Facebook posts: {resp.text}")
-                    return []
+                    logger.warning(f"published_posts with summary fields returned HTTP {resp.status_code}. Retrying with standard fields...")
+                    fallback_params = {
+                        "fields": "id,message,created_time,permalink_url,full_picture,shares,attachments{media_type,type,url,unshimmed_url,title,target}",
+                        "limit": limit,
+                        "access_token": token
+                    }
+                    resp = await client.get(url, params=fallback_params)
+                    if resp.status_code != 200:
+                        logger.error(f"Failed to fetch Facebook posts on fallback: {resp.text}")
+                        return []
 
                 data = resp.json().get("data", [])
                 for item in data:
