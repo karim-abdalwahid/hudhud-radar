@@ -46,25 +46,27 @@ class MetaLiveFeedSync:
         return {"token": token, "page_id": page_id, "ig_id": ig_id}
 
     def _load_cache_from_disk(self):
-        """Loads cached posts from disk or Supabase if available."""
-        if CACHE_FILE.exists():
+        """Loads cached posts from Supabase cloud or disk cache."""
+        # 1. Check Supabase cloud cache first (holds full archive of 121+ items with real views)
+        try:
+            from src.core.supabase_client import supabase_db
+            data = supabase_db.get_setting("meta_cached_posts")
+            if data and isinstance(data, dict):
+                posts = data.get("posts", [])
+                if len(posts) > len(self._cached_posts):
+                    self._cached_posts = posts
+                    self._cache_updated_at = data.get("updated_at")
+        except Exception as e:
+            logger.debug(f"Could not load meta posts from Supabase: {e}")
+
+        # 2. Fallback to local disk file if Supabase not loaded
+        if not self._cached_posts and CACHE_FILE.exists():
             try:
                 data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
                 self._cached_posts = data.get("posts", [])
                 self._cache_updated_at = data.get("updated_at")
             except Exception as e:
                 logger.error(f"Error loading live meta posts cache from disk: {e}")
-
-        # Fallback to Supabase cloud cache (crucial for Vercel serverless cold starts)
-        if not self._cached_posts:
-            try:
-                from src.core.supabase_client import supabase_db
-                data = supabase_db.get_setting("meta_cached_posts")
-                if data and isinstance(data, dict):
-                    self._cached_posts = data.get("posts", [])
-                    self._cache_updated_at = data.get("updated_at")
-            except Exception as e:
-                logger.debug(f"Could not load meta posts from Supabase: {e}")
 
     def _save_cache_to_disk(self):
         """Persists cached posts to disk and Supabase for instant rendering."""
