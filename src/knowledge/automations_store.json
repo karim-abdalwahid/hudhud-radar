@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-05T14:09:16.726710+00:00",
+  "updated_at": "2026-09-05T15:59:01.938092+00:00",
   "total_count": 3,
   "workflows": [
     {
@@ -146,8 +146,8 @@
           "to_port": "input"
         }
       ],
-      "executions_count": 150,
-      "last_executed_at": "2026-09-05T14:09:16.726260+00:00",
+      "executions_count": 152,
+      "last_executed_at": "2026-09-05T15:59:01.937688+00:00",
       "created_at": "2026-09-01T10:00:00Z",
       "updated_at": "2026-09-04T12:00:00Z"
     },

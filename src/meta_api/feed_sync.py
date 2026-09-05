@@ -91,17 +91,11 @@ class MetaLiveFeedSync:
             logger.error(f"Error saving live meta posts cache to Supabase: {e}")
 
     async def _fetch_facebook_video_metrics(self, client: httpx.AsyncClient, video_id: str, token: str) -> Dict[str, Any]:
-        """Fetches real views, picture thumbnail, likes, and comments count for a specific Facebook video/reel object."""
-        views = 0
-        likes = 0
-        comments = 0
-        picture = None
-
-        # 1. First attempt: fetch views, picture, likes, and comments count together
+        """Fetches real views, picture thumbnail, and likes/comments counts for a specific Facebook video/reel object."""
         try:
             url = f"{self.base_url}/{video_id}"
             params = {
-                "fields": "id,views,picture,likes.summary(true),comments.summary(true)",
+                "fields": "id,views,picture,thumbnails{uri,is_preferred},likes.summary(true),comments.summary(true)",
                 "access_token": token
             }
             res = await client.get(url, params=params)
@@ -111,27 +105,23 @@ class MetaLiveFeedSync:
                 likes = data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
                 comments = data.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
                 picture = data.get("picture")
+                if not picture:
+                    thumbnails = data.get("thumbnails", {}).get("data", [])
+                    if thumbnails:
+                        preferred = next((t.get("uri") for t in thumbnails if t.get("is_preferred")), None)
+                        picture = preferred or (thumbnails[0].get("uri") if thumbnails else None)
                 return {"views": views, "likes": likes, "comments": comments, "picture": picture}
-            elif res.status_code == 403 or "Missing Permissions" in res.text:
-                # 2. Fallback when pages_read_user_content permission is missing on token:
-                # Fetch views, picture, and likes without failing
-                params_fallback = {
-                    "fields": "id,views,picture,likes.summary(true)",
-                    "access_token": token
-                }
-                res_fb = await client.get(url, params=params_fallback)
-                if res_fb.status_code == 200:
-                    data = res_fb.json()
-                    views = data.get("views", 0) or 0
-                    likes = data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
-                    picture = data.get("picture")
-                    return {"views": views, "likes": likes, "comments": 0, "picture": picture}
         except Exception as e:
             logger.debug(f"Error fetching FB video metrics for {video_id}: {e}")
-        return {"views": views, "likes": likes, "comments": comments, "picture": picture}
+        return {"views": 0, "likes": 0, "comments": 0, "picture": None}
 
-    async def fetch_facebook_reels(self, limit: int = 100, shares_by_target: Optional[Dict[str, int]] = None, max_total: int = 5000) -> List[Dict[str, Any]]:
-        """Fetches real published video reels directly from Facebook Page video_reels endpoint with thumbnails and live metrics, automatically paginating through all available reels."""
+    async def fetch_facebook_reels(
+        self,
+        limit: int = 100,
+        shares_by_target: Optional[Dict[str, int]] = None,
+        thumbnails_by_target: Optional[Dict[str, str]] = None
+    ) -> List[Dict[str, Any]]:
+        """Fetches real published video reels directly from Facebook Page video_reels endpoint with thumbnails and live metrics."""
         creds = self._get_credentials()
         page_id = creds["page_id"]
         token = creds["token"]
@@ -139,29 +129,22 @@ class MetaLiveFeedSync:
             return []
 
         shares_map = shares_by_target or {}
+        thumbs_map = thumbnails_by_target or {}
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=25.0) as client:
                 url = f"{self.base_url}/{page_id}/video_reels"
                 params = {
                     "fields": "id,video_id,description,created_time,permalink_url",
-                    "limit": min(limit, 100),
+                    "limit": limit,
                     "access_token": token
                 }
-                raw_items = []
-                while url and len(raw_items) < max_total:
-                    resp = await client.get(url, params=params)
-                    if resp.status_code != 200:
-                        logger.error(f"Failed to fetch FB video_reels: {resp.text}")
-                        break
+                resp = await client.get(url, params=params)
+                if resp.status_code != 200:
+                    logger.error(f"Failed to fetch FB video_reels: {resp.text}")
+                    return []
 
-                    data = resp.json()
-                    items = data.get("data", [])
-                    if not items:
-                        break
-                    raw_items.extend(items)
-                    url = data.get("paging", {}).get("next")
-                    params = None
+                data = resp.json().get("data", [])
                 
                 # Concurrently enrich all reels with views, pictures, likes, and comments
                 sem = asyncio.Semaphore(10)
@@ -178,8 +161,9 @@ class MetaLiveFeedSync:
                     async with sem:
                         metrics = await self._fetch_facebook_video_metrics(client, video_id, token)
 
-                    thumb_url = metrics.get("picture")
+                    thumb_url = metrics.get("picture") or thumbs_map.get(reel_id) or thumbs_map.get(video_id)
                     shares = shares_map.get(reel_id) or shares_map.get(video_id) or 0
+                    comments = metrics.get("comments", 0)
 
                     return {
                         "id": reel_id,
@@ -192,21 +176,21 @@ class MetaLiveFeedSync:
                         "permalink": purl,
                         "published_at": item.get("created_time"),
                         "likes_count": metrics.get("likes", 0),
-                        "comments_count": metrics.get("comments", 0),
+                        "comments_count": comments,
                         "shares_count": shares,
                         "views_count": metrics.get("views", 0),
                         "is_live_meta": True
                     }
 
-                tasks = [enrich_reel(item) for item in raw_items]
+                tasks = [enrich_reel(item) for item in data]
                 results = await asyncio.gather(*tasks)
                 return [r for r in results if r is not None]
         except Exception as e:
             logger.error(f"Error fetching FB video_reels: {e}")
             return []
 
-    async def fetch_facebook_posts(self, limit: int = 100, max_total: int = 5000) -> List[Dict[str, Any]]:
-        """Fetches real published posts from Facebook Page with live attachments, shares, and permalinks, automatically paginating through all available posts."""
+    async def fetch_facebook_posts(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetches real published posts from Facebook Page with live attachments, shares, and permalinks."""
         creds = self._get_credentials()
         page_id = creds["page_id"]
         token = creds["token"]
@@ -218,83 +202,65 @@ class MetaLiveFeedSync:
         url = f"{self.base_url}/{page_id}/published_posts"
         params = {
             "fields": "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),comments.summary(true),attachments{media_type,type,url,unshimmed_url,title,target}",
-            "limit": min(limit, 100),
+            "limit": limit,
             "access_token": token
         }
 
         posts = []
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                while url and len(posts) < max_total:
-                    resp = await client.get(url, params=params)
-                    rate_limiter.update_from_headers("facebook", dict(resp.headers))
-                    if resp.status_code != 200:
-                        # Fallback if comments.summary(true) fails due to missing pages_read_user_content permission
-                        if params and "comments.summary" in params.get("fields", ""):
-                            logger.info("Retrying Facebook posts fetch without comments field due to permissions...")
-                            params["fields"] = "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),attachments{media_type,type,url,unshimmed_url,title,target}"
-                            resp = await client.get(url, params=params)
-                            if resp.status_code != 200:
-                                logger.error(f"Failed to fetch Facebook posts on fallback: {resp.text}")
-                                break
-                        else:
-                            logger.error(f"Failed to fetch Facebook posts: {resp.text}")
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                resp = await client.get(url, params=params)
+                rate_limiter.update_from_headers("facebook", dict(resp.headers))
+                if resp.status_code != 200:
+                    logger.error(f"Failed to fetch Facebook posts: {resp.text}")
+                    return []
+
+                data = resp.json().get("data", [])
+                for item in data:
+                    caption = item.get("message") or ""
+                    shares = item.get("shares", {}).get("count", 0) or 0
+                    likes = item.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
+                    comments = item.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
+                    attachments = item.get("attachments", {}).get("data", [])
+                    
+                    is_reel = False
+                    video_id = None
+                    permalink = item.get("permalink_url") or f"https://facebook.com/{item['id']}"
+
+                    for att in attachments:
+                        att_url = att.get("url", "") or att.get("unshimmed_url", "")
+                        att_type = att.get("type", "")
+                        if "/reel/" in att_url or att_type in ["video_inline", "video"]:
+                            is_reel = True
+                            if not permalink or "facebook.com/" in permalink:
+                                if att_url:
+                                    permalink = att_url
+                            video_id = att.get("target", {}).get("id")
                             break
 
-                    data = resp.json()
-                    items = data.get("data", [])
-                    if not items:
-                        break
-
-                    for item in items:
-                        caption = item.get("message") or ""
-                        shares = item.get("shares", {}).get("count", 0) or 0
-                        likes = item.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
-                        comments = item.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
-                        attachments = item.get("attachments", {}).get("data", [])
-                        
-                        is_reel = False
-                        video_id = None
-                        permalink = item.get("permalink_url") or f"https://facebook.com/{item['id']}"
-
-                        for att in attachments:
-                            att_url = att.get("url", "") or att.get("unshimmed_url", "")
-                            att_type = att.get("type", "")
-                            if "/reel/" in att_url or att_type in ["video_inline", "video"]:
-                                is_reel = True
-                                if not permalink or "facebook.com/" in permalink:
-                                    if att_url:
-                                        permalink = att_url
-                                video_id = att.get("target", {}).get("id")
-                                break
-
-                        posts.append({
-                            "id": item["id"],
-                            "video_id": video_id,
-                            "platform": "facebook",
-                            "post_type": "reel" if is_reel else "post",
-                            "content_text": caption,
-                            "thumbnail_url": item.get("full_picture"),
-                            "media_url": item.get("full_picture"),
-                            "permalink": permalink,
-                            "published_at": item.get("created_time"),
-                            "likes_count": likes,
-                            "comments_count": comments,
-                            "shares_count": shares,
-                            "views_count": 0,
-                            "is_live_meta": True
-                        })
-
-                    url = data.get("paging", {}).get("next")
-                    params = None
-
+                    posts.append({
+                        "id": item["id"],
+                        "video_id": video_id,
+                        "platform": "facebook",
+                        "post_type": "reel" if is_reel else "post",
+                        "content_text": caption,
+                        "thumbnail_url": item.get("full_picture"),
+                        "media_url": item.get("full_picture"),
+                        "permalink": permalink,
+                        "published_at": item.get("created_time"),
+                        "likes_count": likes,
+                        "comments_count": comments,
+                        "shares_count": shares,
+                        "views_count": 0,
+                        "is_live_meta": True
+                    })
                 return posts
         except Exception as e:
             logger.error(f"Error querying Facebook Graph API: {e}")
             return []
 
-    async def fetch_instagram_media(self, limit: int = 100, max_total: int = 5000) -> List[Dict[str, Any]]:
-        """Fetches real published reels and media from Instagram Business Account with like and comment counts, automatically paginating through all available media."""
+    async def fetch_instagram_media(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """Fetches real published reels and media from Instagram Business Account with like and comment counts."""
         creds = self._get_credentials()
         ig_id = creds["ig_id"]
         token = creds["token"]
@@ -306,53 +272,43 @@ class MetaLiveFeedSync:
         url = f"{self.base_url}/{ig_id}/media"
         params = {
             "fields": "id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count",
-            "limit": min(limit, 100),
+            "limit": limit,
             "access_token": token
         }
 
-        items = []
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                while url and len(items) < max_total:
-                    resp = await client.get(url, params=params)
-                    rate_limiter.update_from_headers("instagram", dict(resp.headers))
-                    if resp.status_code != 200:
-                        logger.error(f"Failed to fetch Instagram media: {resp.text}")
-                        break
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                resp = await client.get(url, params=params)
+                rate_limiter.update_from_headers("instagram", dict(resp.headers))
+                if resp.status_code != 200:
+                    logger.error(f"Failed to fetch Instagram media: {resp.text}")
+                    return []
 
-                    data = resp.json()
-                    raw_list = data.get("data", [])
-                    if not raw_list:
-                        break
+                data = resp.json().get("data", [])
+                items = []
+                for item in data:
+                    mtype = (item.get("media_type") or "VIDEO").upper()
+                    product_type = (item.get("media_product_type") or "").upper()
+                    permalink = item.get("permalink") or f"https://instagram.com/p/{item['id']}"
+                    
+                    is_reel = (product_type == "REELS") or (mtype == "VIDEO") or ("/reel/" in permalink)
+                    thumb = item.get("thumbnail_url") or item.get("media_url")
 
-                    for item in raw_list:
-                        mtype = (item.get("media_type") or "VIDEO").upper()
-                        product_type = (item.get("media_product_type") or "").upper()
-                        permalink = item.get("permalink") or f"https://instagram.com/p/{item['id']}"
-                        
-                        is_reel = (product_type == "REELS") or (mtype == "VIDEO") or ("/reel/" in permalink)
-                        post_type = "reel" if is_reel else "post"
-                        thumb = item.get("thumbnail_url") or item.get("media_url")
-
-                        items.append({
-                            "id": str(item["id"]),
-                            "platform": "instagram",
-                            "post_type": post_type,
-                            "content_text": item.get("caption") or "",
-                            "thumbnail_url": thumb,
-                            "media_url": item.get("media_url"),
-                            "permalink": permalink,
-                            "published_at": item.get("timestamp"),
-                            "likes_count": item.get("like_count", 0) or 0,
-                            "comments_count": item.get("comments_count", 0) or 0,
-                            "shares_count": 0,
-                            "views_count": 0,
-                            "is_live_meta": True
-                        })
-
-                    url = data.get("paging", {}).get("next")
-                    params = None
-
+                    items.append({
+                        "id": str(item["id"]),
+                        "platform": "instagram",
+                        "post_type": "reel" if is_reel else "post",
+                        "content_text": item.get("caption") or "",
+                        "thumbnail_url": thumb,
+                        "media_url": item.get("media_url") or thumb,
+                        "permalink": permalink,
+                        "published_at": item.get("timestamp"),
+                        "likes_count": item.get("like_count", 0) or 0,
+                        "comments_count": item.get("comments_count", 0) or 0,
+                        "shares_count": 0,
+                        "views_count": 0,
+                        "is_live_meta": True
+                    })
                 return items
         except Exception as e:
             logger.error(f"Error querying Instagram Graph API: {e}")
@@ -360,17 +316,29 @@ class MetaLiveFeedSync:
 
     async def sync_all_live_content(self, limit_per_platform: int = 100) -> Dict[str, Any]:
         """Fetches from Facebook (all video reels & posts) and Instagram (all reels & media), strictly deduplicates, and caches."""
-        # 1. First fetch FB posts to extract shares mapping and additional posts
+        # 1. First fetch FB posts to extract shares mapping, thumbnails mapping, and additional posts
         fb_posts = await self.fetch_facebook_posts(limit=limit_per_platform)
         shares_by_target: Dict[str, int] = {}
+        thumbnails_by_target: Dict[str, str] = {}
         for p in fb_posts:
             s_count = p.get("shares_count", 0)
+            p_thumb = p.get("thumbnail_url")
             v_id = p.get("video_id")
-            if v_id and s_count:
-                shares_by_target[str(v_id)] = s_count
+            p_id = p.get("id")
+            if v_id:
+                if s_count:
+                    shares_by_target[str(v_id)] = s_count
+                if p_thumb:
+                    thumbnails_by_target[str(v_id)] = p_thumb
+            if p_id and p_thumb:
+                thumbnails_by_target[str(p_id)] = p_thumb
 
-        # 2. Fetch FB Reels directly with real views, likes, and thumbnails
-        fb_reels = await self.fetch_facebook_reels(limit=limit_per_platform, shares_by_target=shares_by_target)
+        # 2. Fetch FB Reels directly with real views, likes, comments, and thumbnails
+        fb_reels = await self.fetch_facebook_reels(
+            limit=limit_per_platform,
+            shares_by_target=shares_by_target,
+            thumbnails_by_target=thumbnails_by_target
+        )
 
         # 3. Fetch IG Reels and media
         ig_posts = await self.fetch_instagram_media(limit=limit_per_platform)
@@ -438,7 +406,7 @@ class MetaLiveFeedSync:
         self,
         platform: Optional[str] = None,
         post_type: Optional[str] = None,
-        limit: Optional[int] = None
+        limit: int = 150
     ) -> List[Dict[str, Any]]:
         """Returns currently cached real posts with optional platform and post_type filters."""
         if not self._cached_posts:
@@ -448,9 +416,7 @@ class MetaLiveFeedSync:
             posts = [p for p in posts if p.get("platform") == platform]
         if post_type and post_type != "all":
             posts = [p for p in posts if p.get("post_type") == post_type]
-        if limit is not None and limit > 0:
-            return posts[:limit]
-        return posts
+        return posts[:limit]
 
     def get_cache_metadata(self) -> Dict[str, Any]:
         """Returns cache statistics and last-sync timestamp."""

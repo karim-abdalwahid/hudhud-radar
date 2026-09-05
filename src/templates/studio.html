@@ -757,7 +757,8 @@
                 const thumbHtml = `
                     <div class="card-thumb-wrap" style="width:100%;height:180px;background:var(--bg-subtle);overflow:hidden;position:relative;border-radius:var(--radius-sm) var(--radius-sm) 0 0;display:flex;align-items:center;justify-content:center;">
                         ${thumb 
-                            ? `<img src="${escapeHtml(thumb)}" alt="Thumbnail" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML='<div style=\\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;background:var(--bg-subtle);\\\'>${isReel ? '🎬' : '📝'}</div>'">` 
+                            ? `<img src="${escapeHtml(thumb)}" alt="Thumbnail" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';">
+                               <div class="thumb-fallback" style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:36px;background:var(--bg-subtle);">${isReel ? '🎬' : '📝'}</div>` 
                             : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;background:var(--bg-subtle);">${isReel ? '🎬' : '📝'}</div>`
                         }
                     </div>`;

@@ -26,6 +26,8 @@
     --accent-blue: #2563eb;
     --accent-blue-hover: #1d4ed8;
     --accent-emerald: #059669;
+    --accent-green: #059669;
+    --accent-green-hover: #047857;
     
     /* Badges & Status */
     --badge-green-bg: #ecfdf5;
@@ -811,75 +813,9 @@ body.mode-developer .dev-nav-section {
     align-items: center;
 }
 
-/* -------------------------------------------------------------------------
-   Pagination Component Styles
--------------------------------------------------------------------------- */
-.pagination-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 14px;
-    margin-top: 20px;
-    padding: 16px 4px 6px 4px;
-    border-top: 1px solid var(--border-subtle);
+@media (max-width: 640px) {
+    .metrics-strip {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 }
-
-.pagination-info {
-    font-size: 13px;
-    color: var(--text-muted);
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.pagination-controls {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.page-btn {
-    min-width: 36px;
-    height: 36px;
-    padding: 0 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-default);
-    background: var(--bg-card);
-    color: var(--text-primary);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.page-btn:hover:not(:disabled) {
-    border-color: var(--accent-blue);
-    color: var(--accent-blue);
-    background: var(--primary-light, #eff6ff);
-}
-
-.page-btn.active {
-    background: var(--accent-blue) !important;
-    color: #ffffff !important;
-    border-color: var(--accent-blue) !important;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
-}
-
-.page-btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-    border-color: var(--border-subtle);
-}
-
-.page-ellipsis {
-    color: var(--text-muted);
-    padding: 0 4px;
-    font-size: 14px;
-    font-weight: 600;
-}
-
