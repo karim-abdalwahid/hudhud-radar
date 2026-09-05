@@ -659,7 +659,7 @@
                 const likes = (post.likes_count || 0).toLocaleString();
                 const comments = (post.comments_count || 0).toLocaleString();
                 const shares = (post.shares_count || 0).toLocaleString();
-                const views = post.views_count ? post.views_count.toLocaleString() : null;
+                const views = (post.views_count != null) ? (post.views_count || 0).toLocaleString() : (isReel ? '0' : null);
 
                 const linkBtn = post.permalink
                     ? `<a href="${escapeHtml(post.permalink)}" target="_blank" rel="noopener noreferrer" class="btn-action" style="text-decoration:none;font-size:12px;font-weight:600;padding:5px 12px;background:var(--primary-light,#eff6ff);color:var(--accent-blue,#2563eb);border:1px solid var(--border-subtle);">${t('st.open_link')}</a>`
@@ -683,7 +683,7 @@
                                     <span title="Likes / إعجابات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">❤️ <span class="num">${likes}</span></span>
                                     <span title="Comments / تعليقات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">💬 <span class="num">${comments}</span></span>
                                     ${!isIG ? `<span title="Shares / مشاركات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">🔁 <span class="num">${shares}</span></span>` : ''}
-                                    ${views ? `<span title="Views / مشاهدات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">👁️ <span class="num">${views}</span></span>` : ''}
+                                    ${views !== null ? `<span title="Views / مشاهدات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">👁️ <span class="num">${views}</span></span>` : ''}
                                 </div>
                                 <div>${linkBtn}</div>
                             </div>
