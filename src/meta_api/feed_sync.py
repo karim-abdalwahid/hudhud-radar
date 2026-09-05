@@ -95,7 +95,7 @@ class MetaLiveFeedSync:
         try:
             url = f"{self.base_url}/{video_id}"
             params = {
-                "fields": "id,views,picture,thumbnails{uri,is_preferred},likes.summary(true),comments.summary(true)",
+                "fields": "id,views,picture,thumbnails{uri,is_preferred,width,height},likes.summary(true),comments.summary(true)",
                 "access_token": token
             }
             res = await client.get(url, params=params)
@@ -104,16 +104,24 @@ class MetaLiveFeedSync:
                 views = data.get("views", 0) or 0
                 likes = data.get("likes", {}).get("summary", {}).get("total_count", 0) or 0
                 comments = data.get("comments", {}).get("summary", {}).get("total_count", 0) or 0
-                picture = data.get("picture")
-                if not picture:
-                    thumbnails = data.get("thumbnails", {}).get("data", [])
-                    if thumbnails:
-                        preferred = next((t.get("uri") for t in thumbnails if t.get("is_preferred")), None)
-                        picture = preferred or (thumbnails[0].get("uri") if thumbnails else None)
-                return {"views": views, "likes": likes, "comments": comments, "picture": picture}
+
+                # Prefer the largest available thumbnail for high-quality display
+                picture = None
+                thumbnails = data.get("thumbnails", {}).get("data", [])
+                if thumbnails:
+                    # Sort by width descending to get the highest-resolution thumbnail
+                    sorted_thumbs = sorted(thumbnails, key=lambda t: t.get("width", 0), reverse=True)
+                    preferred = next((t.get("uri") for t in sorted_thumbs if t.get("is_preferred")), None)
+                    largest = sorted_thumbs[0].get("uri") if sorted_thumbs else None
+                    picture = preferred or largest
+
+                # Fall back to the small 'picture' field only as secondary fallback
+                fallback_picture = data.get("picture")
+
+                return {"views": views, "likes": likes, "comments": comments, "picture": picture, "fallback_picture": fallback_picture}
         except Exception as e:
             logger.debug(f"Error fetching FB video metrics for {video_id}: {e}")
-        return {"views": 0, "likes": 0, "comments": 0, "picture": None}
+        return {"views": 0, "likes": 0, "comments": 0, "picture": None, "fallback_picture": None}
 
     async def fetch_facebook_reels(
         self,
@@ -161,7 +169,7 @@ class MetaLiveFeedSync:
                     async with sem:
                         metrics = await self._fetch_facebook_video_metrics(client, video_id, token)
 
-                    thumb_url = metrics.get("picture") or thumbs_map.get(reel_id) or thumbs_map.get(video_id)
+                    thumb_url = metrics.get("picture") or thumbs_map.get(reel_id) or thumbs_map.get(video_id) or metrics.get("fallback_picture")
                     shares = shares_map.get(reel_id) or shares_map.get(video_id) or 0
                     comments = metrics.get("comments", 0)
 
