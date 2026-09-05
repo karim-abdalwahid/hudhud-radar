@@ -60,10 +60,18 @@ content_studio_service = ContentStudioService()
 async def lifespan(app: FastAPI):
     """Application startup and shutdown hooks."""
     logger.info("Initializing HudhudRadar system...")
-    knowledge_base.reload()
+    try:
+        knowledge_base.reload()
+    except Exception as e:
+        logger.warning(f"Could not load local knowledge base markdown files: {e}")
 
     # In serverless environments (Vercel, Lambda), background infinite loops are disabled
-    is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+    is_serverless = bool(
+        os.environ.get("VERCEL")
+        or os.environ.get("VERCEL_ENV")
+        or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+        or os.environ.get("LAMBDA_TASK_ROOT")
+    )
     scheduler_task = None
     if not is_serverless:
         # Start background content publishing scheduler loop
