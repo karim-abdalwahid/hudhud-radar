@@ -389,7 +389,21 @@ class MetaLiveFeedSync:
             if text_snip:
                 seen_keys.add(f"txt_{text_snip}")
 
-            unique_fb.append(p)
+        # Cross-enrich Facebook items with high-resolution Instagram thumbnails for identical cross-posted reels
+        ig_thumbs_by_text = {}
+        for ig in ig_posts:
+            ithumb = ig.get("thumbnail_url")
+            icontent = (ig.get("content_text") or "").strip()[:40]
+            if ithumb and icontent and "_p160x160_" not in ithumb:
+                ig_thumbs_by_text[icontent] = ithumb
+
+        for fb in unique_fb:
+            fthumb = fb.get("thumbnail_url") or ""
+            fcontent = (fb.get("content_text") or "").strip()[:40]
+            if fcontent in ig_thumbs_by_text:
+                if not fthumb or "_p160x160_" in fthumb or "_p130x130_" in fthumb:
+                    fb["thumbnail_url"] = ig_thumbs_by_text[fcontent]
+                    fb["media_url"] = ig_thumbs_by_text[fcontent]
 
         combined = unique_fb + ig_posts
         # Sort descending by published_at
