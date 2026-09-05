@@ -105,13 +105,16 @@
                         <span class="badge" style="background: rgba(24, 119, 242, 0.2); color: #1877f2; border: 1px solid rgba(24, 119, 242, 0.4); font-size: 11px;">Recommended SaaS Flow</span>
                     </div>
 
-                    <div style="margin: 16px 0;">
-                        <button type="button" id="btn-fb-sdk-login" class="btn-primary" onclick="startFacebookSdkLogin()" style="background: #1877f2; color: #fff; padding: 12px 22px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; border-radius: 8px; box-shadow: 0 4px 14px rgba(24, 119, 242, 0.35); cursor: pointer; border: none;">
+                    <div style="margin: 16px 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                        <button type="button" id="btn-fb-sdk-login" class="btn-primary" onclick="startFacebookSdkLogin(false)" style="background: #1877f2; color: #fff; padding: 12px 22px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; border-radius: 8px; box-shadow: 0 4px 14px rgba(24, 119, 242, 0.35); cursor: pointer; border: none;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                             <span data-i18n="set.fb_login_btn">Connect with Facebook & Select Page (تسجيل الدخول واختيار الصفحة)</span>
                         </button>
-                        <div id="fb-login-status-msg" style="margin-top: 10px; font-size: 13px;"></div>
+                        <button type="button" class="btn-secondary" onclick="startFacebookSdkLogin(true)" style="padding: 10px 16px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <span>🔄</span> <span>الدخول بحساب فيسبوك آخر (Switch Account)</span>
+                        </button>
                     </div>
+                    <div id="fb-login-status-msg" style="margin-top: 10px; font-size: 13px;"></div>
 
                     <!-- Interactive Page Selector Container (appears after login) -->
                     <div id="pages-picker-container" style="display: none; margin-top: 16px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 16px;">
@@ -351,13 +354,17 @@
             }
         });
 
-        function startFacebookSdkLogin() {
+        function startFacebookSdkLogin(forceSwitch = false) {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
             const statusMsg = document.getElementById('fb-login-status-msg');
             const appId = (document.getElementById('input-app-id') && document.getElementById('input-app-id').value.trim()) || '2092880431308591';
             const redirectUri = window.location.origin + '/settings';
             const scopes = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,instagram_basic,instagram_manage_messages,instagram_manage_comments';
-            const oauthUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+            let oauthUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+            
+            if (forceSwitch) {
+                oauthUrl += '&auth_type=reauthenticate';
+            }
 
             statusMsg.className = 'muted-text';
             statusMsg.textContent = isAr ? '⏳ جاري فتح نافذة فيسبوك الرسمية لاختيار صفحتك...' : '⏳ Opening official Facebook dialog to select your page...';
