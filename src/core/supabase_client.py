@@ -148,6 +148,40 @@ class SupabaseManager:
                 logger.error(f"Error deleting from Supabase table {table}: {e}")
         return self.memory_db.delete(table, record_id)
 
+    def get_setting(self, key: str, default: Any = None) -> Any:
+        """Retrieves a configuration setting by key from Supabase app_settings table."""
+        if self.is_connected and self.client:
+            try:
+                res = self.client.table("app_settings").select("value").eq("key", key).execute()
+                if res.data and len(res.data) > 0:
+                    return res.data[0].get("value", default)
+            except Exception as e:
+                logger.warning(f"Error fetching setting '{key}' from Supabase: {e}")
+        rows = self.memory_db.select("app_settings", {"key": key})
+        if rows:
+            return rows[0].get("value", default)
+        return default
+
+    def set_setting(self, key: str, value: Any) -> bool:
+        """Saves or updates a setting into Supabase app_settings table."""
+        now = datetime.now(timezone.utc).isoformat()
+        if self.is_connected and self.client:
+            try:
+                self.client.table("app_settings").upsert({
+                    "key": key,
+                    "value": value,
+                    "updated_at": now
+                }).execute()
+                return True
+            except Exception as e:
+                logger.error(f"Error saving setting '{key}' to Supabase: {e}")
+        existing = self.memory_db.select("app_settings", {"key": key})
+        if existing:
+            self.memory_db.update("app_settings", existing[0]["id"], {"value": value, "updated_at": now})
+        else:
+            self.memory_db.insert("app_settings", {"key": key, "value": value, "updated_at": now})
+        return True
+
 
 supabase_db = SupabaseManager()
 

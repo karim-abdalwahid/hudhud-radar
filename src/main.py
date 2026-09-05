@@ -255,15 +255,21 @@ class MetaUserPagesPayload(BaseModel):
 @app.get("/api/meta/status", tags=["Meta Integration"])
 async def get_meta_status():
     """Checks the live connection status of Meta Facebook Page and Instagram Account."""
-    has_token = bool(settings.META_PAGE_ACCESS_TOKEN)
+    # Check Supabase app_settings first for dynamic cloud persistence
+    cached_creds = supabase_db.get_setting("meta_credentials")
+    active_token = (cached_creds and cached_creds.get("page_access_token")) or settings.META_PAGE_ACCESS_TOKEN
+    active_page_id = (cached_creds and cached_creds.get("page_id")) or settings.META_PAGE_ID
+    active_ig_id = (cached_creds and cached_creds.get("instagram_account_id")) or settings.META_INSTAGRAM_ACCOUNT_ID
+
+    has_token = bool(active_token)
     token_valid = False
-    page_name = None
-    page_id = settings.META_PAGE_ID or None
+    page_name = (cached_creds and cached_creds.get("page_name")) or None
+    page_id = active_page_id or None
 
     if has_token:
         try:
             resp = httpx.get(
-                f"{settings.META_GRAPH_API_BASE_URL}/me?fields=id,name&access_token={settings.META_PAGE_ACCESS_TOKEN}",
+                f"{settings.META_GRAPH_API_BASE_URL}/me?fields=id,name&access_token={active_token}",
                 timeout=5.0
             )
             if resp.status_code == 200:
@@ -279,7 +285,7 @@ async def get_meta_status():
         "token_valid": token_valid,
         "page_name": page_name,
         "page_id": page_id,
-        "instagram_account_id": settings.META_INSTAGRAM_ACCOUNT_ID or None,
+        "instagram_account_id": active_ig_id or None,
         "app_id": settings.META_APP_ID or None,
         "supabase_connected": supabase_db.is_connected,
         "supabase_url": settings.SUPABASE_URL
@@ -362,6 +368,15 @@ async def configure_meta_credentials(payload: MetaConfigPayload):
         if payload.app_secret:
             content = re.sub(r"META_APP_SECRET=.*", f"META_APP_SECRET={payload.app_secret}", content)
         env_path.write_text(content, encoding="utf-8")
+
+    # Persist in Supabase app_settings for cloud/serverless persistence
+    supabase_db.set_setting("meta_credentials", {
+        "page_access_token": settings.META_PAGE_ACCESS_TOKEN,
+        "page_id": settings.META_PAGE_ID,
+        "page_name": page_name or "",
+        "instagram_account_id": settings.META_INSTAGRAM_ACCOUNT_ID or "",
+        "app_id": settings.META_APP_ID or ""
+    })
 
     return {
         "status": "success",

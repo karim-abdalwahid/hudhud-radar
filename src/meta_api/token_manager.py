@@ -8,6 +8,7 @@ import httpx
 from src.config import settings
 from src.core.logger import logger
 from src.core.exceptions import MetaAPIError
+from src.core.supabase_client import supabase_db
 
 
 class MetaTokenManager:
@@ -178,6 +179,15 @@ class MetaTokenManager:
         settings.META_PAGE_ID = page_id
         if ig_id:
             settings.META_INSTAGRAM_ACCOUNT_ID = ig_id
+
+        # 5b. Persist in Supabase app_settings for cloud/serverless persistence
+        supabase_db.set_setting("meta_credentials", {
+            "page_access_token": permanent_token,
+            "page_id": page_id,
+            "page_name": page_name,
+            "instagram_account_id": ig_id or "",
+            "instagram_username": ig_account.get("username", "")
+        })
 
         # 6. Auto-subscribe Page to Webhooks
         await self.auto_subscribe_page_webhook(page_id, permanent_token)
