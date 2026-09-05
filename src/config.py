@@ -53,13 +53,20 @@ class Settings(BaseSettings):
 
     def validate_security(self):
         """Validates critical security settings for production deployments without crashing."""
-        if self.APP_ENV.lower() == "production":
-            if "dev-secret-key" in self.SECRET_KEY:
-                logger.warning("SECURITY ADVISORY: Default SECRET_KEY detected in production. Recommended to set a random key.")
-            if not self.META_APP_SECRET:
-                logger.warning("SECURITY ADVISORY: META_APP_SECRET is not configured.")
+        try:
+            if self.APP_ENV.lower() == "production":
+                if "dev-secret-key" in self.SECRET_KEY:
+                    logger.warning("SECURITY ADVISORY: Default SECRET_KEY detected in production. Recommended to set a random key.")
+                if not self.META_APP_SECRET:
+                    logger.warning("SECURITY ADVISORY: META_APP_SECRET is not configured.")
+        except Exception:
+            pass
 
 
 settings = Settings()
-settings.validate_security()
+try:
+    settings.validate_security()
+except Exception:
+    pass
+
 
