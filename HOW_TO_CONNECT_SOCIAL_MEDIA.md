@@ -51,9 +51,13 @@
 3. في خانة **Permissions** (الصلاحيات)، تأكد من إضافة الصلاحيات التالية:
    - `pages_show_list`
    - `pages_read_engagement`
+   - `pages_read_user_content` (ضرورية جداً لقراءة وسحب التعليقات على منشورات وريلز الفيسبوك)
+   - `pages_manage_posts`
+   - `pages_manage_engagement` (للرد على التعليقات والتفاعل معها)
    - `pages_manage_metadata`
    - `pages_messaging`
    - `instagram_basic`
+   - `instagram_manage_comments`
    - `instagram_manage_messages`
 4. اضغط **Generate Access Token** ووافق على الصلاحيات.
 5. انسخ الـ Token الناتج (يبدأ عادة بـ `EAAB...` أو `EAA...`).
