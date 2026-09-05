@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings & Integrations — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/leads" class="nav-item"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+                <a href="/studio" class="nav-item"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/identity" class="nav-item"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
+                
+                <div class="nav-section-title" data-i18n="nav.analytics_system">Analytics & System</div>
+                <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & Reports</span></a>
+                <a href="/settings" class="nav-item active"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform & API Settings</span></a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="meta-status-container" class="status-pill">
+                    <div id="meta-dot" class="status-dot"></div>
+                    <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="set.title">Platform Settings & Cloud Integration</span>
+                </div>
+                <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <button class="btn-secondary" onclick="loadSettingsStatus()" data-i18n="set.check_conn_btn">🔄 Check Connection Now</button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <!-- Platform Connection Status Card -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title" data-i18n="set.diag_title">1. Meta Graph API (v21.0) Diagnostics</h2>
+                            <div class="panel-desc" data-i18n="set.diag_desc">Official connection health for Facebook Page and Instagram Business Account</div>
+                        </div>
+                        <div id="live-connection-badge" class="badge badge-pending" style="font-size: 13px; padding: 4px 12px;" data-i18n="status.checking">Checking...</div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm);">
+                            <div style="font-size: 11px; color: var(--text-secondary);" data-i18n="set.page_name_label">Verified Page Name</div>
+                            <div id="status-page-name" style="font-size: 14px; font-weight: 600; margin-top: 4px;">-</div>
+                        </div>
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm);">
+                            <div style="font-size: 11px; color: var(--text-secondary);" data-i18n="set.page_id_label">Facebook Page ID</div>
+                            <div id="status-page-id" class="mono" style="font-size: 13px; margin-top: 4px;">-</div>
+                        </div>
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm);">
+                            <div style="font-size: 11px; color: var(--text-secondary);" data-i18n="set.ig_id_label">Instagram Account ID</div>
+                            <div id="status-ig-id" class="mono" style="font-size: 13px; margin-top: 4px;">-</div>
+                        </div>
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm);">
+                            <div style="font-size: 11px; color: var(--text-secondary);" data-i18n="set.supabase_label">Cloud Database (Supabase)</div>
+                            <div id="status-supabase" style="font-size: 13px; font-weight: 600; margin-top: 4px;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hudhud Architecture: Never-Expiring Token Generator -->
+                <div class="panel-section" style="border-inline-start: 4px solid var(--accent-blue); background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), transparent);">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title" data-i18n="set.token_gen_title">⚡ Never-Expiring Token Generator (Hudhud Architecture)</h3>
+                            <div class="panel-desc" data-i18n="set.token_gen_desc">Generate a permanent Page Access Token that never expires via Dual-Exchange architecture</div>
+                        </div>
+                        <span class="badge badge-success" style="font-size: 11px;" data-i18n="set.recommended_badge">Recommended by Meta & Hudhud</span>
+                    </div>
+
+                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border-default); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; font-size: 13px; line-height: 1.6;">
+                        <strong style="color: var(--accent-blue);" data-i18n="set.token_gen_how">💡 How does this guarantee permanent access?</strong><br>
+                        <span data-i18n="set.token_gen_expl">Normal user tokens expire after 2 hours or 60 days. By upgrading to a Long-Lived User Token and retrieving the Page Token via /me/accounts, Meta issues a permanent Page Access Token that never expires.</span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label data-i18n="set.user_token_label">User Access Token (from Graph API Explorer or Facebook Login)</label>
+                        <input type="password" id="input-exchange-user-token" data-i18n-placeholder="set.user_token_placeholder" placeholder="Paste any user token starting with EAABwz... to convert into a permanent token">
+                    </div>
+
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="exchangePermanentToken()" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);" data-i18n="set.exchange_btn">
+                            ⚡ Convert, Exchange & Authorize Permanent Token
+                        </button>
+                        <div id="exchange-status-msg" style="font-size: 12px;"></div>
+                    </div>
+                </div>
+
+                <!-- Meta Credentials Configuration Form -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title" data-i18n="set.manual_title">2. Manual Meta Credentials Configuration</h3>
+                            <div class="panel-desc" data-i18n="set.manual_desc">Instant server-side verification before saving to active configuration</div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label data-i18n="set.page_token_label">Page Access Token (Long-Lived)</label>
+                            <input type="password" id="input-token" data-i18n-placeholder="set.page_token_placeholder" placeholder="EAABwz... Paste permanent page token here">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label data-i18n="set.page_id_label">Facebook Page ID</label>
+                            <input type="text" id="input-page-id" placeholder="e.g. 1092837465">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="set.ig_id_label">Instagram Account ID</label>
+                            <input type="text" id="input-ig-id" placeholder="e.g. 17841400000000">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="set.app_id_label">Meta App ID</label>
+                            <input type="text" id="input-app-id" placeholder="e.g. 5678901234">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
+                        <button class="btn-primary" onclick="saveMetaConfig()" data-i18n="set.save_config_btn">💾 Save & Verify Token</button>
+                        <div id="config-status-msg" style="font-size: 12px;"></div>
+                    </div>
+                </div>
+
+                <!-- Webhooks & Security Policies -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title" data-i18n="set.webhooks_title">3. Webhook Subscriptions & Messaging Policies</h3>
+                            <div class="panel-desc" data-i18n="set.webhooks_desc">Live inbound channels for AI message handling and comment auto-replies</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.callback_label">Verified Meta Webhook Callback URL:</div>
+                            <code class="mono" style="color: var(--accent-blue);">https://your-domain.com/webhooks/meta</code>
+                        </div>
+
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.fields_label">Subscribed Webhook Fields:</div>
+                            <code class="mono" style="color: var(--badge-green-text);">messages, messaging_postbacks, feed, mention</code>
+                        </div>
+
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.window_label">24h Messaging Window Policy:</div>
+                            <div style="color: var(--badge-green-text); font-weight: 600;" data-i18n="set.window_desc">Strict Enforcement — No promotional messages allowed outside Meta's official 24-hour window.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+    <script>
+        function t(key) {
+            return window.hudhudI18n ? window.hudhudI18n.t(key) : key;
+        }
+
+        async function loadSettingsStatus() {
+            try {
+                const res = await fetch('/api/meta/status');
+                const data = await res.json();
+
+                const badge = document.getElementById('live-connection-badge');
+                if (data.token_valid) {
+                    badge.className = 'badge badge-success';
+                    badge.textContent = t('set.status_valid');
+                } else if (data.configured) {
+                    badge.className = 'badge badge-pending';
+                    badge.textContent = t('set.status_expired');
+                } else {
+                    badge.className = 'badge badge-muted';
+                    badge.textContent = t('set.status_unlinked');
+                }
+
+                document.getElementById('status-page-name').textContent = data.page_name || '-';
+                document.getElementById('status-page-id').textContent = data.page_id || '-';
+                document.getElementById('status-ig-id').textContent = data.instagram_account_id || '-';
+                document.getElementById('status-supabase').textContent = data.supabase_connected ? t('set.supabase_connected') : t('set.supabase_local');
+
+                // Fill inputs if available
+                if (data.page_id && !document.getElementById('input-page-id').value) {
+                    document.getElementById('input-page-id').value = data.page_id;
+                }
+                if (data.instagram_account_id && !document.getElementById('input-ig-id').value) {
+                    document.getElementById('input-ig-id').value = data.instagram_account_id;
+                }
+                if (data.app_id && !document.getElementById('input-app-id').value) {
+                    document.getElementById('input-app-id').value = data.app_id;
+                }
+            } catch (e) {
+                console.error("Error loading settings status:", e);
+            }
+        }
+
+        async function saveMetaConfig() {
+            const token = document.getElementById('input-token').value.trim();
+            const pageId = document.getElementById('input-page-id').value.trim();
+            const igId = document.getElementById('input-ig-id').value.trim();
+            const appId = document.getElementById('input-app-id').value.trim();
+
+            const statusMsg = document.getElementById('config-status-msg');
+            statusMsg.className = 'muted-text';
+            statusMsg.textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                'جاري التحقق من الاعتمادات لدى خوادم Meta Graph API…' : 
+                'Verifying credentials against Meta Graph API servers...';
+
+            const payload = {};
+            if (token) payload.page_access_token = token;
+            if (pageId) payload.page_id = pageId;
+            if (igId) payload.instagram_account_id = igId;
+            if (appId) payload.app_id = appId;
+
+            try {
+                const res = await fetch('/api/meta/configure', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    statusMsg.className = 'success-text';
+                    statusMsg.textContent = '✅ ' + (data.message || 'Config updated successfully!');
+                    await loadSettingsStatus();
+                } else {
+                    statusMsg.className = 'error-text';
+                    statusMsg.textContent = '❌ ' + (data.detail || 'Failed to authorize token.');
+                }
+            } catch (e) {
+                statusMsg.className = 'error-text';
+                statusMsg.textContent = '❌ Connection error.';
+            }
+        }
+
+        async function exchangePermanentToken() {
+            const userToken = document.getElementById('input-exchange-user-token').value.trim();
+            const msg = document.getElementById('exchange-status-msg');
+            if (!userToken) {
+                msg.className = 'error-text';
+                msg.textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                    '❌ يرجى إدخال توكن المستخدم أولاً.' : 
+                    '❌ Please enter a User Access Token first.';
+                return;
+            }
+
+            msg.className = 'muted-text';
+            msg.textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ?
+                '⏳ جاري استبدال التوكن بـ Long-Lived Token واستخراج توكن الصفحة الدائم…' :
+                '⏳ Exchanging user token for Long-Lived Token and retrieving permanent Page Token...';
+
+            try {
+                const res = await fetch('/api/meta/exchange-token', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_token: userToken })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.className = 'success-text';
+                    msg.textContent = `✅ ${data.message} Page: ${data.page_name || data.page_id} | IG: ${data.instagram_username || data.instagram_id || 'Connected'}`;
+                    await loadSettingsStatus();
+                } else {
+                    msg.className = 'error-text';
+                    msg.textContent = '❌ ' + (data.detail || 'Token exchange failed.');
+                }
+            } catch (e) {
+                msg.className = 'error-text';
+                msg.textContent = '❌ Connection error.';
+            }
+        }
+
+        window.addEventListener('hudhud_lang_change', () => {
+            loadSettingsStatus();
+        });
+
+        document.addEventListener('DOMContentLoaded', loadSettingsStatus);
+    </script>
+</body>
+</html>

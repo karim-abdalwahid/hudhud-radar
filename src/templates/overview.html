@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive Overview — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item active"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/leads" class="nav-item"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+                <a href="/studio" class="nav-item"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/automations" class="nav-item"><span class="nav-icon">⚡</span> <span data-i18n="nav.automations">Automations</span></a>
+                <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/identity" class="nav-item"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
+                
+                <div class="nav-section-title" data-i18n="nav.analytics_system">Analytics & System</div>
+                <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & Reports</span></a>
+                <a href="/settings" class="nav-item"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform & API Settings</span></a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="meta-status-container" class="status-pill">
+                    <div id="meta-dot" class="status-dot"></div>
+                    <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="dash.title">Executive Overview Dashboard</span>
+                </div>
+                <div class="topbar-actions">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <a href="/studio" class="btn-primary" data-i18n="topbar.new_post">+ Create Post</a>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <!-- Executive Metrics Strip -->
+                <div class="metrics-strip">
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="dash.kpi_leads">Total Captured Leads</div>
+                        <div id="kpi-leads" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="dash.kpi_leads_sub">Captured from DMs and comments</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="dash.kpi_converted">Qualified & Converted</div>
+                        <div id="kpi-converted" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="dash.kpi_converted_sub">With verified email or phone</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="dash.kpi_conversations">Active Inquiries</div>
+                        <div id="kpi-conversations" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="dash.kpi_conversations_sub">Customer chats handled by AI</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="dash.kpi_channels">Connected Channels</div>
+                        <div id="kpi-channels" class="metric-val" style="font-size:15px; color:var(--badge-green-text);">Active</div>
+                        <div class="metric-sub" data-i18n="dash.kpi_channels_sub">Instagram & Messenger live</div>
+                    </div>
+                    <div class="metric-card dev-only">
+                        <div class="metric-label" data-i18n="dash.kpi_queue">Identity Review Queue</div>
+                        <div id="kpi-review-queue" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="dash.kpi_queue_sub">Supervisor SOP-05 queue</div>
+                    </div>
+                </div>
+
+                <!-- Two-Column Overview Layout -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 20px; margin-top: 10px;">
+                    <!-- Recent Leads Card -->
+                    <div class="panel-section" style="margin-bottom: 0;">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title" data-i18n="dash.recent_leads">Recent Captured Leads</h3>
+                                <div class="panel-desc" data-i18n="dash.recent_leads_desc">Latest prospects interacting across Meta channels</div>
+                            </div>
+                            <a href="/leads" class="btn-secondary" style="font-size: 12px; padding: 4px 10px;" data-i18n="dash.view_all">View All →</a>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="dash.th_name">Name</th>
+                                        <th data-i18n="dash.th_platform">Channel</th>
+                                        <th data-i18n="dash.th_contact">Contact</th>
+                                        <th data-i18n="dash.th_status">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="overview-leads-body">
+                                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 20px;" data-i18n="dash.loading_leads">Loading leads...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Posts Card -->
+                    <div class="panel-section" style="margin-bottom: 0;">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title" data-i18n="dash.recent_posts">AI Content & Scheduled Posts</h3>
+                                <div class="panel-desc" data-i18n="dash.recent_posts_desc">Autonomous content creation and publishing status</div>
+                            </div>
+                            <a href="/studio" class="btn-secondary" style="font-size: 12px; padding: 4px 10px;" data-i18n="nav.studio">Studio →</a>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="dash.th_platform">Platform</th>
+                                        <th>Post Preview</th>
+                                        <th data-i18n="dash.th_status">Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="overview-posts-body">
+                                    <tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 20px;">Loading posts...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- i18n Localization Engine Script -->
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+    <script>
+        async function loadOverviewData() {
+            try {
+                // Fetch Leads
+                const leadsRes = await fetch('/api/leads');
+                const leadsData = await leadsRes.json();
+                const leads = leadsData.leads || [];
+                document.getElementById('kpi-leads').textContent = leads.length;
+                const converted = leads.filter(l => l.contact_email || l.contact_phone).length;
+                document.getElementById('kpi-converted').textContent = converted;
+
+                const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                const leadsBody = document.getElementById('overview-leads-body');
+                if (leads.length === 0) {
+                    leadsBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">${isAr ? 'لا توجد ليدات مسجلة بعد.' : 'No leads recorded yet.'}</td></tr>`;
+                } else {
+                    leadsBody.innerHTML = leads.slice(0, 5).map(l => {
+                        const hasContact = Boolean(l.contact_phone || l.contact_email);
+                        const statusLabel = hasContact ? (isAr ? 'مؤهل' : 'Qualified') : (isAr ? 'أولي' : 'Initial');
+                        return `
+                            <tr>
+                                <td><strong>${escapeHtml(l.full_name || l.username || (isAr ? 'عميل' : 'Lead'))}</strong></td>
+                                <td><span class="badge ${l.source === 'instagram' ? 'badge-ig' : 'badge-fb'}">${l.source || 'meta'}</span></td>
+                                <td class="mono">${escapeHtml(l.contact_phone || l.contact_email || '-')}</td>
+                                <td><span class="badge ${hasContact ? 'badge-success' : 'badge-muted'}">${statusLabel}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+
+                // Fetch Posts
+                const postsRes = await fetch('/api/studio/posts');
+                const postsData = await postsRes.json();
+                const posts = postsData.posts || [];
+                const postsBody = document.getElementById('overview-posts-body');
+                if (posts.length === 0) {
+                    postsBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">${isAr ? 'لا توجد منشورات مجدولة حالياً.' : 'No scheduled posts found.'}</td></tr>`;
+                } else {
+                    postsBody.innerHTML = posts.slice(0, 5).map(p => `
+                        <tr>
+                            <td><span class="badge badge-fb">${p.platform}</span></td>
+                            <td style="max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.caption || '-')}</td>
+                            <td><span class="badge ${p.status === 'published' ? 'badge-success' : 'badge-pending'}">${p.status}</span></td>
+                            <td class="mono" style="font-size:11px;">${p.scheduled_time ? p.scheduled_time.slice(0, 16) : '-'}</td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Fetch Review Queue Count
+                const qRes = await fetch('/api/identity/queue');
+                const qData = await qRes.json();
+                const qItems = qData.queue || [];
+                const queueEl = document.getElementById('kpi-review-queue');
+                if (queueEl) queueEl.textContent = qItems.length;
+
+                // Fetch Real Conversations Count
+                try {
+                    const convsRes = await fetch('/api/inbox/conversations');
+                    const convsData = await convsRes.json();
+                    const convsCount = (convsData.conversations || []).length;
+                    const convsEl = document.getElementById('kpi-conversations');
+                    if (convsEl) convsEl.textContent = convsCount;
+                } catch (e) {
+                    console.debug("Inquiries count offline", e);
+                }
+
+                // Check Connected Channels
+                try {
+                    const metaRes = await fetch('/api/meta/status');
+                    const metaData = await metaRes.json();
+                    const chanEl = document.getElementById('kpi-channels');
+                    if (chanEl) {
+                        if (metaData.token_valid) {
+                            chanEl.textContent = isAr ? '2 قنوات متصلة' : '2 Channels Live';
+                            chanEl.style.color = 'var(--badge-green-text)';
+                        } else if (metaData.configured) {
+                            chanEl.textContent = isAr ? 'بحاجة لتحديث التوكن' : 'Needs Token Refresh';
+                            chanEl.style.color = 'var(--badge-amber-text)';
+                        } else {
+                            chanEl.textContent = isAr ? 'جاهز للربط' : 'Ready to Connect';
+                            chanEl.style.color = 'var(--text-muted)';
+                        }
+                    }
+                } catch (e) {
+                    console.debug("Channels check offline", e);
+                }
+
+            } catch (err) {
+                console.error("Error loading overview data:", err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadOverviewData);
+        window.addEventListener('hudhud_lang_change', loadOverviewData);
+    </script>
+</body>
+</html>

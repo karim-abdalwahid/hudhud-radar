@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leads CRM — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/leads" class="nav-item active"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+                <a href="/studio" class="nav-item"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/identity" class="nav-item"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
+                
+                <div class="nav-section-title" data-i18n="nav.analytics_system">Analytics & System</div>
+                <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & Reports</span></a>
+                <a href="/settings" class="nav-item"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform & API Settings</span></a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="meta-status-container" class="status-pill">
+                    <div id="meta-dot" class="status-dot"></div>
+                    <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="leads.title">Leads CRM & Sales Pipeline</span>
+                </div>
+                <div class="topbar-actions">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <button class="btn-secondary" onclick="loadLeadsData()" data-i18n="leads.refresh_btn">🔄 Refresh Leads</button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <!-- Summary Strip -->
+                <div class="metrics-strip">
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="leads.kpi_total">Total Captured Leads</div>
+                        <div id="lead-stat-total" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="leads.kpi_total_sub">Across all connected channels</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="leads.kpi_converted">Qualified Leads (Phone/Email)</div>
+                        <div id="lead-stat-converted" class="metric-val" style="color:var(--badge-green-text);">0</div>
+                        <div class="metric-sub" data-i18n="leads.kpi_converted_sub">Ready for follow-up and closing</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="leads.kpi_rate">Conversion Rate</div>
+                        <div id="lead-stat-rate" class="metric-val">0%</div>
+                        <div class="metric-sub" data-i18n="leads.kpi_rate_sub">Leads who shared contact info</div>
+                    </div>
+                </div>
+
+                <!-- Filter & Search Bar -->
+                <div style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:14px; margin-bottom:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:220px;">
+                        <input type="text" id="lead-search-input" data-i18n-placeholder="leads.search_placeholder" placeholder="Search by name, phone, email, or username..." oninput="filterLeads()" style="width:100%;">
+                    </div>
+                    <div>
+                        <select id="lead-platform-filter" onchange="filterLeads()" style="min-width:140px;">
+                            <option value="all" data-i18n="leads.filter_all_platforms">All Channels</option>
+                            <option value="facebook" data-i18n="leads.filter_facebook">Facebook Only</option>
+                            <option value="instagram" data-i18n="leads.filter_instagram">Instagram Only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="lead-status-filter" onchange="filterLeads()" style="min-width:140px;">
+                            <option value="all" data-i18n="leads.filter_all_status">All Statuses</option>
+                            <option value="converted" data-i18n="leads.filter_converted">Qualified Only (With Phone/Email)</option>
+                            <option value="initial" data-i18n="leads.filter_initial">Initial (No Contact Info)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Full CRM Table -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title" data-i18n="leads.table_title">Detailed Customer Directory</h2>
+                            <div class="panel-desc" data-i18n="leads.table_desc">Unified customer registry automatically captured with proven data provenance</div>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th data-i18n="leads.th_id">Lead ID</th>
+                                    <th data-i18n="leads.th_name">Full Name</th>
+                                    <th data-i18n="leads.th_channel">Channel</th>
+                                    <th data-i18n="leads.th_username">Username</th>
+                                    <th data-i18n="leads.th_email">Email</th>
+                                    <th data-i18n="leads.th_phone">Phone Number</th>
+                                    <th data-i18n="leads.th_linked">Linked Account</th>
+                                    <th data-i18n="leads.th_provenance">Verification</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leads-table-body">
+                                <tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 28px;" data-i18n="leads.loading">Loading customer directory...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+    <script>
+        let allLeads = [];
+
+        function t(key) {
+            return window.hudhudI18n ? window.hudhudI18n.t(key) : key;
+        }
+
+        async function loadLeadsData() {
+            try {
+                const res = await fetch('/api/leads');
+                const data = await res.json();
+                allLeads = data.leads || [];
+
+                const convertedCount = allLeads.filter(l => l.contact_email || l.contact_phone).length;
+                document.getElementById('lead-stat-total').textContent = allLeads.length;
+                document.getElementById('lead-stat-converted').textContent = convertedCount;
+                const rate = allLeads.length > 0 ? Math.round((convertedCount / allLeads.length) * 100) : 0;
+                document.getElementById('lead-stat-rate').textContent = rate + '%';
+
+                filterLeads();
+            } catch (e) {
+                console.error("Error loading leads:", e);
+                const tbody = document.getElementById('leads-table-body');
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--badge-red-text); padding: 28px;">${t('leads.empty')}</td></tr>`;
+            }
+        }
+
+        function filterLeads() {
+            const query = (document.getElementById('lead-search-input').value || '').trim().toLowerCase();
+            const platform = document.getElementById('lead-platform-filter').value;
+            const status = document.getElementById('lead-status-filter').value;
+
+            let filtered = allLeads.filter(l => {
+                // Platform filter
+                if (platform !== 'all' && l.source !== platform) return false;
+
+                // Status filter
+                const hasContact = Boolean(l.contact_email || l.contact_phone);
+                if (status === 'converted' && !hasContact) return false;
+                if (status === 'initial' && hasContact) return false;
+
+                // Search query filter
+                if (query) {
+                    const matchName = (l.full_name || '').toLowerCase().includes(query);
+                    const matchUser = (l.username || '').toLowerCase().includes(query);
+                    const matchEmail = (l.contact_email || '').toLowerCase().includes(query);
+                    const matchPhone = (l.contact_phone || '').toLowerCase().includes(query);
+                    if (!matchName && !matchUser && !matchEmail && !matchPhone) return false;
+                }
+
+                return true;
+            });
+
+            const tbody = document.getElementById('leads-table-body');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 28px;">${t('leads.empty')}</td></tr>`;
+                return;
+            }
+
+            const unspecText = t('leads.unspecified');
+            const standaloneText = t('leads.standalone');
+            const confirmedText = t('leads.confirmed');
+
+            tbody.innerHTML = filtered.map(l => `
+                <tr>
+                    <td><code class="mono">${l.id ? l.id.substring(0, 8) + '…' : '-'}</code></td>
+                    <td><strong>${escapeHtml(l.full_name || unspecText)}</strong></td>
+                    <td><span class="badge ${l.source === 'instagram' ? 'badge-ig' : 'badge-fb'}">${l.source || 'meta'}</span></td>
+                    <td class="mono">@${escapeHtml(l.username || '-')}</td>
+                    <td class="mono">${escapeHtml(l.contact_email || '-')}</td>
+                    <td class="mono">${escapeHtml(l.contact_phone || '-')}</td>
+                    <td>${l.linked_account_id ? '<code class="mono">' + l.linked_account_id.substring(0, 8) + '…</code> (' + confirmedText + ')' : '<span style="color:var(--text-muted);">' + standaloneText + '</span>'}</td>
+                    <td><span class="badge badge-success">${l.data_provenance ? escapeHtml(l.data_provenance.verification_method || 'direct') : 'direct'}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        window.addEventListener('hudhud_lang_change', () => {
+            filterLeads();
+        });
+
+        document.addEventListener('DOMContentLoaded', loadLeadsData);
+    </script>
+</body>
+</html>

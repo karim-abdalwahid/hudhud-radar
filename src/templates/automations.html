@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Automations & Workflows — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+    <style>
+        /* Automations Workspace & Infinite Canvas Styles */
+        .view-switcher-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 24px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        /* Workflows List Grid */
+        .wf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .wf-card {
+            background: #ffffff;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+        }
+
+        .wf-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .wf-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .wf-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .wf-desc {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .wf-flow-preview {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            background: var(--bg-subtle);
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            font-size: 12px;
+        }
+
+        .flow-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            background: #ffffff;
+            border: 1px solid var(--border-default);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+
+        .flow-chip.trigger { border-color: #86efac; color: #166534; background: #f0fdf4; }
+        .flow-chip.condition { border-color: #fde047; color: #854d0e; background: #fefce8; }
+        .flow-chip.action { border-color: #bfdbfe; color: #1e40af; background: #eff6ff; }
+
+        .flow-arrow {
+            color: var(--text-muted);
+            font-weight: 800;
+            font-size: 12px;
+        }
+
+        .wf-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* The Visual Canvas Space (n8n / Miro / Make style) */
+        #canvas-view-container {
+            display: none;
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 125px);
+            overflow: hidden;
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+            cursor: grab;
+        }
+
+        #canvas-view-container:active {
+            cursor: grabbing;
+        }
+
+        .canvas-world {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5000px;
+            height: 5000px;
+            transform-origin: 0 0;
+            user-select: none;
+        }
+
+        .canvas-connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Canvas Interactive Node */
+        .wf-node {
+            position: absolute;
+            width: 250px;
+            background: #ffffff;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--border-default);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+            z-index: 10;
+            cursor: move;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .wf-node:hover, .wf-node.selected {
+            border-color: var(--accent-blue);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.18);
+        }
+
+        .wf-node-header {
+            padding: 10px 14px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .wf-node.trigger .wf-node-header { background: #10b981; }
+        .wf-node.condition .wf-node-header { background: #f59e0b; }
+        .wf-node.action .wf-node-header { background: #2563eb; }
+
+        .wf-node-body {
+            padding: 12px 14px;
+            font-size: 12.5px;
+            color: var(--text-primary);
+        }
+
+        .wf-node-port {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid var(--accent-blue);
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: crosshair;
+            z-index: 15;
+            transition: transform 0.15s;
+        }
+
+        .wf-node-port:hover {
+            transform: translateY(-50%) scale(1.3);
+            background: var(--accent-blue);
+        }
+
+        .wf-node-port.input {
+            left: -8px;
+            border-color: #64748b;
+        }
+        [dir="rtl"] .wf-node-port.input {
+            left: auto;
+            right: -8px;
+        }
+
+        .wf-node-port.output {
+            right: -8px;
+            border-color: var(--accent-blue);
+        }
+        [dir="rtl"] .wf-node-port.output {
+            right: auto;
+            left: -8px;
+        }
+
+        /* Floating Mini Controls */
+        .canvas-floating-controls {
+            position: absolute;
+            bottom: 24px;
+            inset-inline-end: 24px;
+            background: #ffffff;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 6px;
+            display: flex;
+            gap: 6px;
+            box-shadow: var(--shadow-lg);
+            z-index: 50;
+        }
+
+        .canvas-hint-pill {
+            position: absolute;
+            bottom: 24px;
+            inset-inline-start: 24px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            color: #ffffff;
+            font-size: 12px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Node Palette Modal */
+        .palette-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .palette-card {
+            background: #ffffff;
+            width: 580px;
+            max-width: 95vw;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-xl);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .palette-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .palette-item:hover {
+            border-color: var(--accent-blue);
+            background: var(--bg-subtle);
+            transform: translateX(4px);
+        }
+        [dir="rtl"] .palette-item:hover {
+            transform: translateX(-4px);
+        }
+
+        /* Rule Badges & Cards */
+        .wf-rule-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        /* Rules Modal */
+        .rules-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .rules-card {
+            background: #ffffff;
+            width: 680px;
+            max-width: 95vw;
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow-xl);
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .form-section-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 18px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 6px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-label {
+            display: block;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .form-hint {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            font-size: 13.5px;
+            color: var(--text-primary);
+            background: #ffffff;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            box-sizing: border-box;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 70px;
+            font-family: inherit;
+        }
+
+        /* Modern Toggle Switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+        }
+        .switch-toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .switch-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: .25s;
+            border-radius: 24px;
+        }
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .25s;
+            border-radius: 50%;
+        }
+        .switch-toggle input:checked + .switch-slider {
+            background-color: var(--accent-blue);
+        }
+        .switch-toggle input:checked + .switch-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Post Selector Preview Card */
+        .post-preview-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: #ffffff;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            margin-top: 8px;
+        }
+        .post-preview-thumb {
+            width: 52px;
+            height: 52px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        /* Node Inspector Drawer */
+        .node-inspector-drawer {
+            position: fixed;
+            top: 0;
+            inset-inline-end: -420px;
+            width: 400px;
+            max-width: 90vw;
+            height: 100vh;
+            background: #ffffff;
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+            z-index: 250;
+            transition: inset-inline-end 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            border-inline-start: 1px solid var(--border-default);
+        }
+        .node-inspector-drawer.open {
+            inset-inline-end: 0;
+        }
+        .inspector-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-subtle);
+        }
+        .inspector-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .inspector-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-subtle);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/studio" class="nav-item"><span class="nav-icon">🎨</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/automations" class="nav-item active"><span class="nav-icon">⚡</span> <span data-i18n="nav.automations">Automations</span></a>
+                <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/leads" class="nav-item"><span class="nav-icon">🎯</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+
+                <div class="dev-nav-section" id="dev-nav-group">
+                    <div class="dev-nav-title">
+                        <span data-i18n="nav.dev_console">Developer Console</span>
+                        <span class="dev-badge">ADMIN</span>
+                    </div>
+                    <a href="/identity" class="nav-item"><span class="nav-icon">🛡️</span> <span data-i18n="nav.identity">Identity Verification (SOP-05)</span></a>
+                    <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & RCA</span></a>
+                    <a href="/settings" class="nav-item"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform Settings</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <!-- Top App Bar -->
+            <header class="app-topbar" id="standard-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="auto.title">Visual Automation & Workflows Builder</span>
+                </div>
+                <div class="topbar-actions" style="display:flex; gap:12px; align-items:center;">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <button class="btn-secondary" onclick="openNewRuleModal()" style="display:flex; align-items:center; gap:6px; font-weight:700;">
+                        <span>⚡</span> <span data-i18n="auto.new_rule">+ New Auto-Reply Rule</span>
+                    </button>
+                    <button class="btn-primary" onclick="openNewWorkflowCanvas()" data-i18n="auto.new_workflow">
+                        🎨 Visual Canvas
+                    </button>
+                </div>
+            </header>
+
+            <!-- Canvas Dedicated Top Bar (Visible only when inside Canvas) -->
+            <header class="app-topbar" id="canvas-topbar" style="display:none; background:#ffffff; border-bottom:2px solid var(--accent-blue);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <button class="btn-secondary" onclick="exitCanvasToList()" style="padding:6px 12px; font-size:13px;" data-i18n="auto.back_to_list">
+                        ← All Automations
+                    </button>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="text" id="canvas-wf-name" value="New Conversational Workflow ⚡" style="font-size:16px; font-weight:700; border:1px solid transparent; border-radius:6px; padding:4px 8px; width:340px; color:var(--text-primary);" onfocus="this.style.borderColor='var(--accent-blue)'" onblur="this.style.borderColor='transparent'">
+                        <span class="badge badge-success" id="canvas-wf-status">Active</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn-action" onclick="openNodePalette()" style="background:var(--bg-subtle); border:1px solid var(--border-default);">
+                        + Add Node
+                    </button>
+                    <button class="btn-secondary" onclick="runActiveWorkflowTest()" id="btn-test-wf" data-i18n="auto.test_workflow">
+                        ▶️ Test Workflow
+                    </button>
+                    <button class="btn-primary" onclick="saveActiveWorkflow()" id="btn-save-wf" data-i18n="auto.save_workflow">
+                        💾 Save Workflow
+                    </button>
+                </div>
+            </header>
+
+            <!-- App Content: View 1 (List View) -->
+            <div class="app-content" id="workflows-list-view">
+                <!-- KPI Metrics Strip -->
+                <div class="metrics-strip">
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="auto.workflows_list">Configured Workflows</div>
+                        <div class="metric-val num" id="kpi-total-wf">3</div>
+                        <div class="metric-sub">Ready & fully automated</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="auto.active_count">Active Automations</div>
+                        <div class="metric-val num" style="color:var(--accent-green);" id="kpi-active-wf">3</div>
+                        <div class="metric-sub">Listening 24/7 on Meta Webhooks</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="auto.total_executions">Total Executions</div>
+                        <div class="metric-val num" id="kpi-total-exec">265</div>
+                        <div class="metric-sub">Reels DMs, comments & leads closed</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="auto.time_saved_label">Time Saved</div>
+                        <div class="metric-val num" style="font-size:20px; color:var(--accent-blue);" id="kpi-time-saved">~18.5 hrs</div>
+                        <div class="metric-sub" data-i18n="auto.time_saved_sub">Automated response hours</div>
+                    </div>
+                </div>
+
+                <!-- Workflows Cards Grid -->
+                <div class="wf-grid" id="workflows-cards-container">
+                    <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted);">
+                        Loading automations...
+                    </div>
+                </div>
+            </div>
+
+            <!-- App Content: View 2 (Visual Canvas Space like Miro / n8n / Make) -->
+            <div id="canvas-view-container">
+                <div class="canvas-world" id="canvas-world">
+                    <!-- Dynamic SVG Connections Layer -->
+                    <svg class="canvas-connections-svg" id="canvas-svg"></svg>
+                    <!-- Nodes will be injected here -->
+                    <div id="canvas-nodes-layer"></div>
+                </div>
+
+                <!-- Floating Canvas Controls -->
+                <div class="canvas-floating-controls">
+                    <button type="button" class="btn-action" onclick="zoomCanvas(0.1)" title="Zoom In">+</button>
+                    <button type="button" class="btn-action" onclick="resetCanvasZoom()" id="zoom-level-indicator" style="font-size:11.5px; font-weight:700;">100%</button>
+                    <button type="button" class="btn-action" onclick="zoomCanvas(-0.1)" title="Zoom Out">-</button>
+                    <button type="button" class="btn-action" onclick="fitCanvasView()" title="Fit View">⛶</button>
+                </div>
+
+                <!-- Canvas Helper Hint -->
+                <div class="canvas-hint-pill">
+                    <span>💡</span>
+                    <span data-i18n="auto.canvas_hint">Drag canvas to pan • Scroll to zoom • Click + to add triggers & actions</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Node Palette Modal -->
+    <div class="palette-modal" id="palette-modal" onclick="if(event.target===this)closeNodePalette()">
+        <div class="palette-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="font-size:18px; font-weight:800; color:var(--text-primary);">Add Workflow Node</h3>
+                <button type="button" onclick="closeNodePalette()" style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+            </div>
+            
+            <div style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">
+                1. Triggers (المحفزات)
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('trigger', 'ig_comment_trigger', 'Instagram Reel Comment', 'instagram', '📸', {keywords:['سوشيال','تفاصيل']})">
+                <span style="font-size:24px;">📸</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">Instagram Reel / Post Comment</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Triggers when a customer comments on any reel or post with specific keywords.</div>
+                </div>
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('trigger', 'fb_comment_trigger', 'Facebook Post / Reel Comment', 'facebook', '📘', {trigger_on:'all'})">
+                <span style="font-size:24px;">📘</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">Facebook Post & Reel Comment</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Triggers immediately upon receiving new comments on Facebook published posts or reels.</div>
+                </div>
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('trigger', 'msg_dm_trigger', 'Direct Message Received', 'both', '💬', {})">
+                <span style="font-size:24px;">💬</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">Incoming DM / Messenger Message</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Fires when customer sends an inbox message via Instagram Direct or Facebook Messenger.</div>
+                </div>
+            </div>
+
+            <div style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin:16px 0 8px;">
+                2. Conditions & Filters (الشروط والفلترة)
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('condition', 'keyword_filter', 'Intent & Keyword Filter', 'general', '🔍', {keywords:['سعر','كورس','شراء']})">
+                <span style="font-size:24px;">🔍</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">Keyword & Commercial Intent Filter</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Checks if the comment has high buying intent or contains specific sales trigger words.</div>
+                </div>
+            </div>
+
+            <div style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin:16px 0 8px;">
+                3. Actions (الإجراءات والرد التلقائي)
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('action', 'ai_reply_action', 'Gemini Sales Pitch AI', 'general', '🤖', {model:'gemini-1.5-pro'})">
+                <span style="font-size:24px;">🤖</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">AI Knowledge Sales Pitch (Gemini)</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Generates high-converting tailored reply grounded strictly in business Knowledge Base.</div>
+                </div>
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('action', 'meta_dm_action', 'Send Meta Direct Message', 'both', '💬', {button_text:'Book Call'})">
+                <span style="font-size:24px;">💬</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">Send Meta Direct Message (DM)</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Dispatches private message with details and calendar booking link to the customer.</div>
+                </div>
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('action', 'crm_lead_action', 'Capture Lead in CRM', 'general', '🎯', {stage:'qualified', deal_value:250})">
+                <span style="font-size:24px;">🎯</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">Capture & Qualify in CRM</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Auto-saves user info and contact credentials to Leads CRM.</div>
+                </div>
+            </div>
+            <div class="palette-item" onclick="addNodeToCanvas('action', 'n8n_http_action', 'HTTP Request (n8n API format)', 'general', '🌐', {url:'https://n8n.webhook.internal'})">
+                <span style="font-size:24px;">🌐</span>
+                <div>
+                    <div style="font-weight:700; color:var(--text-primary);">External HTTP Request (n8n / Make Webhook)</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Forwards payload to external n8n workflow or webhook URL.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Automation Rules & Controls Modal -->
+    <div class="rules-modal" id="rules-config-modal" onclick="if(event.target===this)closeWorkflowConfigModal()">
+        <div class="rules-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:24px;">⚡</span>
+                    <h3 style="font-size:18px; font-weight:800; color:var(--text-primary);" id="rules-modal-title">Automation Rule Settings</h3>
+                </div>
+                <button type="button" onclick="closeWorkflowConfigModal()" style="background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-muted);">✕</button>
+            </div>
+
+            <!-- Workflow Title & Status -->
+            <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px;" class="form-group">
+                <div>
+                    <label class="form-label">Rule Name / اسم المسار</label>
+                    <input type="text" id="rule-name-input" class="form-input" placeholder="e.g. Viral Reel Comment-to-DM Closer">
+                </div>
+                <div>
+                    <label class="form-label">Status / الحالة</label>
+                    <select id="rule-status-select" class="form-select">
+                        <option value="active">Active 🟢</option>
+                        <option value="paused">Paused ⚪</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description / الوصف</label>
+                <input type="text" id="rule-desc-input" class="form-input" placeholder="e.g. Auto-likes reel comments, replies with public confirmation, and sends private DM offer.">
+            </div>
+
+            <!-- 1. Target & Platform -->
+            <div class="form-section-title">
+                <span>1. Platform & Target Post (المنصة والمنشور المستهدف)</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;" class="form-group">
+                <div>
+                    <label class="form-label">Platform / المنصة</label>
+                    <select id="rule-platform-select" class="form-select" onchange="onRulePlatformChange()">
+                        <option value="both">Instagram & Facebook (Both) 🌐</option>
+                        <option value="instagram">Instagram Only 📸</option>
+                        <option value="facebook">Facebook Only 📘</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label">Apply To / التطبيق على</label>
+                    <select id="rule-target-type-select" class="form-select" onchange="onRuleTargetTypeChange()">
+                        <option value="all_posts">All Published Posts & Reels (كل المنشورات والريلز)</option>
+                        <option value="specific_post">Specific Post or Reel (منشور أو ريل محدد)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Specific Post Selector & Preview Container -->
+            <div id="rule-specific-post-container" style="display:none; margin-bottom:14px; background:var(--bg-subtle); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-default);">
+                <label class="form-label">Select Target Post or Reel / اختر المنشور أو الريل</label>
+                <select id="rule-post-select" class="form-select" onchange="onRulePostSelected()">
+                    <option value="">-- Choose from live published posts & reels --</option>
+                </select>
+                <div class="post-preview-box" id="rule-post-preview" style="display:none;">
+                    <img id="rule-preview-img" class="post-preview-thumb" src="" alt="Thumbnail">
+                    <div style="flex:1; overflow:hidden;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                            <span class="badge" id="rule-preview-badge">Reel</span>
+                            <span style="font-size:11px; color:var(--text-muted);" id="rule-preview-date">2 days ago</span>
+                        </div>
+                        <div style="font-size:12px; font-weight:600; color:var(--text-primary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" id="rule-preview-title">Caption here</div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="rule-preview-stats">❤️ 0 likes • 💬 0 comments</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Triggers & Keywords -->
+            <div class="form-section-title">
+                <span>2. Trigger Keywords (كلمات التفعيل)</span>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Keywords (separated by comma) / الكلمات المفتاحية مفصولة بفواصل</label>
+                <input type="text" id="rule-keywords-input" class="form-input" placeholder="سعر, كورس, تفاصيل, مهتم, سوشيال, عرض, اريد">
+                <div class="form-hint">Leave blank to trigger on all incoming comments without filtering. / اتركها فارغة للرد على جميع التعليقات.</div>
+            </div>
+
+            <!-- 3. Actions -->
+            <div class="form-section-title">
+                <span>3. Automated Actions (إجراءات الرد الآلي)</span>
+            </div>
+
+            <!-- Action 1: Like Comment -->
+            <div class="toggle-row">
+                <div>
+                    <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
+                        <span>❤️</span> Auto-Like Incoming Comment / الإعجاب بالتعليق فوراً
+                    </div>
+                    <div class="form-hint">Automatically likes the customer's comment to boost post reach & algorithm engagement.</div>
+                </div>
+                <label class="switch-toggle">
+                    <input type="checkbox" id="rule-toggle-like" checked>
+                    <span class="switch-slider"></span>
+                </label>
+            </div>
+
+            <!-- Action 2: Public Reply -->
+            <div style="background:var(--bg-subtle); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:12px; margin-bottom:10px;">
+                <div class="toggle-row" style="background:none; border:none; padding:0; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
+                            <span>💬</span> Reply Publicly to Comment / الرد علناً على التعليق
+                        </div>
+                        <div class="form-hint">Posts a public comment reply directing the customer to their inbox.</div>
+                    </div>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="rule-toggle-reply" checked onchange="document.getElementById('rule-reply-details').style.display=this.checked?'block':'none'">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div id="rule-reply-details">
+                    <label class="form-label" style="font-size:12px; margin-top:8px;">Public Reply Message / نص الرد العلني</label>
+                    <textarea id="rule-reply-text" class="form-textarea" placeholder="تم الرد في رسالة خاصة لحضرتك على الدايركت فوراً 🚀"></textarea>
+                </div>
+            </div>
+
+            <!-- Action 3: Send DM -->
+            <div style="background:var(--bg-subtle); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:12px; margin-bottom:16px;">
+                <div class="toggle-row" style="background:none; border:none; padding:0; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:700; font-size:13.5px; color:var(--text-primary); display:flex; align-items:center; gap:6px;">
+                            <span>✉️</span> Send Private Direct Message (DM) / إرسال رسالة خاصة
+                        </div>
+                        <div class="form-hint">Dispatches an instant DM to customer with sales details, booking link, or offer.</div>
+                    </div>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="rule-toggle-dm" checked onchange="document.getElementById('rule-dm-details').style.display=this.checked?'block':'none'">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div id="rule-dm-details">
+                    <div class="form-group" style="margin-top:8px;">
+                        <label class="form-label" style="font-size:12px;">Private DM Text / نص الرسالة الخاصة</label>
+                        <textarea id="rule-dm-text" class="form-textarea" placeholder="أهلاً بحضرتك! إليك كافة التفاصيل والعرض الخاص لليوم:"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-size:12px;">Call-to-Action Link (Optional) / رابط الزر أو الموقع</label>
+                        <input type="text" id="rule-dm-link" class="form-input" placeholder="https://yourbrand.com/offer">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label" style="font-size:12px;">Image Attachment URL (Optional) / رابط صورة مرفقة</label>
+                        <input type="text" id="rule-dm-image" class="form-input" placeholder="https://example.com/banner.jpg">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Footer -->
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid var(--border-subtle); padding-top:16px;">
+                <button type="button" class="btn-secondary" onclick="closeWorkflowConfigModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="saveWorkflowRules()" id="btn-save-rules-modal">
+                    💾 Save & Activate Rule
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Node Inspector Drawer (Visual Canvas Node Property Editor) -->
+    <div class="node-inspector-drawer" id="node-inspector-drawer">
+        <div class="inspector-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span id="inspector-icon" style="font-size:20px;">⚡</span>
+                <div>
+                    <h4 style="font-size:14px; font-weight:800; color:var(--text-primary); margin:0;" id="inspector-title">Node Inspector</h4>
+                    <span style="font-size:11px; text-transform:uppercase; color:var(--text-muted);" id="inspector-category">TRIGGER</span>
+                </div>
+            </div>
+            <button type="button" onclick="closeNodeInspector()" style="background:none; border:none; font-size:18px; cursor:pointer; color:var(--text-muted);">✕</button>
+        </div>
+        <div class="inspector-body">
+            <div class="form-group">
+                <label class="form-label">Node Label / اسم العقدة</label>
+                <input type="text" id="inspector-node-label" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Platform / المنصة</label>
+                <select id="inspector-node-platform" class="form-select">
+                    <option value="both">General / Both</option>
+                    <option value="instagram">Instagram 📸</option>
+                    <option value="facebook">Facebook 📘</option>
+                </select>
+            </div>
+            <div id="inspector-dynamic-fields">
+                <!-- Dynamically populated based on selected node type -->
+            </div>
+        </div>
+        <div class="inspector-footer">
+            <button type="button" class="btn-action" onclick="deleteCurrentInspectedNode()" style="color:var(--accent-red); border-color:#fecaca;">
+                🗑️ Delete Node
+            </button>
+            <button type="button" class="btn-primary" onclick="saveNodeInspectorChanges()" style="padding:6px 14px; font-size:13px;">
+                Apply Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+    <script>
+        let _workflowsList = [];
+        let _currentWf = null;
+
+        // Canvas State
+        let _panX = 100;
+        let _panY = 100;
+        let _zoom = 1.0;
+        let _isPanning = false;
+        let _startPanX = 0;
+        let _startPanY = 0;
+
+        let _draggedNode = null;
+        let _dragNodeOffsetX = 0;
+        let _dragNodeOffsetY = 0;
+
+        let _connectingFromNode = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initCanvasEvents();
+            await loadWorkflows();
+            
+            // Check for direct canvas / rule / inspector deep links
+            const params = new URLSearchParams(window.location.search);
+            const canvasParam = params.get('canvas');
+            const ruleParam = params.get('rule');
+            const inspectParam = params.get('inspect');
+
+            if (canvasParam === 'new') {
+                openNewWorkflowCanvas();
+                if (inspectParam) setTimeout(() => selectCanvasNode(inspectParam), 600);
+            } else if (canvasParam && _workflowsList.length > 0) {
+                const targetWf = _workflowsList.find(w => w.id === canvasParam) || _workflowsList[0];
+                openEditWorkflowCanvas(targetWf.id);
+                if (inspectParam) setTimeout(() => selectCanvasNode(inspectParam), 600);
+            } else if (ruleParam && _workflowsList.length > 0) {
+                const targetWf = _workflowsList.find(w => w.id === ruleParam) || _workflowsList[0];
+                openWorkflowConfigModal(targetWf.id);
+            } else if (ruleParam === 'new') {
+                openNewRuleModal();
+            }
+        });
+
+        async function loadWorkflows() {
+            const container = document.getElementById('workflows-cards-container');
+            try {
+                const res = await fetch('/api/automations');
+                const data = await res.json();
+                _workflowsList = data.workflows || [];
+                renderWorkflowsList();
+            } catch (err) {
+                console.error("Error loading automations:", err);
+                if (container) container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:red;">Error loading automations: ${err}</div>`;
+            }
+        }
+
+        function renderWorkflowsList() {
+            const container = document.getElementById('workflows-cards-container');
+            const kpiTotal = document.getElementById('kpi-total-wf');
+            const kpiActive = document.getElementById('kpi-active-wf');
+            const kpiExec = document.getElementById('kpi-total-exec');
+
+            if (kpiTotal) kpiTotal.textContent = _workflowsList.length;
+            if (kpiActive) kpiActive.textContent = _workflowsList.filter(w => w.status === 'active').length;
+            if (kpiExec) kpiExec.textContent = _workflowsList.reduce((acc, w) => acc + (w.executions_count || 0), 0).toLocaleString();
+
+            if (!container) return;
+
+            if (_workflowsList.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column:1/-1;text-align:center;padding:60px;background:#fff;border-radius:var(--radius-md);border:1px dashed var(--border-default);">
+                        <div style="font-size:42px;margin-bottom:12px;">⚡</div>
+                        <h3 style="font-size:18px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">No Automations Created Yet</h3>
+                        <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">Build your first conversational AI workflow for Instagram & Facebook.</p>
+                        <button class="btn-primary" onclick="openNewWorkflowCanvas()">+ Create New Automation</button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = _workflowsList.map(wf => {
+                const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                const isActive = wf.status === 'active';
+                const platBadge = wf.platform === 'instagram'
+                    ? '<span class="badge badge-ig">📸 Instagram</span>'
+                    : (wf.platform === 'facebook' ? '<span class="badge badge-fb">📘 Facebook</span>' : '<span class="badge badge-success">🌐 Multi-Platform</span>');
+
+                // Target post indicator
+                const targetBadge = wf.target_type === 'specific_post'
+                    ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);background:var(--bg-subtle);padding:6px 10px;border-radius:6px;margin-top:6px;"><span>🎯 Target:</span> <strong style="color:var(--text-primary);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(wf.target_post_title || wf.target_post_id || 'Specific Post')}</strong></div>`
+                    : `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);background:var(--bg-subtle);padding:6px 10px;border-radius:6px;margin-top:6px;"><span>🌐 Target:</span> <strong style="color:var(--text-primary);">All Posts & Reels</strong></div>`;
+
+                // Rule badges
+                const ruleBadges = `
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                        ${wf.like_comment ? '<span class="badge" style="background:#fdf2f8;color:#be185d;border:1px solid #fbcfe8;">❤️ Like</span>' : ''}
+                        ${wf.reply_comment ? '<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">💬 Reply</span>' : ''}
+                        ${wf.send_dm ? '<span class="badge" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;">✉️ DM</span>' : ''}
+                        ${wf.keywords && wf.keywords.length ? `<span class="badge" style="background:#fefce8;color:#854d0e;border:1px solid #fef08a;">🏷️ ${escapeHtml(wf.keywords.slice(0, 3).join(', '))}${wf.keywords.length > 3 ? ' +' + (wf.keywords.length - 3) : ''}</span>` : '<span class="badge badge-neutral">All Comments</span>'}
+                    </div>`;
+
+                // Generate Flow Chips Preview
+                const chips = (wf.nodes || []).map((n, i) => {
+                    const arrow = i > 0 ? '<span class="flow-arrow">➔</span>' : '';
+                    return `${arrow}<span class="flow-chip ${n.category}">${n.icon} ${escapeHtml(n.label)}</span>`;
+                }).join('');
+
+                return `
+                    <div class="wf-card">
+                        <div class="wf-card-header">
+                            <div style="width:100%;">
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                                    ${platBadge}
+                                    <span class="badge ${isActive ? 'badge-success' : 'badge-neutral'}">${isActive ? 'Active 🟢' : 'Paused ⚪'}</span>
+                                </div>
+                                <h3 class="wf-title">${escapeHtml(wf.name)}</h3>
+                                <p class="wf-desc">${escapeHtml(wf.description || '')}</p>
+                                ${targetBadge}
+                                ${ruleBadges}
+                            </div>
+                        </div>
+
+                        <div class="wf-flow-preview">
+                            ${chips || '<span style="color:var(--text-muted);font-size:12px;">No visual nodes configured</span>'}
+                        </div>
+
+                        <div class="wf-card-footer">
+                            <div style="font-size:12px;color:var(--text-muted);">
+                                <strong>${(wf.executions_count || 0).toLocaleString()}</strong> executions
+                            </div>
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <button class="btn-action" onclick="toggleWorkflowStatus('${wf.id}')" title="Toggle Active/Paused">
+                                    ${isActive ? '⏸️' : '▶️'}
+                                </button>
+                                <button class="btn-action" onclick="openWorkflowConfigModal('${wf.id}')" style="background:#ffffff;border:1px solid var(--border-default);font-weight:600;display:flex;align-items:center;gap:4px;" title="Edit Automation Rules">
+                                    ⚙️ Rules
+                                </button>
+                                <button class="btn-action" onclick="openEditWorkflowCanvas('${wf.id}')" style="background:var(--primary-light,#eff6ff);color:var(--accent-blue,#2563eb);border-color:var(--border-subtle);font-weight:600;" title="Edit Visual Canvas">
+                                    ✏️ Canvas
+                                </button>
+                                <button class="btn-action" onclick="deleteWorkflow('${wf.id}')" style="color:var(--accent-red);border-color:#fecaca;" title="Delete">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function toggleWorkflowStatus(wfId) {
+            try {
+                const res = await fetch(`/api/automations/${wfId}/toggle`, { method: 'POST' });
+                const data = await res.json();
+                loadWorkflows();
+            } catch (err) {
+                alert("Failed to toggle workflow: " + err);
+            }
+        }
+
+        async function deleteWorkflow(wfId) {
+            if (!confirm(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? "هل أنت متأكد من حذف هذا المسار؟" : "Are you sure you want to delete this workflow?")) return;
+            try {
+                await fetch(`/api/automations/${wfId}`, { method: 'DELETE' });
+                loadWorkflows();
+            } catch (err) {
+                alert("Failed to delete workflow: " + err);
+            }
+        }
+
+        // ==========================================
+        // Visual Canvas Space Mode
+        // ==========================================
+        function openNewWorkflowCanvas() {
+            _currentWf = {
+                id: null,
+                name: "New Conversational Sales Automation ⚡",
+                description: "Automated response and lead closer",
+                platform: "both",
+                trigger_type: "ig_reel_comment",
+                status: "active",
+                nodes: [
+                    {
+                        id: "node_init_trig",
+                        category: "trigger",
+                        type: "ig_comment_trigger",
+                        label: "Instagram Reel Comment",
+                        platform: "instagram",
+                        icon: "📸",
+                        config: { keywords: ["سوشيال", "تفاصيل"] },
+                        position: { x: 150, y: 220 }
+                    },
+                    {
+                        id: "node_init_act",
+                        category: "action",
+                        type: "meta_dm_action",
+                        label: "Send Meta Sales DM",
+                        platform: "both",
+                        icon: "💬",
+                        config: { cta: "Book Call" },
+                        position: { x: 500, y: 220 }
+                    }
+                ],
+                connections: [
+                    { id: "c_init", from_node: "node_init_trig", from_port: "output", to_node: "node_init_act", to_port: "input" }
+                ]
+            };
+            launchCanvasUI();
+        }
+
+        function openEditWorkflowCanvas(wfId) {
+            const wf = _workflowsList.find(w => w.id === wfId);
+            if (!wf) return;
+            _currentWf = JSON.parse(JSON.stringify(wf));
+            launchCanvasUI();
+        }
+
+        function launchCanvasUI() {
+            document.getElementById('workflows-list-view').style.display = 'none';
+            document.getElementById('standard-topbar').style.display = 'none';
+            document.getElementById('canvas-view-container').style.display = 'block';
+            document.getElementById('canvas-topbar').style.display = 'flex';
+
+            document.getElementById('canvas-wf-name').value = _currentWf.name;
+            const statusBadge = document.getElementById('canvas-wf-status');
+            if (statusBadge) {
+                statusBadge.textContent = _currentWf.status === 'active' ? 'Active 🟢' : 'Paused ⚪';
+                statusBadge.className = _currentWf.status === 'active' ? 'badge badge-success' : 'badge badge-neutral';
+            }
+
+            _panX = 120;
+            _panY = 100;
+            _zoom = 1.0;
+            updateCanvasTransform();
+            renderCanvasNodesAndConnections();
+        }
+
+        function exitCanvasToList() {
+            document.getElementById('canvas-view-container').style.display = 'none';
+            document.getElementById('canvas-topbar').style.display = 'none';
+            document.getElementById('workflows-list-view').style.display = 'block';
+            document.getElementById('standard-topbar').style.display = 'flex';
+            loadWorkflows();
+        }
+
+        function renderCanvasNodesAndConnections() {
+            const layer = document.getElementById('canvas-nodes-layer');
+            const svg = document.getElementById('canvas-svg');
+            if (!layer || !svg) return;
+
+            layer.innerHTML = (_currentWf.nodes || []).map(node => {
+                return `
+                    <div class="wf-node ${node.category}" id="${node.id}" style="left:${node.position.x}px; top:${node.position.y}px;" onmousedown="startNodeDrag(event, '${node.id}')" onclick="selectCanvasNode('${node.id}', event)">
+                        <div class="wf-node-header">
+                            <span>${node.icon} ${escapeHtml(node.label)}</span>
+                            <button type="button" onclick="deleteNodeFromCanvas('${node.id}', event)" style="background:none; border:none; color:#fff; cursor:pointer; font-weight:bold;">✕</button>
+                        </div>
+                        <div class="wf-node-body">
+                            <div style="font-size:11.5px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">${node.category}</div>
+                            <div style="font-size:12px; font-weight:600;">${getNodeDescription(node)}</div>
+                        </div>
+                        ${node.category !== 'trigger' ? `<div class="wf-node-port input" onmouseup="finishConnection('${node.id}', event)"></div>` : ''}
+                        <div class="wf-node-port output" onmousedown="startConnection('${node.id}', event)"></div>
+                    </div>`;
+            }).join('');
+
+            renderSvgConnections();
+        }
+
+        function getNodeDescription(node) {
+            if (node.type === 'ig_comment_trigger') return 'Keywords: ' + (node.config.keywords || []).join(', ');
+            if (node.type === 'fb_comment_trigger') return 'Trigger on: All Page comments';
+            if (node.type === 'meta_dm_action') return 'Direct Message with Instant Pitch';
+            if (node.type === 'ai_reply_action') return 'Grounded in Knowledge Base';
+            if (node.type === 'n8n_http_action') return 'n8n Webhook HTTP Bridge';
+            return node.label;
+        }
+
+        function renderSvgConnections() {
+            const svg = document.getElementById('canvas-svg');
+            if (!svg || !_currentWf) return;
+
+            svg.innerHTML = (_currentWf.connections || []).map(conn => {
+                const fromNode = _currentWf.nodes.find(n => n.id === conn.from_node);
+                const toNode = _currentWf.nodes.find(n => n.id === conn.to_node);
+                if (!fromNode || !toNode) return '';
+
+                const x1 = fromNode.position.x + 250;
+                const y1 = fromNode.position.y + 40;
+                const x2 = toNode.position.x;
+                const y2 = toNode.position.y + 40;
+
+                const dx = Math.abs(x2 - x1) * 0.5;
+                const pathData = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+                return `
+                    <path d="${pathData}" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 3" class="connection-line">
+                        <animate attributeName="stroke-dashoffset" from="18" to="0" dur="1s" repeatCount="indefinite" />
+                    </path>`;
+            }).join('');
+        }
+
+        // ==========================================
+        // Canvas Pan & Zoom Engine
+        // ==========================================
+        function initCanvasEvents() {
+            const container = document.getElementById('canvas-view-container');
+            if (!container) return;
+
+            container.addEventListener('mousedown', (e) => {
+                if (e.target === container || e.target.id === 'canvas-world' || e.target.id === 'canvas-svg') {
+                    _isPanning = true;
+                    _startPanX = e.clientX - _panX;
+                    _startPanY = e.clientY - _panY;
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (_isPanning) {
+                    _panX = e.clientX - _startPanX;
+                    _panY = e.clientY - _startPanY;
+                    updateCanvasTransform();
+                } else if (_draggedNode) {
+                    const node = _currentWf.nodes.find(n => n.id === _draggedNode);
+                    if (node) {
+                        node.position.x = (e.clientX - _panX) / _zoom - _dragNodeOffsetX;
+                        node.position.y = (e.clientY - _panY) / _zoom - _dragNodeOffsetY;
+                        
+                        const el = document.getElementById(node.id);
+                        if (el) {
+                            el.style.left = `${node.position.x}px`;
+                            el.style.top = `${node.position.y}px`;
+                        }
+                        renderSvgConnections();
+                    }
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                _isPanning = false;
+                _draggedNode = null;
+            });
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.05 : 0.05;
+                zoomCanvas(delta);
+            });
+        }
+
+        function updateCanvasTransform() {
+            const world = document.getElementById('canvas-world');
+            if (world) {
+                world.style.transform = `translate(${_panX}px, ${_panY}px) scale(${_zoom})`;
+            }
+            const indicator = document.getElementById('zoom-level-indicator');
+            if (indicator) indicator.textContent = `${Math.round(_zoom * 100)}%`;
+        }
+
+        function zoomCanvas(delta) {
+            _zoom = Math.min(Math.max(0.4, _zoom + delta), 1.8);
+            updateCanvasTransform();
+        }
+
+        function resetCanvasZoom() {
+            _zoom = 1.0;
+            _panX = 120;
+            _panY = 100;
+            updateCanvasTransform();
+        }
+
+        function fitCanvasView() {
+            resetCanvasZoom();
+        }
+
+        // ==========================================
+        // Node Dragging & Connections Engine
+        // ==========================================
+        function startNodeDrag(e, nodeId) {
+            if (e.target.classList.contains('wf-node-port')) return;
+            _draggedNode = nodeId;
+            const node = _currentWf.nodes.find(n => n.id === nodeId);
+            if (node) {
+                const nodeClientX = node.position.x * _zoom + _panX;
+                const nodeClientY = node.position.y * _zoom + _panY;
+                _dragNodeOffsetX = (e.clientX - nodeClientX) / _zoom;
+                _dragNodeOffsetY = (e.clientY - nodeClientY) / _zoom;
+            }
+        }
+
+        function startConnection(fromNodeId, e) {
+            e.stopPropagation();
+            _connectingFromNode = fromNodeId;
+        }
+
+        function finishConnection(toNodeId, e) {
+            e.stopPropagation();
+            if (_connectingFromNode && _connectingFromNode !== toNodeId) {
+                const exists = _currentWf.connections.some(c => c.from_node === _connectingFromNode && c.to_node === toNodeId);
+                if (!exists) {
+                    _currentWf.connections.push({
+                        id: `conn_${Date.now()}`,
+                        from_node: _connectingFromNode,
+                        from_port: "output",
+                        to_node: toNodeId,
+                        to_port: "input"
+                    });
+                    renderSvgConnections();
+                }
+            }
+            _connectingFromNode = null;
+        }
+
+        function deleteNodeFromCanvas(nodeId, e) {
+            if (e) e.stopPropagation();
+            _currentWf.nodes = _currentWf.nodes.filter(n => n.id !== nodeId);
+            _currentWf.connections = _currentWf.connections.filter(c => c.from_node !== nodeId && c.to_node !== nodeId);
+            renderCanvasNodesAndConnections();
+        }
+
+        // ==========================================
+        // Node Palette Modal
+        // ==========================================
+        function openNodePalette() {
+            document.getElementById('palette-modal').style.display = 'flex';
+        }
+
+        function closeNodePalette() {
+            document.getElementById('palette-modal').style.display = 'none';
+        }
+
+        function addNodeToCanvas(category, type, label, platform, icon, config) {
+            closeNodePalette();
+            const id = `node_${Date.now()}`;
+            const x = (-_panX + 400) / _zoom;
+            const y = (-_panY + 250) / _zoom;
+
+            _currentWf.nodes.push({
+                id,
+                category,
+                type,
+                label,
+                platform,
+                icon,
+                config,
+                position: { x, y }
+            });
+            renderCanvasNodesAndConnections();
+        }
+
+        // ==========================================
+        // Save & Test Workflow
+        // ==========================================
+        async function saveActiveWorkflow() {
+            const btn = document.getElementById('btn-save-wf');
+            if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+            _currentWf.name = document.getElementById('canvas-wf-name').value.trim() || "Untitled Automation";
+
+            try {
+                let res;
+                if (_currentWf.id) {
+                    res = await fetch(`/api/automations/${_currentWf.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(_currentWf)
+                    });
+                } else {
+                    res = await fetch('/api/automations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(_currentWf)
+                    });
+                }
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                _currentWf = data.workflow;
+                alert("✅ Automation workflow saved successfully!");
+                exitCanvasToList();
+            } catch (err) {
+                alert("Failed to save automation: " + err);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '💾 Save Workflow'; }
+            }
+        }
+
+        async function runActiveWorkflowTest() {
+            const btn = document.getElementById('btn-test-wf');
+            if (btn) { btn.disabled = true; btn.textContent = '⚡ Running...'; }
+
+            try {
+                let wfId = _currentWf.id;
+                if (!wfId) {
+                    // Temporarily save to test
+                    await saveActiveWorkflow();
+                    return;
+                }
+
+                const res = await fetch(`/api/automations/${wfId}/test`, { method: 'POST' });
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    const traceSteps = result.trace.map(s => `Step ${s.step}: [${s.category.toUpperCase()}] ${s.node_label} -> ✅ OK (${s.execution_ms}ms)`).join('\n');
+                    alert(`🚀 Automation Test Succeeded in ${result.total_latency_ms}ms!\n\nTrace Output:\n${traceSteps}`);
+                } else {
+                    alert("Test result: " + JSON.stringify(result));
+                }
+            } catch (err) {
+                alert("Test error: " + err);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '▶️ Test Workflow'; }
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[m]);
+        }
+
+        // ==========================================
+        // Rules Modal & Target Post Selection Engine
+        // ==========================================
+        let _liveMetaPostsCache = [];
+        let _rulesEditingWfId = null;
+        let _selectedCanvasNodeId = null;
+
+        async function ensureMetaPostsLoaded() {
+            if (_liveMetaPostsCache.length > 0) return;
+            try {
+                const res = await fetch('/api/meta/posts?limit=100&platform=all');
+                const data = await res.json();
+                _liveMetaPostsCache = data.posts || [];
+            } catch (err) {
+                console.warn("Could not load Meta posts cache:", err);
+            }
+        }
+
+        async function populateLivePostsDropdown(platformFilter = 'all') {
+            await ensureMetaPostsLoaded();
+            const select = document.getElementById('rule-post-select');
+            if (!select) return;
+
+            let posts = _liveMetaPostsCache;
+            if (platformFilter && platformFilter !== 'both' && platformFilter !== 'all') {
+                posts = posts.filter(p => p.platform === platformFilter);
+            }
+
+            select.innerHTML = '<option value="">-- Choose from live published posts & reels --</option>' +
+                posts.map(p => {
+                    const icon = p.platform === 'instagram' ? '📸 IG' : '📘 FB';
+                    const typeLabel = (p.type || 'post').toUpperCase();
+                    const snippet = (p.message || p.caption || 'No caption').slice(0, 45).replace(/\n/g, ' ');
+                    return `<option value="${p.id}">${icon} [${typeLabel}] ${escapeHtml(snippet)}...</option>`;
+                }).join('');
+        }
+
+        function onRulePlatformChange() {
+            const platform = document.getElementById('rule-platform-select').value;
+            populateLivePostsDropdown(platform);
+        }
+
+        function onRuleTargetTypeChange() {
+            const targetType = document.getElementById('rule-target-type-select').value;
+            const container = document.getElementById('rule-specific-post-container');
+            if (container) {
+                container.style.display = targetType === 'specific_post' ? 'block' : 'none';
+            }
+        }
+
+        function onRulePostSelected() {
+            const select = document.getElementById('rule-post-select');
+            const postId = select.value;
+            const previewBox = document.getElementById('rule-post-preview');
+            if (!postId) {
+                if (previewBox) previewBox.style.display = 'none';
+                return;
+            }
+
+            const post = _liveMetaPostsCache.find(p => p.id === postId);
+            if (!post) {
+                if (previewBox) previewBox.style.display = 'none';
+                return;
+            }
+
+            previewBox.style.display = 'flex';
+            document.getElementById('rule-preview-img').src = post.thumbnail_url || 'https://placehold.co/100x100?text=No+Preview';
+            document.getElementById('rule-preview-badge').textContent = (post.platform === 'instagram' ? '📸 IG ' : '📘 FB ') + (post.type || 'post').toUpperCase();
+            document.getElementById('rule-preview-badge').className = `badge ${post.platform === 'instagram' ? 'badge-ig' : 'badge-fb'}`;
+            
+            const timeAgo = post.created_time ? new Date(post.created_time).toLocaleDateString() : '';
+            document.getElementById('rule-preview-date').textContent = timeAgo;
+            document.getElementById('rule-preview-title').textContent = (post.message || post.caption || 'No caption');
+            document.getElementById('rule-preview-stats').textContent = `❤️ ${(post.like_count || 0).toLocaleString()} likes • 💬 ${(post.comment_count || 0).toLocaleString()} comments`;
+        }
+
+        async function openNewRuleModal() {
+            _rulesEditingWfId = null;
+            document.getElementById('rules-modal-title').textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' 
+                ? 'إنشاء مسار وقواعد رد تلقائي جديدة ⚡' 
+                : 'Create New Automation Rule & Reply ⚡';
+
+            document.getElementById('rule-name-input').value = "Viral Reel Comment-to-DM Closer";
+            document.getElementById('rule-status-select').value = "active";
+            document.getElementById('rule-desc-input').value = "Auto-likes reel comments, replies with public confirmation, and sends private DM offer.";
+            document.getElementById('rule-platform-select').value = "both";
+            document.getElementById('rule-target-type-select').value = "all_posts";
+            document.getElementById('rule-specific-post-container').style.display = 'none';
+            document.getElementById('rule-post-preview').style.display = 'none';
+            document.getElementById('rule-keywords-input').value = "سعر, كورس, تفاصيل, مهتم, سوشيال";
+            document.getElementById('rule-toggle-like').checked = true;
+            document.getElementById('rule-toggle-reply').checked = true;
+            document.getElementById('rule-reply-text').value = "تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك على الدايركت فوراً 🚀";
+            document.getElementById('rule-reply-details').style.display = 'block';
+            document.getElementById('rule-toggle-dm').checked = true;
+            document.getElementById('rule-dm-text').value = "أهلاً بحضرتك! إليك تفاصيل العرض والخصم الخاص لليوم:";
+            document.getElementById('rule-dm-link').value = "https://hudhud.ai/offer";
+            document.getElementById('rule-dm-image').value = "";
+            document.getElementById('rule-dm-details').style.display = 'block';
+
+            await populateLivePostsDropdown('both');
+            document.getElementById('rules-config-modal').style.display = 'flex';
+        }
+
+        async function openWorkflowConfigModal(wfId) {
+            _rulesEditingWfId = wfId;
+            const wf = _workflowsList.find(w => w.id === wfId);
+            if (!wf) return;
+
+            document.getElementById('rules-modal-title').textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar'
+                ? `تعديل قواعد المسار: ${wf.name}`
+                : `Edit Automation Rules: ${wf.name}`;
+
+            document.getElementById('rule-name-input').value = wf.name || '';
+            document.getElementById('rule-status-select').value = wf.status || 'active';
+            document.getElementById('rule-desc-input').value = wf.description || '';
+            document.getElementById('rule-platform-select').value = wf.platform || 'both';
+            document.getElementById('rule-target-type-select').value = wf.target_type || 'all_posts';
+            
+            await populateLivePostsDropdown(wf.platform || 'both');
+
+            if (wf.target_type === 'specific_post') {
+                document.getElementById('rule-specific-post-container').style.display = 'block';
+                if (wf.target_post_id) {
+                    document.getElementById('rule-post-select').value = wf.target_post_id;
+                    onRulePostSelected();
+                }
+            } else {
+                document.getElementById('rule-specific-post-container').style.display = 'none';
+                document.getElementById('rule-post-preview').style.display = 'none';
+            }
+
+            document.getElementById('rule-keywords-input').value = (wf.keywords || []).join(', ');
+            document.getElementById('rule-toggle-like').checked = wf.like_comment !== false;
+            
+            document.getElementById('rule-toggle-reply').checked = wf.reply_comment !== false;
+            document.getElementById('rule-reply-details').style.display = wf.reply_comment !== false ? 'block' : 'none';
+            document.getElementById('rule-reply-text').value = wf.reply_comment_text || 'تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك على الدايركت فوراً 🚀';
+
+            document.getElementById('rule-toggle-dm').checked = wf.send_dm !== false;
+            document.getElementById('rule-dm-details').style.display = wf.send_dm !== false ? 'block' : 'none';
+            document.getElementById('rule-dm-text').value = wf.dm_text || 'أهلاً بحضرتك! إليك كافة التفاصيل والعرض الخاص:';
+            document.getElementById('rule-dm-link').value = wf.dm_link || '';
+            document.getElementById('rule-dm-image').value = wf.dm_image || '';
+
+            document.getElementById('rules-config-modal').style.display = 'flex';
+        }
+
+        function closeWorkflowConfigModal() {
+            document.getElementById('rules-config-modal').style.display = 'none';
+            _rulesEditingWfId = null;
+        }
+
+        async function saveWorkflowRules() {
+            const btn = document.getElementById('btn-save-rules-modal');
+            if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+            const name = document.getElementById('rule-name-input').value.trim() || "Untitled Automation";
+            const description = document.getElementById('rule-desc-input').value.trim();
+            const status = document.getElementById('rule-status-select').value;
+            const platform = document.getElementById('rule-platform-select').value;
+            const target_type = document.getElementById('rule-target-type-select').value;
+            const target_post_id = target_type === 'specific_post' ? document.getElementById('rule-post-select').value : null;
+            
+            let target_post_title = null;
+            if (target_post_id) {
+                const selectedPost = _liveMetaPostsCache.find(p => p.id === target_post_id);
+                if (selectedPost) {
+                    target_post_title = (selectedPost.message || selectedPost.caption || 'Target Post').slice(0, 50);
+                }
+            }
+
+            const rawKeywords = document.getElementById('rule-keywords-input').value;
+            const keywords = rawKeywords.split(/[,،]/).map(k => k.trim()).filter(Boolean);
+
+            const like_comment = document.getElementById('rule-toggle-like').checked;
+            const reply_comment = document.getElementById('rule-toggle-reply').checked;
+            const reply_comment_text = document.getElementById('rule-reply-text').value.trim();
+            const send_dm = document.getElementById('rule-toggle-dm').checked;
+            const dm_text = document.getElementById('rule-dm-text').value.trim();
+            const dm_link = document.getElementById('rule-dm-link').value.trim();
+            const dm_image = document.getElementById('rule-dm-image').value.trim();
+
+            const payload = {
+                name,
+                description,
+                status,
+                platform,
+                target_type,
+                target_post_id,
+                target_post_title,
+                keywords,
+                like_comment,
+                reply_comment,
+                reply_comment_text,
+                send_dm,
+                dm_text,
+                dm_link,
+                dm_image
+            };
+
+            try {
+                let res;
+                if (_rulesEditingWfId) {
+                    res = await fetch(`/api/automations/${_rulesEditingWfId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    // Create default nodes matching rule
+                    payload.trigger_type = "comment_to_dm";
+                    payload.nodes = [
+                        {
+                            id: "node_trig_" + Date.now(),
+                            category: "trigger",
+                            type: platform === 'facebook' ? "fb_comment_trigger" : "ig_comment_trigger",
+                            label: platform === 'facebook' ? "Facebook Post / Reel Comment" : "Instagram Reel Comment",
+                            platform: platform,
+                            icon: platform === 'facebook' ? "📘" : "📸",
+                            config: { keywords: keywords, target_type: target_type },
+                            position: { x: 100, y: 220 }
+                        },
+                        {
+                            id: "node_act_dm_" + Date.now(),
+                            category: "action",
+                            type: "meta_dm_action",
+                            label: "Send Meta Sales DM",
+                            platform: platform,
+                            icon: "💬",
+                            config: { message: dm_text, link: dm_link },
+                            position: { x: 500, y: 220 }
+                        }
+                    ];
+                    payload.connections = [
+                        { id: "c_" + Date.now(), from_node: payload.nodes[0].id, from_port: "output", to_node: payload.nodes[1].id, to_port: "input" }
+                    ];
+
+                    res = await fetch('/api/automations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                closeWorkflowConfigModal();
+                await loadWorkflows();
+                alert("✅ Automation rule saved and activated successfully!");
+            } catch (err) {
+                alert("Failed to save rule: " + err);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '💾 Save & Activate Rule'; }
+            }
+        }
+
+        // ==========================================
+        // Visual Canvas Node Inspector Engine
+        // ==========================================
+        function selectCanvasNode(nodeId, e) {
+            if (e) e.stopPropagation();
+            _selectedCanvasNodeId = nodeId;
+
+            // Highlight node in DOM
+            document.querySelectorAll('.wf-node').forEach(el => el.classList.remove('selected'));
+            const nodeEl = document.getElementById(nodeId);
+            if (nodeEl) nodeEl.classList.add('selected');
+
+            const node = _currentWf.nodes.find(n => n.id === nodeId);
+            if (!node) return;
+
+            document.getElementById('inspector-title').textContent = node.label || 'Node Details';
+            document.getElementById('inspector-category').textContent = (node.category || 'node').toUpperCase();
+            document.getElementById('inspector-icon').textContent = node.icon || '⚡';
+            document.getElementById('inspector-node-label').value = node.label || '';
+            document.getElementById('inspector-node-platform').value = node.platform || 'both';
+
+            const dynamicContainer = document.getElementById('inspector-dynamic-fields');
+            dynamicContainer.innerHTML = renderInspectorFieldsForNode(node);
+
+            const drawer = document.getElementById('node-inspector-drawer');
+            if (drawer) drawer.classList.add('open');
+        }
+
+        function renderInspectorFieldsForNode(node) {
+            if (node.category === 'trigger') {
+                const kw = (node.config && node.config.keywords) ? node.config.keywords.join(', ') : '';
+                return `
+                    <div class="form-group">
+                        <label class="form-label">Trigger Keywords / الكلمات المفتاحية</label>
+                        <input type="text" id="insp-keywords" class="form-input" value="${escapeHtml(kw)}" placeholder="سعر, كورس, تفاصيل">
+                        <div class="form-hint">Matches against incoming comments. Leave empty for all comments.</div>
+                    </div>
+                `;
+            } else if (node.type === 'meta_dm_action' || node.type === 'fb_send_message') {
+                const cta = (node.config && node.config.cta_button) || (node.config && node.config.cta) || '';
+                const link = (node.config && node.config.calendar_link) || (node.config && node.config.link) || '';
+                return `
+                    <div class="form-group">
+                        <label class="form-label">CTA Button Label / نص الزر</label>
+                        <input type="text" id="insp-cta" class="form-input" value="${escapeHtml(cta)}" placeholder="Book Call / View Offer">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Website / Calendar Link / الرابط</label>
+                        <input type="text" id="insp-link" class="form-input" value="${escapeHtml(link)}" placeholder="https://hudhud.ai/booking">
+                    </div>
+                `;
+            } else if (node.type === 'fb_public_reply' || node.type === 'ai_reply_action') {
+                const template = (node.config && node.config.reply_template) || '';
+                return `
+                    <div class="form-group">
+                        <label class="form-label">Reply Template / قالب الرد</label>
+                        <textarea id="insp-template" class="form-textarea" placeholder="أهلاً بك! تم إرسال التفاصيل بالخاص 🚀">${escapeHtml(template)}</textarea>
+                    </div>
+                `;
+            } else if (node.type === 'crm_lead_action') {
+                const stage = (node.config && node.config.stage) || 'qualified';
+                const dealVal = (node.config && node.config.deal_value) || 250;
+                return `
+                    <div class="form-group">
+                        <label class="form-label">CRM Stage / مرحلة العميل</label>
+                        <select id="insp-stage" class="form-select">
+                            <option value="lead" ${stage==='lead'?'selected':''}>New Lead</option>
+                            <option value="qualified" ${stage==='qualified'?'selected':''}>Qualified Opportunity</option>
+                            <option value="closed" ${stage==='closed'?'selected':''}>Closed Won</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estimated Deal Value ($)</label>
+                        <input type="number" id="insp-deal-val" class="form-input" value="${dealVal}">
+                    </div>
+                `;
+            } else if (node.type === 'n8n_http_action') {
+                const url = (node.config && node.config.url) || '';
+                return `
+                    <div class="form-group">
+                        <label class="form-label">n8n / Webhook URL</label>
+                        <input type="text" id="insp-webhook-url" class="form-input" value="${escapeHtml(url)}" placeholder="https://n8n.instance/webhook/...">
+                    </div>
+                `;
+            }
+            return `<div style="font-size:12px; color:var(--text-muted);">Standard configuration parameters active.</div>`;
+        }
+
+        function closeNodeInspector() {
+            const drawer = document.getElementById('node-inspector-drawer');
+            if (drawer) drawer.classList.remove('open');
+            document.querySelectorAll('.wf-node').forEach(el => el.classList.remove('selected'));
+            _selectedCanvasNodeId = null;
+        }
+
+        function saveNodeInspectorChanges() {
+            if (!_selectedCanvasNodeId || !_currentWf) return;
+            const node = _currentWf.nodes.find(n => n.id === _selectedCanvasNodeId);
+            if (!node) return;
+
+            node.label = document.getElementById('inspector-node-label').value.trim() || node.label;
+            node.platform = document.getElementById('inspector-node-platform').value;
+
+            if (!node.config) node.config = {};
+
+            const kwInput = document.getElementById('insp-keywords');
+            if (kwInput) {
+                node.config.keywords = kwInput.value.split(/[,،]/).map(k => k.trim()).filter(Boolean);
+            }
+            const ctaInput = document.getElementById('insp-cta');
+            if (ctaInput) node.config.cta_button = ctaInput.value.trim();
+            const linkInput = document.getElementById('insp-link');
+            if (linkInput) node.config.calendar_link = linkInput.value.trim();
+            const templateInput = document.getElementById('insp-template');
+            if (templateInput) node.config.reply_template = templateInput.value.trim();
+            const stageInput = document.getElementById('insp-stage');
+            if (stageInput) node.config.stage = stageInput.value;
+            const valInput = document.getElementById('insp-deal-val');
+            if (valInput) node.config.deal_value = parseFloat(valInput.value) || 0;
+            const urlInput = document.getElementById('insp-webhook-url');
+            if (urlInput) node.config.url = urlInput.value.trim();
+
+            renderCanvasNodesAndConnections();
+            closeNodeInspector();
+        }
+
+        function deleteCurrentInspectedNode() {
+            if (!_selectedCanvasNodeId || !_currentWf) return;
+            deleteNodeFromCanvas(_selectedCanvasNodeId);
+            closeNodeInspector();
+        }
+    </script>
+</body>
+</html>

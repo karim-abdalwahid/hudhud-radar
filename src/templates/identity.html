@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identity Review — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/leads" class="nav-item"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+                <a href="/studio" class="nav-item"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/identity" class="nav-item active"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
+                
+                <div class="nav-section-title" data-i18n="nav.analytics_system">Analytics & System</div>
+                <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & Reports</span></a>
+                <a href="/settings" class="nav-item"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform & API Settings</span></a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="meta-status-container" class="status-pill">
+                    <div id="meta-dot" class="status-dot"></div>
+                    <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="id.title">Identity Verification & Review Queue</span>
+                </div>
+                <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <button class="btn-secondary" onclick="loadQueueData()" data-i18n="id.refresh_btn">🔄 Refresh Queue</button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <!-- Metrics Strip -->
+                <div class="metrics-strip">
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="id.kpi_pending">Pending Supervisor Review</div>
+                        <div id="stat-pending-count" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="id.kpi_pending_sub">Cross-platform candidate matches</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="id.kpi_policy">Zero-Guessing Policy</div>
+                        <div class="metric-val" style="font-size: 16px; color: var(--badge-green-text);" data-i18n="id.kpi_policy_val">Active & Strict</div>
+                        <div class="metric-sub" data-i18n="id.kpi_policy_sub">Auto-linking requires 100% verified phone/email</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="id.kpi_threshold">Queue Entry Threshold</div>
+                        <div class="metric-val num" style="font-size: 18px; color: var(--badge-blue-text);" data-i18n="id.kpi_threshold_val">≥ 70% Confidence</div>
+                        <div class="metric-sub" data-i18n="id.kpi_threshold_sub">Matches below 70% remain standalone accounts</div>
+                    </div>
+                </div>
+
+                <!-- SOP-05 Guidelines Banner -->
+                <div style="background: var(--bg-card); border-inline-start: 4px solid var(--accent-blue); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 20px;">
+                    <h4 style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;" data-i18n="id.sop_title">📌 Supervisor Instructions (Standard SOP-05)</h4>
+                    <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;" data-i18n="id.sop_desc">
+                        When a customer interacts on Instagram with details resembling a past Facebook profile without full phone verification, they enter this queue to prevent cross-account contamination. Compare both profiles, then choose Approve to unify their CRM history or Reject to keep them separate.
+                    </p>
+                </div>
+
+                <!-- Active Review Queue Table -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title" data-i18n="id.table_title">Pending Verification & Matching Queue</h2>
+                            <div class="panel-desc" data-i18n="id.table_desc">Decide with 1-click to immediately update CRM link constraints</div>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th data-i18n="id.th_id">Review ID</th>
+                                    <th data-i18n="id.th_account_a">Primary Account (Profile A)</th>
+                                    <th data-i18n="id.th_account_b">Candidate Account (Profile B)</th>
+                                    <th data-i18n="id.th_confidence">Estimated Confidence</th>
+                                    <th data-i18n="id.th_reason">Match Indicator</th>
+                                    <th data-i18n="id.th_notes">Supervisor Notes</th>
+                                    <th data-i18n="id.th_decision">Human Decision</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queue-table-body">
+                                <tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 28px;" data-i18n="id.loading">Checking review queue...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+    <script>
+        let currentQueue = [];
+
+        function t(key) {
+            return window.hudhudI18n ? window.hudhudI18n.t(key) : key;
+        }
+
+        async function loadQueueData() {
+            try {
+                const res = await fetch('/api/identity/queue');
+                const data = await res.json();
+                currentQueue = data.pending_reviews || [];
+
+                document.getElementById('stat-pending-count').textContent = currentQueue.length;
+                renderQueueTable();
+            } catch (e) {
+                console.error("Error fetching identity queue:", e);
+            }
+        }
+
+        function renderQueueTable() {
+            const tbody = document.getElementById('queue-table-body');
+            if (!tbody) return;
+
+            if (currentQueue.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                            <div style="font-size: 24px; margin-bottom: 8px;">🎉</div>
+                            <div style="font-weight: 600; color: var(--text-primary);">${t('id.empty_title')}</div>
+                            <div style="font-size: 12px; margin-top: 4px;">${t('id.empty_desc')}</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const approveLabel = t('id.approve_btn');
+            const rejectLabel = t('id.reject_btn');
+            const notesPlaceholder = t('id.notes_placeholder');
+
+            tbody.innerHTML = currentQueue.map(item => {
+                const confidencePercent = Math.round((item.confidence_score || 0.75) * 100);
+                return `
+                    <tr>
+                        <td><code class="mono">${item.id ? item.id.substring(0, 8) + '…' : '-'}</code></td>
+                        <td>
+                            <div><strong>${escapeHtml(item.account_a_name || 'Account A')}</strong></div>
+                            <span class="badge badge-fb">${item.account_a_platform || 'facebook'}</span>
+                            <span class="mono" style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.account_a_id || '')}</span>
+                        </td>
+                        <td>
+                            <div><strong>${escapeHtml(item.account_b_name || 'Account B')}</strong></div>
+                            <span class="badge badge-ig">${item.account_b_platform || 'instagram'}</span>
+                            <span class="mono" style="font-size: 11px; color: var(--text-muted);">${escapeHtml(item.account_b_id || '')}</span>
+                        </td>
+                        <td>
+                            <span class="badge ${confidencePercent >= 80 ? 'badge-success' : 'badge-pending'} num" style="font-weight:600;">
+                                ${confidencePercent}%
+                            </span>
+                        </td>
+                        <td style="max-width: 200px; font-size: 12px;">
+                            ${escapeHtml(item.match_reason || 'Name & behavioral similarity')}
+                        </td>
+                        <td>
+                            <input type="text" id="notes-${item.id}" placeholder="${notesPlaceholder}" style="font-size: 11px; padding: 4px 8px; width: 140px;">
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn-action" style="color: var(--badge-green-text); border-color: rgba(63, 185, 80, 0.3);" onclick="decideQueue('${item.id}', 'approve')">${approveLabel}</button>
+                                <button class="btn-action btn-reject" onclick="decideQueue('${item.id}', 'reject')">${rejectLabel}</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function decideQueue(queueId, action) {
+            const notesInput = document.getElementById(`notes-${queueId}`);
+            const notes = notesInput ? notesInput.value : '';
+            const actionUrl = `/api/identity/queue/${queueId}/${action}?reviewer=Supervisor&notes=${encodeURIComponent(notes)}`;
+
+            try {
+                const res = await fetch(actionUrl, { method: 'POST' });
+                if (res.ok) {
+                    await loadQueueData();
+                } else {
+                    const err = await res.json();
+                    alert('Error: ' + (err.detail || 'Action failed'));
+                }
+            } catch (e) {
+                alert('Connection error');
+            }
+        }
+
+        window.addEventListener('hudhud_lang_change', () => {
+            renderQueueTable();
+        });
+
+        document.addEventListener('DOMContentLoaded', loadQueueData);
+    </script>
+</body>
+</html>

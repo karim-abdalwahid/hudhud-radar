@@ -1,0 +1,326 @@
+{
+  "updated_at": "2026-09-05T07:15:15.190878+00:00",
+  "total_count": 3,
+  "workflows": [
+    {
+      "id": "wf_ig_reel_sales",
+      "name": "Instagram Reel Viral Comment-to-DM Sales Closer",
+      "description": "Monitors Reel comments for keywords [سوشيال, كورس, تفاصيل], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
+      "platform": "instagram",
+      "trigger_type": "comment_to_dm",
+      "status": "active",
+      "target_type": "all_posts",
+      "target_post_id": null,
+      "target_post_title": "All Reels & Posts",
+      "keywords": [
+        "سوشيال",
+        "كورس",
+        "تفاصيل",
+        "سعر",
+        "مهتم"
+      ],
+      "like_comment": true,
+      "reply_comment": true,
+      "reply_comment_text": "تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك على الدايركت فوراً 🚀",
+      "send_dm": true,
+      "dm_text": "أهلاً بحضرتك! إليك تفاصيل الكورس والعرض الخاص لليوم:",
+      "dm_link": "https://hudhud.ai/social-course",
+      "dm_image": "",
+      "nodes": [
+        {
+          "id": "node_trig_1",
+          "category": "trigger",
+          "type": "ig_comment_trigger",
+          "label": "Instagram Reel Comment",
+          "platform": "instagram",
+          "icon": "📸",
+          "config": {
+            "keywords": [
+              "سوشيال",
+              "كورس",
+              "تفاصيل",
+              "سعر",
+              "مهتم"
+            ],
+            "match_type": "any"
+          },
+          "position": {
+            "x": 100.0,
+            "y": 220.0
+          }
+        },
+        {
+          "id": "node_cond_1",
+          "category": "condition",
+          "type": "keyword_filter",
+          "label": "Intent & Keyword Filter",
+          "platform": "general",
+          "icon": "🔍",
+          "config": {
+            "filter_mode": "contains_commercial_intent",
+            "exclude_spam": true
+          },
+          "position": {
+            "x": 420.0,
+            "y": 220.0
+          }
+        },
+        {
+          "id": "node_act_1",
+          "category": "action",
+          "type": "ai_reply_action",
+          "label": "Gemini Sales Pitch Synthesizer",
+          "platform": "general",
+          "icon": "🤖",
+          "config": {
+            "tone": "egyptian_professional",
+            "include_offer": true,
+            "discount_code": "HUDHUD20"
+          },
+          "position": {
+            "x": 750.0,
+            "y": 140.0
+          }
+        },
+        {
+          "id": "node_act_2",
+          "category": "action",
+          "type": "meta_dm_action",
+          "label": "Send Instagram Direct Message",
+          "platform": "instagram",
+          "icon": "💬",
+          "config": {
+            "cta_button": "Book Free 15-min Call",
+            "calendar_link": "https://calendar.app.google/hudhud-meeting"
+          },
+          "position": {
+            "x": 1080.0,
+            "y": 140.0
+          }
+        },
+        {
+          "id": "node_act_3",
+          "category": "action",
+          "type": "crm_lead_action",
+          "label": "Capture & Qualify in CRM",
+          "platform": "general",
+          "icon": "🎯",
+          "config": {
+            "stage": "qualified",
+            "deal_value": 250,
+            "tag": "Reels_Lead"
+          },
+          "position": {
+            "x": 750.0,
+            "y": 340.0
+          }
+        }
+      ],
+      "connections": [
+        {
+          "id": "c1",
+          "from_node": "node_trig_1",
+          "from_port": "output",
+          "to_node": "node_cond_1",
+          "to_port": "input"
+        },
+        {
+          "id": "c2",
+          "from_node": "node_cond_1",
+          "from_port": "output",
+          "to_node": "node_act_1",
+          "to_port": "input"
+        },
+        {
+          "id": "c3",
+          "from_node": "node_act_1",
+          "from_port": "output",
+          "to_node": "node_act_2",
+          "to_port": "input"
+        },
+        {
+          "id": "c4",
+          "from_node": "node_cond_1",
+          "from_port": "output",
+          "to_node": "node_act_3",
+          "to_port": "input"
+        }
+      ],
+      "executions_count": 143,
+      "last_executed_at": "2026-09-05T07:15:15.190399+00:00",
+      "created_at": "2026-09-01T10:00:00Z",
+      "updated_at": "2026-09-04T12:00:00Z"
+    },
+    {
+      "id": "wf_fb_comment_responder",
+      "name": "Facebook Post & Reel Public + DM Responder",
+      "description": "Engages Facebook Page post and video reel comments with a public acknowledgement and an automated Messenger inquiry.",
+      "platform": "facebook",
+      "trigger_type": "comment_to_dm",
+      "status": "active",
+      "target_type": "all_posts",
+      "target_post_id": null,
+      "target_post_title": "All Facebook Posts & Reels",
+      "keywords": [
+        "تفاصيل",
+        "سعر",
+        "مهتم",
+        "خدمات",
+        "عرض"
+      ],
+      "like_comment": true,
+      "reply_comment": true,
+      "reply_comment_text": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀",
+      "send_dm": true,
+      "dm_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
+      "dm_link": "https://hudhud.ai/services",
+      "dm_image": "",
+      "nodes": [
+        {
+          "id": "node_fb_trig",
+          "category": "trigger",
+          "type": "fb_comment_trigger",
+          "label": "Facebook Post / Reel Comment",
+          "platform": "facebook",
+          "icon": "📘",
+          "config": {
+            "pages": [
+              "1108892288983475"
+            ],
+            "trigger_on": "all_comments"
+          },
+          "position": {
+            "x": 100.0,
+            "y": 200.0
+          }
+        },
+        {
+          "id": "node_fb_pub_reply",
+          "category": "action",
+          "type": "fb_public_reply",
+          "label": "Reply to Public Comment",
+          "platform": "facebook",
+          "icon": "📢",
+          "config": {
+            "reply_template": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀"
+          },
+          "position": {
+            "x": 450.0,
+            "y": 120.0
+          }
+        },
+        {
+          "id": "node_fb_messenger_dm",
+          "category": "action",
+          "type": "fb_send_message",
+          "label": "Send Messenger Private Message",
+          "platform": "facebook",
+          "icon": "💬",
+          "config": {
+            "message_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
+            "attach_booking_link": true
+          },
+          "position": {
+            "x": 450.0,
+            "y": 300.0
+          }
+        }
+      ],
+      "connections": [
+        {
+          "id": "cfb1",
+          "from_node": "node_fb_trig",
+          "from_port": "output",
+          "to_node": "node_fb_pub_reply",
+          "to_port": "input"
+        },
+        {
+          "id": "cfb2",
+          "from_node": "node_fb_trig",
+          "from_port": "output",
+          "to_node": "node_fb_messenger_dm",
+          "to_port": "input"
+        }
+      ],
+      "executions_count": 89,
+      "last_executed_at": "2026-09-05T06:27:29.630899+00:00",
+      "created_at": "2026-09-02T11:00:00Z",
+      "updated_at": "2026-09-04T13:00:00Z"
+    },
+    {
+      "id": "wf_n8n_http_bridge",
+      "name": "n8n / External Webhook Lead Forwarder",
+      "description": "Dispatches qualified high-intent social conversations to external n8n HTTP Request API nodes or Make.com webhooks.",
+      "platform": "both",
+      "trigger_type": "webhook",
+      "status": "active",
+      "target_type": "all_posts",
+      "target_post_id": null,
+      "target_post_title": null,
+      "keywords": [
+        "سعر",
+        "كورس",
+        "تفاصيل",
+        "مهتم"
+      ],
+      "like_comment": true,
+      "reply_comment": true,
+      "reply_comment_text": "تم الرد في رسالة خاصة لحضرتك فوراً 🚀",
+      "send_dm": true,
+      "dm_text": "أهلاً بك! إليك كافة التفاصيل والعرض الخاص:",
+      "dm_link": "",
+      "dm_image": "",
+      "nodes": [
+        {
+          "id": "node_lead_trig",
+          "category": "trigger",
+          "type": "lead_qualified_trigger",
+          "label": "Lead Form / Phone Confirmed",
+          "platform": "both",
+          "icon": "⭐",
+          "config": {
+            "min_deal_value": 100
+          },
+          "position": {
+            "x": 120.0,
+            "y": 200.0
+          }
+        },
+        {
+          "id": "node_http_n8n",
+          "category": "action",
+          "type": "n8n_http_action",
+          "label": "HTTP Request Node (n8n API format)",
+          "platform": "general",
+          "icon": "🌐",
+          "config": {
+            "method": "POST",
+            "url": "https://n8n.webhook.internal/webhook/hudhud-leads",
+            "headers": {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer n8n_sec_token"
+            },
+            "retry_count": 3
+          },
+          "position": {
+            "x": 500.0,
+            "y": 200.0
+          }
+        }
+      ],
+      "connections": [
+        {
+          "id": "cn8n1",
+          "from_node": "node_lead_trig",
+          "from_port": "output",
+          "to_node": "node_http_n8n",
+          "to_port": "input"
+        }
+      ],
+      "executions_count": 34,
+      "last_executed_at": "2026-09-05T06:27:29.631063+00:00",
+      "created_at": "2026-09-03T14:00:00Z",
+      "updated_at": "2026-09-04T14:00:00Z"
+    }
+  ]
+}

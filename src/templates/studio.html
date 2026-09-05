@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Studio & Scheduler — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/leads" class="nav-item"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+                <a href="/studio" class="nav-item active"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/automations" class="nav-item"><span class="nav-icon">⚡</span> <span data-i18n="nav.automations">Automations</span></a>
+                <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/identity" class="nav-item"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
+                
+                <div class="nav-section-title" data-i18n="nav.analytics_system">Analytics & System</div>
+                <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & Reports</span></a>
+                <a href="/settings" class="nav-item"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform & API Settings</span></a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="meta-status-container" class="status-pill">
+                    <div id="meta-dot" class="status-dot"></div>
+                    <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="st.title">Content Studio & Live Post Scheduler</span>
+                </div>
+                <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <button class="btn-primary" onclick="syncLiveMetaPosts()" id="btn-sync-meta-feed" data-i18n="st.sync_live_btn">🔄 Sync Live Posts & Reels</button>
+                    <button class="btn-secondary" onclick="triggerSchedulerTick()" data-i18n="st.scheduler_check_btn">⚡ Trigger Scheduler Tick</button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <!-- Live Meta Content Section -->
+                <div class="panel-section" style="border-inline-start: 4px solid var(--accent-blue);">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title" style="display:flex; align-items:center; gap:8px;">
+                                <span data-i18n="st.live_title">📺 Live Meta Posts & Reels from Connected Accounts</span>
+                                <span class="badge badge-success num" id="badge-meta-total">0 posts</span>
+                            </h2>
+                            <div class="panel-desc" data-i18n="st.live_desc">Real posts and reels synced live from your connected accounts</div>
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                            <!-- Type Filters -->
+                            <div class="btn-group" id="filter-type-group">
+                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterType('all')" id="flt-type-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Content</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterType('reel')" id="flt-type-reels" data-i18n="st.filter_reels">🎬 Reels Only</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterType('post')" id="flt-type-posts" data-i18n="st.filter_posts">📝 Posts Only</button>
+                            </div>
+                            <!-- Platform Filters -->
+                            <div class="btn-group" id="filter-platform-group">
+                                <button type="button" class="btn-action active-filter" onclick="setLiveFilterPlatform('all')" id="flt-plat-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Platforms</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('instagram')" id="flt-plat-ig" data-i18n="st.filter_ig">📸 Instagram</button>
+                                <button type="button" class="btn-action" onclick="setLiveFilterPlatform('facebook')" id="flt-plat-fb" data-i18n="st.filter_fb">📘 Facebook</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="live-media-status-msg" style="display:none; font-size:12px; margin-bottom:10px;"></div>
+
+                    <!-- Cards Grid -->
+                    <div class="meta-feed-grid" id="meta-live-grid">
+                        <div style="grid-column: 1/-1; text-align:center; padding:30px; color:var(--text-muted);" data-i18n="st.loading_live">
+                            Loading live posts and reels from Meta...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top AI Generator Box -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title" data-i18n="st.ai_gen_title">1. AI Content & Reels Generator</h2>
+                            <div class="panel-desc" data-i18n="st.ai_gen_desc">Generate high-converting social posts & reel scripts with AIDA framework and targeted CTAs</div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label for="gen-topic" data-i18n="st.topic_label">Topic or Marketing Angle</label>
+                            <input type="text" id="gen-topic" data-i18n-placeholder="st.topic_placeholder" placeholder="e.g. 20% discount on summer collections with free express delivery...">
+                        </div>
+                        <div class="form-group">
+                            <label for="gen-type" data-i18n="st.type_label">Format Type</label>
+                            <select id="gen-type">
+                                <option value="post" data-i18n="st.type_post">Marketing Post</option>
+                                <option value="reel_script" data-i18n="st.type_reel">Full Reels Script</option>
+                                <option value="story_sequence" data-i18n="st.type_story">Story Sequence</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="gen-platform" data-i18n="st.platform_label">Target Platform</label>
+                            <select id="gen-platform">
+                                <option value="facebook" data-i18n="st.platform_fb">Facebook</option>
+                                <option value="instagram" data-i18n="st.platform_ig">Instagram</option>
+                                <option value="both" data-i18n="st.platform_both">Facebook & Instagram</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="gen-cta" data-i18n="st.cta_label">CTA Trigger Keyword</label>
+                            <input type="text" id="gen-cta" value="Start" data-i18n-placeholder="st.cta_placeholder" placeholder="Start, Details, Deal...">
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                        <button class="btn-primary" id="btn-gen-ai" onclick="generateAIContent()" data-i18n="st.generate_btn">✨ Generate Social Copy</button>
+                        <div id="ai-result-actions" style="display:none;">
+                            <button class="btn-secondary" onclick="copyAIToPublish()" data-i18n="st.copy_to_editor">Transfer to Publisher Editor Below ↓</button>
+                        </div>
+                    </div>
+                    <div id="ai-result-box" style="display:none; margin-top:14px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:14px; font-size:13px; white-space:pre-wrap; line-height:1.6;"></div>
+                </div>
+
+                <!-- Editor & Publisher Panel with Ruflo Compliance Audit -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title" data-i18n="st.editor_title">2. Publisher & Ruflo Policy Gatekeeper</h2>
+                            <div class="panel-desc" data-i18n="st.editor_desc">Audit content against Meta commerce & advertising policies before publishing</div>
+                        </div>
+                        <button class="btn-secondary" onclick="runComplianceCheck()" data-i18n="st.audit_btn">🛡️ Run Policy Audit</button>
+                    </div>
+
+                    <!-- Compliance Verdict Box -->
+                    <div id="compliance-verdict-box" style="display:none; margin-bottom:14px; padding:12px 16px; border-radius:var(--radius-sm); font-size:12px;"></div>
+
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label for="post-content" data-i18n="st.content_label">Final Post Content or Script</label>
+                        <textarea id="post-content" style="height:140px;" data-i18n-placeholder="st.content_placeholder" placeholder="Write or review your final social post or reel script here..."></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="post-media" data-i18n="st.media_label">Media URL (Image or Video - Required for Instagram)</label>
+                            <input type="url" id="post-media" placeholder="https://example.com/image.jpg">
+                        </div>
+                        <div class="form-group">
+                            <label for="post-platform" data-i18n="st.platform_label">Target Platform</label>
+                            <select id="post-platform">
+                                <option value="facebook" data-i18n="st.platform_fb">Facebook</option>
+                                <option value="instagram" data-i18n="st.platform_ig">Instagram</option>
+                                <option value="both" data-i18n="st.platform_both">Facebook & Instagram</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="post-type" data-i18n="st.type_label">Format Type</label>
+                            <select id="post-type">
+                                <option value="post" data-i18n="st.type_post">Marketing Post</option>
+                                <option value="reel_script" data-i18n="st.type_reel">Full Reels Script</option>
+                                <option value="story_sequence" data-i18n="st.type_story">Story Sequence</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="post-schedule-time" data-i18n="st.schedule_time_label">Scheduled Publish Time (Optional)</label>
+                            <input type="datetime-local" id="post-schedule-time">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px;">
+                        <div class="btn-group">
+                            <button class="btn-primary" onclick="submitPost('publish_now')" data-i18n="st.publish_now_btn">🚀 Publish Now</button>
+                            <button class="btn-secondary" onclick="submitPost('schedule')" data-i18n="st.schedule_btn">📅 Schedule Post</button>
+                            <button class="btn-secondary" onclick="submitPost('draft')" data-i18n="st.save_draft_btn">💾 Save Draft</button>
+                        </div>
+                        <div id="publish-status-msg" style="font-size:12px;"></div>
+                    </div>
+                </div>
+
+                <!-- History & Queue Table -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title" data-i18n="st.history_title">3. Scheduled Queue & Content Drafts</h3>
+                            <div class="panel-desc" data-i18n="st.history_desc">Locally scheduled and drafted content awaiting publishing</div>
+                        </div>
+                        <button class="btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="loadContentPosts()" data-i18n="st.refresh_btn">🔄 Refresh</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th data-i18n="st.th_id">ID</th>
+                                    <th data-i18n="st.th_type">Type</th>
+                                    <th data-i18n="st.th_platform">Platform</th>
+                                    <th data-i18n="st.th_snippet">Snippet</th>
+                                    <th data-i18n="st.th_media">Media</th>
+                                    <th data-i18n="st.th_status">Status</th>
+                                    <th data-i18n="st.th_timing">Timing</th>
+                                    <th data-i18n="st.th_meta_id">Meta ID</th>
+                                    <th data-i18n="st.th_actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="posts-table-body">
+                                <tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 24px;" data-i18n="st.loading_history">Loading post history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+    <script>
+        let currentAIGeneratedText = "";
+        let _allLiveMetaPosts = [];
+
+        function t(key) {
+            return window.hudhudI18n ? window.hudhudI18n.t(key) : key;
+        }
+
+        async function generateAIContent() {
+            const topic = document.getElementById('gen-topic').value.trim();
+            if (!topic) {
+                alert(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                    "يرجى كتابة فكرة أو موضوع المحتوى أولاً!" : 
+                    "Please enter a topic or marketing angle first!");
+                return;
+            }
+
+            const btn = document.getElementById('btn-gen-ai');
+            const resBox = document.getElementById('ai-result-box');
+            const resActions = document.getElementById('ai-result-actions');
+
+            btn.disabled = true;
+            btn.innerHTML = t('st.generating_btn');
+
+            try {
+                const payload = {
+                    topic: topic,
+                    post_type: document.getElementById('gen-type').value,
+                    platform: document.getElementById('gen-platform').value,
+                    cta_keyword: document.getElementById('gen-cta').value.trim() || "Start"
+                };
+
+                const res = await fetch('/api/content/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    currentAIGeneratedText = data.generated_text;
+                    resBox.textContent = data.generated_text;
+                    resBox.style.display = 'block';
+                    resActions.style.display = 'block';
+                } else {
+                    alert("Generation error: " + (data.detail || "Request failed"));
+                }
+            } catch (err) {
+                alert("Connection failed: " + err);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = t('st.generate_btn');
+            }
+        }
+
+        function copyAIToPublish() {
+            if (!currentAIGeneratedText) return;
+            document.getElementById('post-content').value = currentAIGeneratedText;
+            document.getElementById('post-type').value = document.getElementById('gen-type').value;
+            document.getElementById('post-platform').value = document.getElementById('gen-platform').value;
+            document.getElementById('post-content').scrollIntoView({ behavior: 'smooth' });
+            document.getElementById('post-content').focus();
+        }
+
+        async function runComplianceCheck() {
+            const content = document.getElementById('post-content').value.trim();
+            const platform = document.getElementById('post-platform').value;
+            const postType = document.getElementById('post-type').value;
+            const mediaVal = document.getElementById('post-media').value.trim();
+            const box = document.getElementById('compliance-verdict-box');
+
+            if (!content) {
+                alert(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                    "يرجى كتابة نص المنشور أولاً لتدقيقه!" : 
+                    "Please write post content to audit!");
+                return;
+            }
+
+            box.style.display = 'block';
+            box.style.background = 'var(--bg-subtle)';
+            box.style.border = '1px solid var(--border-default)';
+            box.style.color = 'var(--text-secondary)';
+            box.innerHTML = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                'جاري تدقيق الامتثال والسياسات بواسطة وكيل Ruflo…' : 
+                'Auditing compliance & policy checks via Ruflo agent...';
+
+            try {
+                const res = await fetch('/api/content/compliance-check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content_text: content,
+                        platform: platform,
+                        post_type: postType,
+                        media_urls: mediaVal ? [mediaVal] : []
+                    })
+                });
+
+                const data = await res.json();
+                if (data.is_compliant) {
+                    box.style.background = 'var(--badge-green-bg)';
+                    box.style.borderColor = 'rgba(63, 185, 80, 0.4)';
+                    box.style.color = 'var(--badge-green-text)';
+                    const badgeText = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                        `✅ <strong>معتمد للنشر بنجاح!</strong> درجة الجودة: <strong>${data.quality_score}/100</strong>.<br>${data.passed_checks.join(' • ')}` : 
+                        `✅ <strong>Approved for Publishing!</strong> Quality Score: <strong>${data.quality_score}/100</strong>.<br>${data.passed_checks.join(' • ')}`;
+                    box.innerHTML = badgeText;
+                } else {
+                    box.style.background = 'var(--badge-red-bg)';
+                    box.style.borderColor = 'rgba(248, 81, 73, 0.4)';
+                    box.style.color = 'var(--badge-red-text)';
+                    const badgeText = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                        `⚠️ <strong>تم رصد مخالفات للسياسات!</strong> درجة الجودة: <strong>${data.quality_score}/100</strong>.<br>التحذيرات: ${data.warnings.join(' • ')}` : 
+                        `⚠️ <strong>Policy Warning!</strong> Quality Score: <strong>${data.quality_score}/100</strong>.<br>Warnings: ${data.warnings.join(' • ')}`;
+                    box.innerHTML = badgeText;
+                }
+            } catch (e) {
+                box.innerHTML = `Audit failed: ${e}`;
+            }
+        }
+
+        async function submitPost(action) {
+            const content = document.getElementById('post-content').value.trim();
+            const statusDiv = document.getElementById('publish-status-msg');
+            if (!content) {
+                statusDiv.innerHTML = '<span class="error-text">Please enter post copy or script first.</span>';
+                return;
+            }
+
+            const mediaVal = document.getElementById('post-media').value.trim();
+            const mediaList = mediaVal ? [mediaVal] : [];
+            const platform = document.getElementById('post-platform').value;
+            const postType = document.getElementById('post-type').value;
+            const scheduleTime = document.getElementById('post-schedule-time').value;
+
+            if (action === 'schedule' && !scheduleTime) {
+                statusDiv.innerHTML = '<span class="error-text">Please select schedule date & time.</span>';
+                return;
+            }
+
+            if ((platform === 'instagram' || platform === 'both') && !mediaVal && action !== 'draft') {
+                statusDiv.innerHTML = '<span class="error-text">Instagram requires a valid image/video URL.</span>';
+                return;
+            }
+
+            let status = 'draft';
+            if (action === 'publish_now') status = 'publishing';
+            else if (action === 'schedule') status = 'scheduled';
+
+            const payload = {
+                content_text: content,
+                media_urls: mediaList,
+                platform: platform,
+                post_type: postType,
+                status: status,
+                scheduled_for: scheduleTime ? new Date(scheduleTime).toISOString() : null,
+                creation_mode: currentAIGeneratedText && content.includes(currentAIGeneratedText.substring(0, 30)) ? 'ai_generated' : 'manual'
+            };
+
+            statusDiv.innerHTML = '<span class="muted-text">Processing post...</span>';
+
+            try {
+                const res = await fetch('/api/content/posts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    statusDiv.innerHTML = '<span class="success-text">Operation completed successfully!</span>';
+                    document.getElementById('post-content').value = '';
+                    document.getElementById('post-media').value = '';
+                    document.getElementById('post-schedule-time').value = '';
+                    loadContentPosts();
+                } else {
+                    statusDiv.innerHTML = '<span class="error-text">Error: ' + (data.detail || 'Save failed') + '</span>';
+                }
+            } catch (e) {
+                statusDiv.innerHTML = '<span class="error-text">Error: ' + e + '</span>';
+            }
+        }
+
+        async function loadContentPosts() {
+            try {
+                const res = await fetch('/api/content/posts?limit=50');
+                const posts = await res.json();
+                const tbody = document.getElementById('posts-table-body');
+                if (!tbody) return;
+
+                if (!posts || posts.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color: var(--text-muted); padding: 24px;">${t('st.empty_history')}</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = posts.map(p => {
+                    let statusBadgeClass = 'badge-muted';
+                    let statusLabel = t('st.status_draft');
+                    if (p.status === 'published') { statusBadgeClass = 'badge-success'; statusLabel = t('st.status_published'); }
+                    else if (p.status === 'publishing') { statusBadgeClass = 'badge-pending'; statusLabel = t('st.status_publishing'); }
+                    else if (p.status === 'scheduled') { statusBadgeClass = 'badge-fb'; statusLabel = t('st.status_scheduled'); }
+                    else if (p.status === 'failed') { statusBadgeClass = 'badge-reject'; statusLabel = t('st.status_failed'); }
+
+                    const mediaText = (p.media_urls && p.media_urls.length > 0) ? `<a href="${p.media_urls[0]}" target="_blank" style="color:var(--accent-blue-hover);">File (${p.media_urls.length})</a>` : '<span style="color:var(--text-muted);">-</span>';
+                    const timeLocale = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 'ar-EG' : 'en-US';
+                    const timeText = p.published_at ? new Date(p.published_at).toLocaleString(timeLocale) : (p.scheduled_for ? new Date(p.scheduled_for).toLocaleString(timeLocale) : '-');
+                    const snippet = p.content_text.length > 55 ? p.content_text.substring(0, 55) + '…' : p.content_text;
+                    const metaDetails = p.meta_post_id ? `<code class="mono">${p.meta_post_id.substring(0, 20)}…</code>` : (p.error_message ? `<span class="error-text" title="${p.error_message}">Error</span>` : '-');
+
+                    return `
+                        <tr>
+                            <td><code class="mono">${p.id.substring(0, 8)}…</code></td>
+                            <td><span class="badge badge-muted">${p.post_type}</span></td>
+                            <td><span class="badge ${p.platform === 'instagram' ? 'badge-ig' : 'badge-fb'}">${p.platform}</span></td>
+                            <td><span title="${escapeHtml(p.content_text)}">${escapeHtml(snippet)}</span></td>
+                            <td>${mediaText}</td>
+                            <td><span class="badge ${statusBadgeClass}">${statusLabel}</span></td>
+                            <td class="num" style="font-size:12px;">${timeText}</td>
+                            <td>${metaDetails}</td>
+                            <td>
+                                <div class="btn-group">
+                                    ${p.status !== 'published' ? `<button class="btn-action" onclick="publishPostNow('${p.id}')">${t('st.action_publish')}</button>` : ''}
+                                    <button class="btn-action btn-reject" onclick="deletePost('${p.id}')">${t('st.action_delete')}</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Error loading posts:", err);
+            }
+        }
+
+        async function publishPostNow(postId) {
+            if (!confirm(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? "تأكيد النشر الفوري؟" : "Confirm immediate publish?")) return;
+            try {
+                const res = await fetch(`/api/content/posts/${postId}/publish-now`, { method: 'POST' });
+                const data = await res.json();
+                alert(data.status === 'published' ? "Published successfully!" : "Status: " + JSON.stringify(data));
+                loadContentPosts();
+            } catch (err) {
+                alert("Execution failed: " + err);
+            }
+        }
+
+        async function deletePost(postId) {
+            if (!confirm(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? "تأكيد حذف المنشور؟" : "Confirm delete?")) return;
+            try {
+                await fetch(`/api/content/posts/${postId}`, { method: 'DELETE' });
+                loadContentPosts();
+            } catch (err) {
+                alert("Delete failed: " + err);
+            }
+        }
+
+        async function triggerSchedulerTick() {
+            try {
+                const res = await fetch('/api/content/scheduler/trigger', { method: 'POST' });
+                const data = await res.json();
+                alert(`Scheduler checked. Due posts: ${data.due_posts_processed}`);
+                loadContentPosts();
+            } catch (err) {
+                alert("Scheduler error: " + err);
+            }
+        }
+
+        let _liveFilterType = 'all';     // 'all' | 'reel' | 'post'
+        let _liveFilterPlatform = 'all'; // 'all' | 'facebook' | 'instagram'
+
+        async function loadLiveMetaPosts() {
+            const grid = document.getElementById('meta-live-grid');
+            const badge = document.getElementById('badge-meta-total');
+            const statusMsg = document.getElementById('live-media-status-msg');
+            if (!grid) return;
+
+            grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted);">${t('st.loading_live')}</div>`;
+
+            try {
+                const res = await fetch('/api/meta/posts?limit=100&platform=all');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                _allLiveMetaPosts = data.posts || [];
+
+                if (_allLiveMetaPosts.length === 0) {
+                    grid.innerHTML = `
+                        <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">
+                            <div style="font-size:40px;margin-bottom:12px;">📭</div>
+                            <div style="font-size:14px;">${t('st.no_live_posts')}</div>
+                            <div style="margin-top:10px;"><button class="btn-primary" onclick="syncLiveMetaPosts()">${t('st.sync_now')}</button></div>
+                        </div>`;
+                    if (badge) badge.textContent = '0';
+                    return;
+                }
+
+                if (badge) badge.textContent = `${_allLiveMetaPosts.length}`;
+
+                // Calculate dynamic counts
+                const reelsCount = _allLiveMetaPosts.filter(p => p.post_type === 'reel').length;
+                const postsCount = _allLiveMetaPosts.filter(p => p.post_type === 'post').length;
+                const fbCount = _allLiveMetaPosts.filter(p => p.platform === 'facebook').length;
+                const igCount = _allLiveMetaPosts.filter(p => p.platform === 'instagram').length;
+
+                // Update filter buttons labels
+                const fltTypeAll = document.getElementById('flt-type-all');
+                const fltTypeReels = document.getElementById('flt-type-reels');
+                const fltTypePosts = document.getElementById('flt-type-posts');
+                const fltPlatAll = document.getElementById('flt-plat-all');
+                const fltPlatFb = document.getElementById('flt-plat-fb');
+                const fltPlatIg = document.getElementById('flt-plat-ig');
+
+                if (fltTypeAll) fltTypeAll.textContent = `${t('st.filter_all')} (${_allLiveMetaPosts.length})`;
+                if (fltTypeReels) fltTypeReels.textContent = `${t('st.filter_reels')} (${reelsCount})`;
+                if (fltTypePosts) fltTypePosts.textContent = `${t('st.filter_posts')} (${postsCount})`;
+
+                if (fltPlatAll) fltPlatAll.textContent = `All (${_allLiveMetaPosts.length})`;
+                if (fltPlatFb)  fltPlatFb.textContent  = `${t('st.filter_fb')} (${fbCount})`;
+                if (fltPlatIg)  fltPlatIg.textContent  = `${t('st.filter_ig')} (${igCount})`;
+
+                applyLiveFilters();
+
+                if (data.cache_updated_at) {
+                    const dt = new Date(data.cache_updated_at);
+                    if (statusMsg) {
+                        statusMsg.style.display = 'block';
+                        statusMsg.style.color = 'var(--text-muted)';
+                        const timeLocale = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 'ar-EG' : 'en-US';
+                        statusMsg.innerHTML = `✅ Last Synced: ${dt.toLocaleString(timeLocale)} (Meta Graph API cache: ${fbCount} FB, ${igCount} IG)`;
+                    }
+                }
+
+            } catch (err) {
+                console.error('Error loading live meta posts:', err);
+                grid.innerHTML = `
+                    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">
+                        <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
+                        <div>Failed to load live posts: ${escapeHtml(String(err))}</div>
+                        <div style="margin-top:10px;"><button class="btn-secondary" onclick="syncLiveMetaPosts()">Retry</button></div>
+                    </div>`;
+            }
+        }
+
+        function setLiveFilterType(type) {
+            _liveFilterType = type;
+            ['flt-type-all', 'flt-type-reels', 'flt-type-posts'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.style.background = '';
+                    btn.style.color = '';
+                }
+            });
+            const activeId = type === 'all' ? 'flt-type-all' : (type === 'reel' ? 'flt-type-reels' : 'flt-type-posts');
+            const activeBtn = document.getElementById(activeId);
+            if (activeBtn) {
+                activeBtn.style.background = 'var(--accent-blue)';
+                activeBtn.style.color = '#ffffff';
+            }
+            applyLiveFilters();
+        }
+
+        function setLiveFilterPlatform(platform) {
+            _liveFilterPlatform = platform;
+            ['flt-plat-all', 'flt-plat-fb', 'flt-plat-ig'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.style.background = '';
+                    btn.style.color = '';
+                }
+            });
+            const activeId = platform === 'all' ? 'flt-plat-all' : (platform === 'facebook' ? 'flt-plat-fb' : 'flt-plat-ig');
+            const activeBtn = document.getElementById(activeId);
+            if (activeBtn) {
+                activeBtn.style.background = 'var(--accent-blue)';
+                activeBtn.style.color = '#ffffff';
+            }
+            applyLiveFilters();
+        }
+
+        function applyLiveFilters() {
+            let filtered = _allLiveMetaPosts;
+            if (_liveFilterPlatform !== 'all') {
+                filtered = filtered.filter(p => p.platform === _liveFilterPlatform);
+            }
+            if (_liveFilterType !== 'all') {
+                filtered = filtered.filter(p => p.post_type === _liveFilterType);
+            }
+            renderLiveMetaGrid(filtered);
+        }
+
+        function renderLiveMetaGrid(posts) {
+            const grid = document.getElementById('meta-live-grid');
+            if (!grid) return;
+            if (posts.length === 0) {
+                grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">${t('st.no_live_posts')}</div>`;
+                return;
+            }
+            grid.innerHTML = posts.map(post => {
+                const isIG = post.platform === 'instagram';
+                const isReel = post.post_type === 'reel';
+                
+                let platformBadge = '';
+                if (isIG) {
+                    platformBadge = isReel
+                        ? '<span class="badge badge-ig" style="background:#fdf2f8;color:#be185d;border:1px solid #fbcfe8;">🎬 Instagram Reel</span>'
+                        : '<span class="badge badge-ig" style="background:#fdf2f8;color:#be185d;border:1px solid #fbcfe8;">📸 Instagram Post</span>';
+                } else {
+                    platformBadge = isReel
+                        ? '<span class="badge badge-fb" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">🎬 Facebook Reel</span>'
+                        : '<span class="badge badge-fb" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">📘 Facebook Post</span>';
+                }
+
+                const thumb = post.thumbnail_url || post.media_url;
+                const thumbHtml = `
+                    <div class="card-thumb-wrap" style="width:100%;height:180px;background:var(--bg-subtle);overflow:hidden;position:relative;border-radius:var(--radius-sm) var(--radius-sm) 0 0;display:flex;align-items:center;justify-content:center;">
+                        ${thumb 
+                            ? `<img src="${escapeHtml(thumb)}" alt="Thumbnail" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.parentElement.innerHTML='<div style=\\\'width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;background:var(--bg-subtle);\\\'>${isReel ? '🎬' : '📝'}</div>'">` 
+                            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;background:var(--bg-subtle);">${isReel ? '🎬' : '📝'}</div>`
+                        }
+                    </div>`;
+                
+                const caption = (post.content_text || '').trim();
+                const timeLocale = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 'ar-EG' : 'en-US';
+                const pubDate = post.published_at ? new Date(post.published_at).toLocaleDateString(timeLocale, {year:'numeric',month:'short',day:'numeric'}) : '';
+
+                const likes = (post.likes_count || 0).toLocaleString();
+                const comments = (post.comments_count || 0).toLocaleString();
+                const shares = (post.shares_count || 0).toLocaleString();
+                const views = post.views_count ? post.views_count.toLocaleString() : null;
+
+                const linkBtn = post.permalink
+                    ? `<a href="${escapeHtml(post.permalink)}" target="_blank" rel="noopener noreferrer" class="btn-action" style="text-decoration:none;font-size:12px;font-weight:600;padding:5px 12px;background:var(--primary-light,#eff6ff);color:var(--accent-blue,#2563eb);border:1px solid var(--border-subtle);">${t('st.open_link')}</a>`
+                    : '';
+
+                return `
+                    <div class="meta-post-card" style="border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-card);border:1px solid var(--border-default);display:flex;flex-direction:column;height:350px;transition:border-color 0.2s,transform 0.2s;box-shadow:var(--shadow-sm);" onmouseover="this.style.borderColor='var(--accent-blue)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border-default)';this.style.transform='translateY(0)'">
+                        ${thumbHtml}
+                        <div style="padding:14px;flex:1;display:flex;flex-direction:column;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;height:24px;margin-bottom:8px;">
+                                ${platformBadge}
+                                ${pubDate ? `<span style="font-size:11px;color:var(--text-muted);" class="num">${pubDate}</span>` : ''}
+                            </div>
+                            <div style="height:38px;margin-bottom:12px;overflow:hidden;">
+                                <h4 style="font-size:13px;font-weight:600;line-height:19px;height:38px;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;color:var(--text-primary);" title="${escapeHtml(caption)}">${escapeHtml(caption || '—')}</h4>
+                            </div>
+                            
+                            <!-- Bottom Action Row with Metrics beside the View Button -->
+                            <div style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border-subtle);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                <div class="metrics-pill-group" style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-muted);font-weight:600;">
+                                    <span title="Likes / إعجابات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">❤️ <span class="num">${likes}</span></span>
+                                    <span title="Comments / تعليقات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">💬 <span class="num">${comments}</span></span>
+                                    ${!isIG ? `<span title="Shares / مشاركات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">🔁 <span class="num">${shares}</span></span>` : ''}
+                                    ${views ? `<span title="Views / مشاهدات" style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-subtle);padding:3px 7px;border-radius:6px;border:1px solid var(--border-subtle);">👁️ <span class="num">${views}</span></span>` : ''}
+                                </div>
+                                <div>${linkBtn}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        async function syncLiveMetaPosts() {
+            const btn = document.getElementById('btn-sync-meta-feed');
+            const statusMsg = document.getElementById('live-media-status-msg');
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Syncing...'; }
+            if (statusMsg) { statusMsg.style.display = 'block'; statusMsg.style.color = 'var(--text-muted)'; statusMsg.innerHTML = 'Connecting to Meta Graph API...'; }
+
+            try {
+                const res = await fetch('/api/meta/sync-posts', { method: 'POST' });
+                if (!res.ok) throw new Error(`HTTP ${res.status} — ${await res.text()}`);
+                const data = await res.json();
+
+                if (statusMsg) {
+                    statusMsg.style.color = 'var(--badge-green-text)';
+                    statusMsg.innerHTML = `✅ Synced ${data.total_synced || 0} items (${data.facebook_count || 0} FB + ${data.instagram_count || 0} IG)`;
+                }
+                await loadLiveMetaPosts();
+            } catch (err) {
+                console.error('Sync error:', err);
+                if (statusMsg) {
+                    statusMsg.style.color = 'var(--badge-red-text)';
+                    statusMsg.innerHTML = `❌ Sync failed: ${escapeHtml(String(err))}`;
+                }
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = t('st.sync_live_btn'); }
+            }
+        }
+
+        window.addEventListener('hudhud_lang_change', () => {
+            loadContentPosts();
+            loadLiveMetaPosts();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadContentPosts();
+            loadLiveMetaPosts();
+        });
+    </script>
+</body>
+</html>

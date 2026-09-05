@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Live Inbox — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+    <style>
+        .inbox-wrapper {
+            display: flex;
+            height: calc(100vh - 100px);
+            background: #ffffff;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .threads-col {
+            width: 320px;
+            min-width: 280px;
+            border-inline-end: 1px solid var(--border-default);
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+        }
+        .threads-head {
+            padding: 14px;
+            border-bottom: 1px solid var(--border-default);
+            background: #ffffff;
+        }
+        .filter-chip-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+        .filter-chip {
+            padding: 5px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .filter-chip.active {
+            background: var(--accent-blue);
+            color: #fff;
+            border-color: var(--accent-blue);
+        }
+        .conv-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .conv-card {
+            padding: 14px;
+            border-bottom: 1px solid var(--border-muted);
+            cursor: pointer;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            transition: background 0.15s;
+        }
+        .conv-card:hover {
+            background: var(--bg-subtle);
+        }
+        .conv-card.active {
+            background: #eff6ff;
+            border-inline-start: 3px solid var(--accent-blue);
+        }
+        .conv-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--text-primary);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .channel-dot {
+            position: absolute;
+            bottom: -2px;
+            inset-inline-end: -2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            border: 2px solid #ffffff;
+        }
+        .channel-dot.instagram { background: #e1306c; color: #fff; }
+        .channel-dot.messenger { background: #0084ff; color: #fff; }
+        .channel-dot.whatsapp { background: #25d366; color: #fff; }
+
+        .chat-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f8fafc;
+            min-width: 0;
+        }
+        .chat-top {
+            height: 60px;
+            padding: 0 20px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .chat-stream {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .bubble-row {
+            display: flex;
+            flex-direction: column;
+            max-width: 72%;
+        }
+        .bubble-row.incoming { align-self: flex-start; }
+        .bubble-row.outgoing { align-self: flex-end; }
+        .bubble {
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 13.5px;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+        .bubble-row.incoming .bubble {
+            background: #ffffff;
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-bottom-left-radius: 3px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        [dir="rtl"] .bubble-row.incoming .bubble {
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 3px;
+        }
+        .bubble-row.outgoing .bubble {
+            background: var(--accent-blue);
+            color: #ffffff;
+            border-bottom-right-radius: 3px;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+        }
+        [dir="rtl"] .bubble-row.outgoing .bubble {
+            border-bottom-right-radius: 14px;
+            border-bottom-left-radius: 3px;
+        }
+        .ai-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: var(--accent-blue);
+            margin-top: 4px;
+            align-self: flex-end;
+        }
+
+        .chat-bottom {
+            padding: 14px 18px;
+            background: #ffffff;
+            border-top: 1px solid var(--border-default);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .chat-text-input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            font-size: 13.5px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .chat-text-input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .dossier-col {
+            width: 280px;
+            border-inline-start: 1px solid var(--border-default);
+            background: #ffffff;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item active"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/leads" class="nav-item"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+                <a href="/studio" class="nav-item"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/knowledge" class="nav-item"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/identity" class="nav-item"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
+                
+                <div class="nav-section-title" data-i18n="nav.analytics_system">Analytics & System</div>
+                <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & Reports</span></a>
+                <a href="/settings" class="nav-item"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform & API Settings</span></a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="meta-status-container" class="status-pill">
+                    <div id="meta-dot" class="status-dot"></div>
+                    <span id="meta-status-badge">Checking connection...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="inbox.title">Unified Live Inbox</span>
+                </div>
+                <div class="topbar-actions">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <span class="badge badge-success" data-i18n="inbox.ai_active_pill">⚡ Auto-Reply: Active (avg 3.4s)</span>
+                </div>
+            </header>
+
+            <div class="app-content" style="padding: 16px 24px;">
+                <!-- Unified Inbox Three-Column Container -->
+                <div class="inbox-wrapper">
+                    <!-- Column 1: Threads List -->
+                    <div class="threads-col">
+                        <div class="threads-head">
+                            <input type="text" class="chat-text-input" style="width: 100%; font-size: 13px; padding: 8px 12px;" data-i18n-placeholder="inbox.search_placeholder" placeholder="Search conversations...">
+                            <div class="filter-chip-row">
+                                <button class="filter-chip active" onclick="filterChannel('all', this)" data-i18n="inbox.filter_all">All</button>
+                                <button class="filter-chip" onclick="filterChannel('instagram', this)" data-i18n="inbox.filter_ig">Instagram</button>
+                                <button class="filter-chip" onclick="filterChannel('messenger', this)" data-i18n="inbox.filter_fb">Messenger</button>
+                                <button class="filter-chip" onclick="filterChannel('whatsapp', this)" data-i18n="inbox.filter_wa">WhatsApp</button>
+                            </div>
+                        </div>
+
+                        <div class="conv-list" id="threads-list">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Active Chat Area -->
+                    <div class="chat-col">
+                        <!-- Chat Header -->
+                        <div class="chat-top">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="conv-avatar" id="active-chat-avatar" style="width: 36px; height: 36px; font-size: 14px;">A</div>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);" id="active-chat-name">Alex Johnson</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);" id="active-chat-channel">📸 Instagram Direct · 2m ago</div>
+                                </div>
+                            </div>
+
+                            <!-- Human Takeover Button -->
+                            <div>
+                                <button class="btn-secondary" id="btn-takeover" onclick="toggleHumanTakeover()" style="font-size: 12.5px; padding: 6px 14px; border-color: var(--badge-amber-text); color: var(--badge-amber-text);">
+                                    <span data-i18n="inbox.human_takeover_btn">🛑 Human Takeover</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Takeover Alert Banner -->
+                        <div id="takeover-banner" style="display: none; background: #fffbeb; border-bottom: 1px solid #fde68a; color: #b45309; padding: 10px 20px; font-size: 13px; font-weight: 500; justify-content: space-between; align-items: center;">
+                            <span>⚠️ Human Takeover Active — AI responses paused so you can chat directly with this buyer.</span>
+                            <button onclick="resumeAI()" style="background: #f59e0b; color: #ffffff; border: none; padding: 4px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; cursor: pointer;">Resume AI</button>
+                        </div>
+
+                        <!-- Messages Stream -->
+                        <div class="chat-stream" id="chat-messages">
+                            <!-- Injected dynamically -->
+                        </div>
+
+                        <!-- Chat Bottom Input -->
+                        <div class="chat-bottom">
+                            <input type="text" id="reply-input" class="chat-text-input" data-i18n-placeholder="inbox.type_reply_placeholder" placeholder="Type a manual message here (will send directly and pause AI)..." onkeydown="handleInputKey(event)">
+                            <button class="btn-primary" onclick="sendManualReply()" data-i18n="inbox.send_btn" style="padding: 9px 20px;">Send 🚀</button>
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Lead Dossier Panel -->
+                    <div class="dossier-col">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;" data-i18n="inbox.dossier_title">Customer Dossier & Deal</div>
+                            <div style="text-align: center; padding: 16px; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-default);">
+                                <div style="font-size: 32px; margin-bottom: 6px;">👤</div>
+                                <div style="font-weight: 700; font-size: 15px; color: var(--text-primary);" id="lead-panel-name">Alex Johnson</div>
+                                <div style="font-size: 12px; color: var(--text-muted);" id="lead-panel-handle">@alex_agency</div>
+                                <div style="margin-top: 10px;">
+                                    <span class="badge badge-success" id="lead-panel-badge">🔥 Hot Lead (94% Intent)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;" data-i18n="inbox.dossier_interest">Detected Buying Need:</div>
+                            <div style="font-size: 13px; line-height: 1.6; background: #ffffff; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); color: var(--text-primary);" id="lead-panel-need">
+                                Inquiring about annual agency growth tier, asked about pricing and 4-month payment plans.
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <button class="btn-primary" onclick="sendBookingLink()" style="font-size: 12.5px; padding: 9px; width: 100%; justify-content: center;" data-i18n="inbox.dossier_send_link">
+                                    📅 Send Booking Link
+                                </button>
+                                <button class="btn-secondary" onclick="markLeadWon()" style="font-size: 12.5px; padding: 9px; width: 100%; justify-content: center; border-color: #059669; color: #059669;" data-i18n="inbox.dossier_close_won">
+                                    ✓ Mark Deal Won
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: auto; border-top: 1px solid var(--border-default); padding-top: 14px; font-size: 11.5px; color: var(--text-muted); line-height: 1.5;" data-i18n="inbox.source_kb_note">
+                            AI Note: Answer generated strictly from Knowledge Base prices.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- i18n Localization Engine Script -->
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+
+    <script>
+        let liveConversations = [];
+        let hasLoadedLive = false;
+        let activeConvId = null;
+        let currentFilter = "all";
+
+        async function fetchLiveConversations() {
+            try {
+                const res = await fetch('/api/inbox/conversations');
+                if (res.ok) {
+                    const data = await res.json();
+                    liveConversations = data.conversations || [];
+                    hasLoadedLive = true;
+                    if (liveConversations.length > 0 && !activeConvId) {
+                        activeConvId = liveConversations[0].id;
+                    }
+                    renderThreads();
+                    if (activeConvId) {
+                        selectConversation(activeConvId);
+                    } else {
+                        renderEmptyChat();
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading live conversations:", e);
+                hasLoadedLive = true;
+                renderThreads();
+            }
+        }
+
+        function getActiveConversationsData() {
+            return liveConversations;
+        }
+
+        function renderThreads() {
+            const list = document.getElementById('threads-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const data = getActiveConversationsData();
+            const filtered = data.filter(c => currentFilter === 'all' || c.channel === currentFilter);
+
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+                        <div style="font-size: 32px; margin-bottom: 8px;">💬</div>
+                        <div style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                            ${isAr ? 'لا توجد محادثات واردة بعد' : 'No active inquiries yet'}
+                        </div>
+                        <div style="font-size: 12px; line-height: 1.5; color: var(--text-secondary);">
+                            ${isAr ? 'رسائل العملاء على إنستغرام أو ماسنجر ستظهر هنا لحظياً وسيقوم الذكاء الاصطناعي بالرد عليها فوراً.' : 'Customer messages on Instagram or Messenger will appear here and receive instant AI auto-replies.'}
+                        </div>
+                    </div>
+                `;
+                renderEmptyChat();
+                return;
+            }
+
+            filtered.forEach(c => {
+                const item = document.createElement('div');
+                item.className = `conv-card ${c.id === activeConvId ? 'active' : ''}`;
+                item.onclick = () => selectConversation(c.id);
+
+                const msgs = c.messages || [];
+                const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+
+                item.innerHTML = `
+                    <div class="conv-avatar">
+                        ${c.name[0]}
+                        <span class="channel-dot ${c.channel}">${c.channel === 'instagram' ? '📸' : c.channel === 'messenger' ? '💬' : '📱'}</span>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                            <span style="font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${c.name}</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">${c.lastTime}</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${lastMsg ? (lastMsg.sender === 'ai' ? '🤖 ' : '') + lastMsg.text : (c.need || '')}
+                        </div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function renderEmptyChat() {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            document.getElementById('active-chat-avatar').textContent = '🤖';
+            document.getElementById('active-chat-name').textContent = isAr ? 'صندوق الوارد المباشر' : 'Autonomous Live Inbox';
+            document.getElementById('active-chat-channel').textContent = isAr ? 'جاهز لاستقبال الرسائل عبر القنوات المتصلة' : 'Ready for incoming messages on connected channels';
+            
+            // Clear Dossier
+            document.getElementById('lead-panel-name').textContent = isAr ? 'لم يتم تحديد عميل بعد' : 'No Lead Selected';
+            document.getElementById('lead-panel-handle').textContent = '—';
+            document.getElementById('lead-panel-badge').textContent = isAr ? 'بانتظار الرسائل' : 'Awaiting Inquiries';
+            document.getElementById('lead-panel-need').textContent = isAr 
+                ? 'عند ورود أي استفسار أو تعليق من عميل جديد، سيقوم الذكاء الاصطناعي بتحليله وتلخيص اهتمامه هنا تلقائياً.'
+                : 'When a new inquiry arrives from Instagram, Messenger, or WhatsApp, the AI will analyze intent and summarize customer details here.';
+
+            const container = document.getElementById('chat-messages');
+            if (container) {
+                container.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--text-muted); padding: 20px;">
+                        <div style="font-size: 44px; margin-bottom: 12px;">🚀</div>
+                        <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
+                            ${isAr ? 'وكيل المبيعات الذكي نشط ومستعد' : 'Autonomous AI Sales Agent is Ready'}
+                        </h3>
+                        <p style="font-size: 13px; color: var(--text-secondary); max-width: 360px; line-height: 1.6; margin-bottom: 16px;">
+                            ${isAr ? 'بمجرد أن يكتب أي عميل تعليقاً على ريلز أو يرسل رسالة خاصة، سيتم فتح محادثة هنا والرد خلال 3 إلى 5 ثوانٍ.' : 'As soon as a customer comments on a Reel or sends a DM, their thread will appear here with instant AI responses.'}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        function selectConversation(id) {
+            activeConvId = id;
+            renderThreads();
+            const data = getActiveConversationsData();
+            const conv = data.find(c => c.id === id);
+            if (!conv) return;
+
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+
+            document.getElementById('active-chat-avatar').textContent = conv.name[0];
+            document.getElementById('active-chat-name').textContent = conv.name;
+            document.getElementById('active-chat-channel').textContent = `${conv.platformText} · ${conv.lastTime}`;
+
+            document.getElementById('lead-panel-name').textContent = conv.name;
+            document.getElementById('lead-panel-handle').textContent = conv.handle;
+            document.getElementById('lead-panel-badge').textContent = conv.leadBadge;
+            document.getElementById('lead-panel-need').textContent = conv.need;
+
+            const takeoverBanner = document.getElementById('takeover-banner');
+            const takeoverBtn = document.getElementById('btn-takeover');
+            if (conv.isHumanTakeover) {
+                takeoverBanner.style.display = 'flex';
+                takeoverBtn.textContent = isAr ? '🤖 إعادة تشغيل الذكاء' : '🤖 Resume AI Engine';
+                takeoverBtn.style.color = '#059669';
+                takeoverBtn.style.borderColor = '#059669';
+            } else {
+                takeoverBanner.style.display = 'none';
+                takeoverBtn.textContent = isAr ? '🛑 تولي المحادثة شخصياً' : '🛑 Human Takeover';
+                takeoverBtn.style.color = '#d97706';
+                takeoverBtn.style.borderColor = '#d97706';
+            }
+
+            renderMessages(conv.messages);
+        }
+
+        function renderMessages(messages) {
+            const container = document.getElementById('chat-messages');
+            if (!container) return;
+            container.innerHTML = '';
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+
+            messages.forEach(m => {
+                const row = document.createElement('div');
+                row.className = `bubble-row ${m.sender === 'customer' ? 'incoming' : 'outgoing'}`;
+
+                const badgeText = isAr ? `⚡ تم الرد بالذكاء الاصطناعي (${m.responseTime || '3.2s'})` : `⚡ AI Replied in ${m.responseTime || '3.2s'}`;
+
+                row.innerHTML = `
+                    <div class="bubble">
+                        ${m.text}
+                    </div>
+                    ${m.sender === 'ai' ? `<span class="ai-badge-pill">${badgeText}</span>` : ''}
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 3px; align-self: ${m.sender === 'customer' ? 'flex-start' : 'flex-end'};">
+                        ${m.time}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function filterChannel(channel, btn) {
+            currentFilter = channel;
+            document.querySelectorAll('.filter-chip').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            renderThreads();
+        }
+
+        function toggleHumanTakeover() {
+            const data = getActiveConversationsData();
+            const conv = data.find(c => c.id === activeConvId);
+            if (!conv) return;
+            conv.isHumanTakeover = !conv.isHumanTakeover;
+            selectConversation(activeConvId);
+        }
+
+        function resumeAI() {
+            const data = getActiveConversationsData();
+            const conv = data.find(c => c.id === activeConvId);
+            if (!conv) return;
+            conv.isHumanTakeover = false;
+            selectConversation(activeConvId);
+        }
+
+        function sendManualReply() {
+            const input = document.getElementById('reply-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const data = getActiveConversationsData();
+            const conv = data.find(c => c.id === activeConvId);
+            if (!conv) return;
+
+            conv.isHumanTakeover = true;
+
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
+
+            conv.messages.push({
+                sender: 'outgoing',
+                text: text,
+                time: timeStr
+            });
+
+            input.value = '';
+            selectConversation(activeConvId);
+        }
+
+        function handleInputKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendManualReply();
+            }
+        }
+
+        function sendBookingLink() {
+            const data = getActiveConversationsData();
+            const conv = data.find(c => c.id === activeConvId);
+            if (!conv) return;
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const link = "https://calendly.com/your-business/strategy-call";
+            const msgText = isAr 
+                ? `يسعدنا جداً يا فندم! تقدر تختار الميعاد المناسب لمكالمتك مع فريقنا عبر الرابط ده: ${link}`
+                : `We'd love to connect! You can pick the best time for your 1-on-1 strategy call with our team here: ${link}`;
+            
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
+            conv.messages.push({ sender: 'outgoing', text: msgText, time: timeStr });
+            selectConversation(activeConvId);
+        }
+
+        function markLeadWon() {
+            const data = getActiveConversationsData();
+            const conv = data.find(c => c.id === activeConvId);
+            if (!conv) return;
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            conv.leadBadge = isAr ? "🏆 صفقة ناجحة (Closed Won)" : "🏆 Closed Won ($2,500)";
+            selectConversation(activeConvId);
+            alert(isAr ? `🎉 مبروك! تم تسجيل العميل (${conv.name}) كصفقة ناجحة في نظام الـ CRM!` : `🎉 Congratulations! Marked lead (${conv.name}) as Won in CRM!`);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchLiveConversations();
+        });
+
+        window.addEventListener('hudhud_lang_change', () => {
+            renderThreads();
+            if (activeConvId) {
+                selectConversation(activeConvId);
+            } else {
+                renderEmptyChat();
+            }
+        });
+    </script>
+</body>
+</html>

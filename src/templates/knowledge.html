@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Base — Hudhud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/saas.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Persistent Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard" class="brand-logo-link">
+                    <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+                </a>
+                <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section-title" data-i18n="nav.conversations">Conversations & AI Agent</div>
+                <a href="/inbox" class="nav-item"><span class="nav-icon">💬</span> <span data-i18n="nav.inbox">Live Inbox</span></a>
+                <a href="/onboarding" class="nav-item"><span class="nav-icon">🚀</span> <span data-i18n="nav.onboarding">Agent Setup</span></a>
+
+                <div class="nav-section-title" data-i18n="nav.workspaces">Workspaces</div>
+                <a href="/dashboard" class="nav-item"><span class="nav-icon">📊</span> <span data-i18n="nav.overview">Overview</span></a>
+                <a href="/leads" class="nav-item"><span class="nav-icon">👥</span> <span data-i18n="nav.leads">Leads CRM</span></a>
+                <a href="/studio" class="nav-item"><span class="nav-icon">✍️</span> <span data-i18n="nav.studio">Content Studio</span></a>
+                <a href="/knowledge" class="nav-item active"><span class="nav-icon">🧠</span> <span data-i18n="nav.knowledge">Knowledge Base</span></a>
+                <a href="/identity" class="nav-item"><span class="nav-icon">🔍</span> <span data-i18n="nav.identity">Identity Review</span></a>
+                
+                <div class="nav-section-title" data-i18n="nav.analytics_system">Analytics & System</div>
+                <a href="/analytics" class="nav-item"><span class="nav-icon">📈</span> <span data-i18n="nav.analytics">Analytics & Reports</span></a>
+                <a href="/settings" class="nav-item"><span class="nav-icon">⚙️</span> <span data-i18n="nav.settings">Platform & API Settings</span></a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div id="meta-status-container" class="status-pill">
+                    <div id="meta-dot" class="status-dot"></div>
+                    <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current" data-i18n="kb.title">Knowledge Base</span>
+                </div>
+                <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <button class="btn-secondary" onclick="syncWithMeta()" id="btn-sync-meta" data-i18n="kb.sync_meta_btn">🔄 Sync & Ingest from Meta</button>
+                    <button class="btn-primary" onclick="showNewDocModal()" data-i18n="kb.new_doc_btn">+ New Knowledge Doc</button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                <!-- Metrics Strip -->
+                <div class="metrics-strip">
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="kb.kpi_docs">Total Knowledge Documents</div>
+                        <div id="stat-docs-count" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="kb.kpi_docs_sub">Indexed Markdown files in memory</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="kb.kpi_words">Total Knowledge Words</div>
+                        <div id="stat-words-count" class="metric-val">0</div>
+                        <div class="metric-sub" data-i18n="kb.kpi_words_sub">Verified facts & sales guidelines</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="kb.kpi_sync_status">AI Knowledge Sync</div>
+                        <div class="metric-val" style="font-size:16px; color:var(--badge-blue-text);" data-i18n="kb.kpi_sync_val">Active & Live</div>
+                        <div class="metric-sub" data-i18n="kb.kpi_sync_sub">Instant contextual retrieval active</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label" data-i18n="kb.kpi_quality">Knowledge Accuracy</div>
+                        <div class="metric-val" style="font-size:16px; color:var(--badge-green-text);" data-i18n="kb.kpi_quality_val">100% Grounded</div>
+                        <div class="metric-sub" data-i18n="kb.kpi_quality_sub">Answers strictly sourced from your business facts</div>
+                    </div>
+                </div>
+
+                <!-- Main Split Workspace: File Explorer & Live Editor -->
+                <div class="split-workspace">
+                    <!-- Column: Document Explorer -->
+                    <div>
+                        <div class="panel-section" style="margin-bottom: 16px; padding: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <span style="font-size: 13px; font-weight: 600;" data-i18n="kb.stored_files">Stored Knowledge Documents</span>
+                                <button class="btn-action" onclick="loadDocumentsList()" data-i18n="kb.refresh_list">Refresh 🔄</button>
+                            </div>
+                            <div id="docs-list-container" style="max-height: 480px; overflow-y: auto;">
+                                <div style="text-align: center; color: var(--text-muted); padding: 20px;" data-i18n="kb.loading_docs">Loading documents...</div>
+                            </div>
+                        </div>
+
+                        <!-- Multi-Format File Uploader Box -->
+                        <div class="panel-section" style="padding: 14px;">
+                            <span style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;" data-i18n="kb.upload_box_title">Upload External Files (.md, .pdf, images)</span>
+                            <div style="border: 2px dashed var(--border-default); border-radius: var(--radius-sm); padding: 18px; text-align: center; background: var(--bg-input);">
+                                <input type="file" id="file-upload-input" accept=".md,.txt,.pdf,.png,.jpg,.jpeg,.webp" style="display: none;" onchange="handleFileUpload(event)">
+                                <button class="btn-secondary" onclick="document.getElementById('file-upload-input').click()" data-i18n="kb.choose_file_btn">📁 Choose File to Upload</button>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;" data-i18n="kb.upload_box_hint">Supports Markdown, Text, PDF, and Promo Images (Gemini Vision)</div>
+                            </div>
+                            <div id="upload-status" style="margin-top: 8px; font-size: 12px; display: none;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Column: Markdown Editor & Semantic Search Simulator -->
+                    <div>
+                        <!-- Active Document Editor -->
+                        <div class="panel-section" style="margin-bottom: 20px;">
+                            <div class="panel-header">
+                                <div>
+                                    <h3 class="panel-title" id="editor-doc-title" data-i18n="kb.editor_choose">Doc Editor: Select a file</h3>
+                                    <div class="panel-desc" id="editor-doc-meta" data-i18n="kb.editor_choose_sub">Choose a document from the left list to read or edit</div>
+                                </div>
+                                <div class="btn-group">
+                                    <button class="btn-action btn-reject" id="btn-delete-doc" onclick="deleteCurrentDoc()" style="display: none;" data-i18n="kb.delete_btn">Delete 🗑️</button>
+                                    <button class="btn-primary" id="btn-save-doc" onclick="saveCurrentDoc()" style="display: none;" data-i18n="kb.save_btn">💾 Save & Hot-Reload Memory</button>
+                                </div>
+                            </div>
+                            <textarea id="doc-content-editor" style="width: 100%; min-height: 380px; font-family: 'Inter', monospace; font-size: 13px; line-height: 1.6;" data-i18n-placeholder="kb.editor_placeholder" placeholder="Document content in Markdown format..."></textarea>
+                            <div id="editor-feedback" style="margin-top: 8px; font-size: 12px; display: none;"></div>
+                        </div>
+
+                        <!-- Developer-Only: Hybrid Semantic Search Tester -->
+                        <div class="panel-section dev-only">
+                            <div class="panel-header">
+                                <div>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <h3 class="panel-title" data-i18n="kb.rag_tester_title">🔬 Knowledge Base Retrieval Tester</h3>
+                                        <span class="badge badge-pending" style="font-size:11px;">Admin Console Only</span>
+                                    </div>
+                                    <div class="panel-desc" data-i18n="kb.rag_tester_desc">Test customer questions with various dialects and watch exact knowledge chunks retrieved without external vector DBs</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                                <input type="text" id="semantic-query-input" data-i18n-placeholder="kb.search_placeholder" placeholder="Type sample customer inquiry (e.g., pricing, refund policies, turnaround time)..." style="flex: 1;">
+                                <button class="btn-primary" onclick="testSemanticSearch()" data-i18n="kb.test_search_btn">🔍 Test Semantic Search</button>
+                            </div>
+                            <div id="semantic-results-container" style="display: none;">
+                                <div id="semantic-results-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- New Doc Modal -->
+    <div id="new-doc-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); width: 480px; max-width: 90%; padding: 20px;">
+            <h3 style="font-size: 16px; margin-bottom: 12px;" data-i18n="kb.modal_title">Create New Knowledge Document</h3>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label data-i18n="kb.modal_filename">File Name (with .md extension)</label>
+                <input type="text" id="new-doc-name" placeholder="custom_knowledge.md">
+            </div>
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label data-i18n="kb.modal_initial">Initial Markdown Content</label>
+                <textarea id="new-doc-initial-content" placeholder="# Title..." style="min-height: 120px;"></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn-secondary" onclick="hideNewDocModal()" data-i18n="kb.modal_cancel">Cancel</button>
+                <button class="btn-primary" onclick="createNewDoc()" data-i18n="kb.modal_create">Create & Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/i18n.js"></script>
+    <script src="/static/saas.js"></script>
+    <script>
+        let currentEditingFilename = null;
+
+        function t(key, replacements) {
+            return window.hudhudI18n ? window.hudhudI18n.t(key, replacements) : key;
+        }
+
+        async function loadDocumentsList() {
+            try {
+                const res = await fetch('/api/knowledge/documents');
+                const data = await res.json();
+                const docs = data.documents || [];
+
+                document.getElementById('stat-docs-count').textContent = docs.length;
+                const totalWords = docs.reduce((acc, d) => acc + (d.words_count || 0), 0);
+                document.getElementById('stat-words-count').textContent = totalWords.toLocaleString();
+
+                const listContainer = document.getElementById('docs-list-container');
+                if (docs.length === 0) {
+                    listContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">${t('kb.no_docs')}</div>`;
+                    return;
+                }
+
+                const coreLabel = t('kb.core_badge');
+                const extractedLabel = t('kb.extracted_badge');
+
+                listContainer.innerHTML = docs.map(d => `
+                    <div class="doc-item ${currentEditingFilename === d.filename ? 'active' : ''}" onclick="selectDocument('${escapeHtml(d.filename)}')">
+                        <div class="doc-title">
+                            <span>📄 ${escapeHtml(d.filename)}</span>
+                            ${d.is_core ? `<span class="badge badge-fb" style="font-size:10px;">${coreLabel}</span>` : `<span class="badge badge-muted" style="font-size:10px;">${extractedLabel}</span>`}
+                        </div>
+                        <div class="doc-meta">
+                            <span class="num">${t('kb.words_count', { count: (d.words_count || 0).toLocaleString() })}</span>
+                            <span class="num">${Math.round((d.size_bytes || 0) / 1024)} KB</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                if (!currentEditingFilename && docs.length > 0) {
+                    selectDocument(docs[0].filename);
+                }
+            } catch (e) {
+                console.error("Error loading documents:", e);
+            }
+        }
+
+        async function selectDocument(filename) {
+            currentEditingFilename = filename;
+            const titlePrefix = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 'محرر المستند: ' : 'Doc Editor: ';
+            document.getElementById('editor-doc-title').textContent = titlePrefix + filename;
+            document.getElementById('editor-doc-meta').textContent = '...';
+            document.getElementById('btn-save-doc').style.display = 'inline-flex';
+            document.getElementById('btn-delete-doc').style.display = 'inline-flex';
+
+            // Mark active class in list
+            document.querySelectorAll('.doc-item').forEach(el => el.classList.remove('active'));
+            // Refetch content
+            try {
+                const res = await fetch(`/api/knowledge/documents/${encodeURIComponent(filename)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('doc-content-editor').value = data.content || '';
+                    const metaMsg = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                        `جاهز للتحرير والـ Hot-Reload • ${data.content.length} حرف` :
+                        `Ready for editing & hot-reload • ${data.content.length} characters`;
+                    document.getElementById('editor-doc-meta').textContent = metaMsg;
+                } else {
+                    document.getElementById('editor-doc-meta').textContent = 'Error reading document';
+                }
+            } catch (e) {
+                console.error("Error fetching doc:", e);
+            }
+        }
+
+        async function saveCurrentDoc() {
+            if (!currentEditingFilename) return;
+            const content = document.getElementById('doc-content-editor').value;
+            const feedback = document.getElementById('editor-feedback');
+            feedback.style.display = 'block';
+            feedback.className = 'muted-text';
+            feedback.textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
+                'جاري الحفظ وتحديث ذاكرة الذكاء الاصطناعي…' : 
+                'Saving and updating AI memory...';
+
+            try {
+                const res = await fetch(`/api/knowledge/documents/${encodeURIComponent(currentEditingFilename)}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ content: content })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    feedback.className = 'success-text';
+                    feedback.textContent = '✅ ' + (data.message || 'Saved successfully!');
+                    loadDocumentsList();
+                } else {
+                    feedback.className = 'error-text';
+                    feedback.textContent = '❌ Error: ' + (data.detail || 'Save failed');
+                }
+            } catch (e) {
+                feedback.className = 'error-text';
+                feedback.textContent = '❌ Connection failed';
+            }
+        }
+
+        async function deleteCurrentDoc() {
+            if (!currentEditingFilename) return;
+            const confirmMsg = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ?
+                `هل أنت متأكد من رغبتك في حذف المستند '${currentEditingFilename}' نهائياً؟` :
+                `Are you sure you want to permanently delete '${currentEditingFilename}'?`;
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            try {
+                const res = await fetch(`/api/knowledge/documents/${encodeURIComponent(currentEditingFilename)}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    currentEditingFilename = null;
+                    document.getElementById('doc-content-editor').value = '';
+                    document.getElementById('editor-doc-title').textContent = t('kb.editor_choose');
+                    document.getElementById('btn-save-doc').style.display = 'none';
+                    document.getElementById('btn-delete-doc').style.display = 'none';
+                    loadDocumentsList();
+                } else {
+                    const err = await res.json();
+                    alert('Error: ' + (err.detail || 'Delete failed'));
+                }
+            } catch (e) {
+                alert('Connection error');
+            }
+        }
+
+        function showNewDocModal() {
+            document.getElementById('new-doc-modal').style.display = 'flex';
+        }
+        function hideNewDocModal() {
+            document.getElementById('new-doc-modal').style.display = 'none';
+        }
+
+        async function createNewDoc() {
+            let name = document.getElementById('new-doc-name').value.trim();
+            if (!name) {
+                alert('Please provide a document name');
+                return;
+            }
+            if (!name.endsWith('.md')) {
+                name += '.md';
+            }
+            const content = document.getElementById('new-doc-initial-content').value;
+
+            try {
+                const res = await fetch('/api/knowledge/documents', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ filename: name, content: content })
+                });
+                if (res.ok) {
+                    hideNewDocModal();
+                    await loadDocumentsList();
+                    selectDocument(name);
+                } else {
+                    const err = await res.json();
+                    alert('Error: ' + (err.detail || 'Creation failed'));
+                }
+            } catch (e) {
+                alert('Connection error');
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const status = document.getElementById('upload-status');
+            status.style.display = 'block';
+            status.className = 'muted-text';
+            status.textContent = `Uploading and processing '${file.name}'...`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/knowledge/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    status.className = 'success-text';
+                    status.textContent = `✅ Saved '${data.filename || file.name}' and updated memory!`;
+                    await loadDocumentsList();
+                    if (data.filename) selectDocument(data.filename);
+                } else {
+                    status.className = 'error-text';
+                    status.textContent = '❌ Error: ' + (data.detail || 'Upload failed');
+                }
+            } catch (e) {
+                status.className = 'error-text';
+                status.textContent = '❌ Connection error';
+            }
+        }
+
+        async function syncWithMeta() {
+            const btn = document.getElementById('btn-sync-meta');
+            btn.disabled = true;
+            btn.textContent = '⏳ Ingesting from Meta...';
+
+            try {
+                const res = await fetch('/api/knowledge/sync-meta', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`✅ Ingestion complete!\nDocument: ${data.filename || 'synced_meta_content.md'}\nWords: ${data.words_count || 0}`);
+                    await loadDocumentsList();
+                } else {
+                    alert('Notice: ' + (data.detail || 'Sync encountered an issue'));
+                }
+            } catch (e) {
+                alert('Connection error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = t('kb.sync_meta_btn');
+            }
+        }
+
+        async function testSemanticSearch() {
+            const query = document.getElementById('semantic-query-input').value.trim();
+            if (!query) return;
+
+            const container = document.getElementById('semantic-results-container');
+            const list = document.getElementById('semantic-results-list');
+            container.style.display = 'block';
+            list.innerHTML = '<div style="color:var(--text-muted); padding:10px;">Running knowledge retrieval...</div>';
+
+            try {
+                const res = await fetch('/api/knowledge/search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ query: query, top_k: 3 })
+                });
+                const data = await res.json();
+                const results = data.results || [];
+
+                if (results.length === 0) {
+                    list.innerHTML = '<div style="color:var(--text-muted); padding:10px;">No matching chunks found.</div>';
+                    return;
+                }
+
+                list.innerHTML = results.map((r, i) => `
+                    <div style="background:var(--bg-input); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="font-weight:600; font-size:12px; color:var(--accent-blue);">#${i+1} ${escapeHtml(r.filename)}</span>
+                            <span class="badge badge-success num">Match: ${(r.score * 100).toFixed(1)}%</span>
+                        </div>
+                        <div style="font-size:12px; line-height:1.5; white-space:pre-wrap; color:var(--text-primary); max-height:160px; overflow-y:auto;">${escapeHtml(r.chunk)}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<div style="color:var(--badge-red-text); padding:10px;">Error running search</div>';
+            }
+        }
+
+        window.addEventListener('hudhud_lang_change', () => {
+            loadDocumentsList();
+        });
+
+        document.addEventListener('DOMContentLoaded', loadDocumentsList);
+    </script>
+</body>
+</html>
