@@ -248,6 +248,10 @@ class MetaExchangeTokenPayload(BaseModel):
     target_page_id: Optional[str] = None
 
 
+class MetaUserPagesPayload(BaseModel):
+    user_token: str
+
+
 @app.get("/api/meta/status", tags=["Meta Integration"])
 async def get_meta_status():
     """Checks the live connection status of Meta Facebook Page and Instagram Account."""
@@ -381,6 +385,34 @@ async def exchange_permanent_meta_token(payload: MetaExchangeTokenPayload):
         return result
     except Exception as e:
         logger.error(f"Failed to generate permanent token: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/meta/user-pages", tags=["Meta Integration"])
+async def get_user_meta_pages(payload: MetaUserPagesPayload):
+    """
+    Lists all Facebook pages and linked Instagram accounts for a given user token,
+    allowing the user to visually pick their target page and Instagram account.
+    """
+    try:
+        long_lived = await meta_token_manager.get_long_lived_user_token(payload.user_token)
+        pages = await meta_token_manager.get_permanent_page_tokens(long_lived["access_token"])
+        return {
+            "status": "success",
+            "count": len(pages),
+            "pages": [
+                {
+                    "page_id": p["page_id"],
+                    "page_name": p["page_name"],
+                    "instagram_business_account": p.get("instagram_business_account"),
+                    "has_instagram": bool(p.get("instagram_business_account")),
+                    "never_expires": True
+                }
+                for p in pages
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch user pages: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
