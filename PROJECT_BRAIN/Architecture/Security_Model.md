@@ -1,7 +1,7 @@
-# 🔒 Security Model & Compliance — SocailManager
+# 🔒 Security Model & Compliance — HudhudRadar
 #security #compliance #meta-tos #privacy
 
-يحدد هذا المستند المعايير الأمنية وقواعد الخصوصية الصارمة التي تحكم نظام **SocailManager**.
+يحدد هذا المستند المعايير الأمنية وقواعد الخصوصية الصارمة التي تحكم نظام **HudhudRadar**.
 
 ---
 

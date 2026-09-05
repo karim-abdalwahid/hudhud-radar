@@ -1,6 +1,6 @@
-# 🚀 دليل التشغيل السريع — SocailManager (Run Guide)
+# 🚀 دليل التشغيل السريع — HudhudRadar (Run Guide)
 
-دليل شامل ومبسط يشرح لك كيفية تشغيل واستخدام وفحص نظام **SocailManager** لإدارة صفحات فيسبوك وإنستغرام.
+دليل شامل ومبسط يشرح لك كيفية تشغيل واستخدام وفحص نظام **HudhudRadar** لإدارة صفحات فيسبوك وإنستغرام.
 
 ---
 
@@ -21,7 +21,7 @@
 ### الخطوة 1: فتح موجه الأوامر داخل مجلد المشروع
 افتح **PowerShell** وتوجه لمجلد المشروع:
 ```powershell
-cd 'c:\Users\Dell\Desktop\$AI_TESTING\SocailManager'
+cd 'c:\Users\Dell\Desktop\$AI_TESTING\HudhudRadar'
 ```
 
 ### الخطوة 2: تشغيل الخادم (Server)
@@ -37,7 +37,7 @@ python src/main.py
 
 بمجرد ظهور الرسالة التالية، يكون السيرفر يعمل بنجاح:
 ```
-INFO: SocailManager AI Engine is running and ready to manage pages.
+INFO: HudhudRadar AI Engine is running and ready to manage pages.
 INFO: Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
 

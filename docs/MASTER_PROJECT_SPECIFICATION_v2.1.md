@@ -4,7 +4,7 @@
 **Status:** Active & Operational — Supersedes v2.0 Draft and v1.0. All §16 decisions confirmed and implemented in live environment.  
 **Document language:** English (Technical Specification & Architecture Charter).  
 **Agent ↔ Owner communication language:** Strictly Arabic. All conversational updates, reports, alerts, and dashboard interfaces must be delivered in Arabic (§15).  
-**Project Identifier:** `SocialManager` (Standardized directory: `SocailManager`).
+**Project Identifier:** `SocialManager` (Standardized directory: `HudhudRadar`).
 
 ---
 
@@ -301,7 +301,7 @@ To guarantee that no plan, decision, audit report, or architectural document is 
 
 2. **`PROJECT_ARCHIVE/` (Numbered Historical Archive):**
    - Every major plan, walkthrough, audit report, and onboarding guide is copied to `PROJECT_ARCHIVE/` with a sequential prefix: `001_`, `002_`, `...`.
-   - Indexed continuously in [`PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md).
+   - Indexed continuously in [`PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md).
 
 ---
 

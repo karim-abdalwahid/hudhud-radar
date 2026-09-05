@@ -1,5 +1,5 @@
 """
-Configuration and Environment Settings for SocailManager.
+Configuration and Environment Settings for HudhudRadar.
 """
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     META_PAGE_ID: Optional[str] = Field(default=None, description="Facebook Page ID")
     META_PAGE_ACCESS_TOKEN: Optional[str] = Field(default=None, description="Meta Page Access Token")
     META_INSTAGRAM_ACCOUNT_ID: Optional[str] = Field(default=None, description="Instagram Business Account ID")
-    META_WEBHOOK_VERIFY_TOKEN: str = Field(default="socailmanager-verify-token-secret", description="Webhook verify token")
+    META_WEBHOOK_VERIFY_TOKEN: str = Field(default="hudhud-radar-verify-token-secret", description="Webhook verify token")
     WEBHOOK_VERIFY_TOKEN: Optional[str] = Field(default=None, description="Legacy/Vercel alias for Webhook verify token")
 
     @property

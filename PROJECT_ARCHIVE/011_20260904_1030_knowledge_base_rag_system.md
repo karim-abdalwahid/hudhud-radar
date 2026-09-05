@@ -65,16 +65,16 @@
 ---
 
 ### 3. الاختبارات والتحقق (Testing & Verification)
-- إنشاء ملف الاختبارات الشامل: [`tests/test_knowledge_base_rag.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/tests/test_knowledge_base_rag.py).
+- إنشاء ملف الاختبارات الشامل: [`tests/test_knowledge_base_rag.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/tests/test_knowledge_base_rag.py).
 - **النتيجة**:
   - `7 passed in 13.71s (100%)` لاختبارات المعرفة والـ RAG.
-  - `28 passed in 24.29s (100%)` لكامل مشروع SocailManager بدون أي أخطاء أو انكسارات.
+  - `28 passed in 24.29s (100%)` لكامل مشروع HudhudRadar بدون أي أخطاء أو انكسارات.
 - تشغيل خادم التطوير الحي على `http://127.0.0.1:8000` والتأكد من استجابة `/api/knowledge/documents` بـ 9 وثائق معرفية نشطة.
 
 ---
 
 ### 4. الربط مع عقل المشروع والإجراءات القياسية
-- صياغة وتفعيل الإجراء القياسي: [`PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md).
-- تحديث فهرس عقل المشروع: [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/00_Index.md).
-- تحديث فهرس الأرشيف الشامل: [`PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md).
-- تحديث سجل الذاكرة الدائم: [`PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_MEMORY.md).
+- صياغة وتفعيل الإجراء القياسي: [`PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md).
+- تحديث فهرس عقل المشروع: [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/00_Index.md).
+- تحديث فهرس الأرشيف الشامل: [`PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md).
+- تحديث سجل الذاكرة الدائم: [`PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_MEMORY.md).

@@ -1,17 +1,17 @@
-# دليل إنجاز مشروع SocailManager وتدقيق PASS 2 ودمج المهارات
+# دليل إنجاز مشروع HudhudRadar وتدقيق PASS 2 ودمج المهارات
 **رقم الأرشفة: 003** | **التاريخ والوقت: 2026-09-03 22:41:00+03:00** | **النوع: Walkthrough (PASS 2 Fixes & Skills Integration)**
 
 ---
 
-تم تأسيس وبناء وتدقيق نظام **SocailManager** بنجاح داخل المجلد:
-`c:\Users\Dell\Desktop\$AI_TESTING\SocailManager`
+تم تأسيس وبناء وتدقيق نظام **HudhudRadar** بنجاح داخل المجلد:
+`c:\Users\Dell\Desktop\$AI_TESTING\HudhudRadar`
 
 ---
 
 ## 📦 المكونات التي تم بناؤها وتأسيسها
 
 ### 1. 🧠 عقل المشروع (PROJECT BRAIN) — مهيأ لـ Obsidian
-- **الفهرس الرئيسي وخريطة المحتوى**: [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/00_Index.md)
+- **الفهرس الرئيسي وخريطة المحتوى**: [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/00_Index.md)
 - **المعمارية ونماذج البيانات**:
   - `System_Architecture.md`
   - `Data_Flow.md`

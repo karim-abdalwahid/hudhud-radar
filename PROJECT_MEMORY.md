@@ -1,4 +1,4 @@
-# PROJECT MEMORY: SocailManager
+# PROJECT MEMORY: HudhudRadar
 **Permanent Append-Only Historical Record**
 
 ---
@@ -18,7 +18,7 @@
 - **Status**: APPROVED & IN EXECUTION
 
 ### 1. User Request Summary
-The user requested the creation and initialization of an autonomous AI Agent project named **SocailManager** to fully manage Instagram and Facebook pages, equipped with:
+The user requested the creation and initialization of an autonomous AI Agent project named **HudhudRadar** to fully manage Instagram and Facebook pages, equipped with:
 - Dedicated Business Knowledge Base.
 - Detailed Analytics & Statistics: What worked, what failed, why it failed, performance trends, and actionable insights.
 - Page Performance Reports: Growth, reach, engagement, audience behavior, leads, conversions, and KPIs.
@@ -38,7 +38,7 @@ The user requested the creation and initialization of an autonomous AI Agent pro
 - Language Requirement: All conversational responses and explanations to the user must be in Arabic.
 
 ### 2. Architectural Decisions
-- **Project Location**: `c:\Users\Dell\Desktop\$AI_TESTING\SocailManager`
+- **Project Location**: `c:\Users\Dell\Desktop\$AI_TESTING\HudhudRadar`
 - **Tech Stack**: Python 3.14 + FastAPI + Pydantic v2 + Supabase (PostgreSQL) + Meta Graph API (HTTPX client) + Pytest.
 - **Database Engine**: PostgreSQL via Supabase with Row-Level Security (RLS), foreign key cascading, and JSONB provenance.
 - **Knowledge Base Location**: `docs/KNOWLEDGE_BASE/`
@@ -132,7 +132,7 @@ The user gave an explicit command to ensure that zero documents or plans are eve
 Requirement: Every implementation plan, walkthrough, markdown report, or design artifact must be preserved in a dedicated chronological archive folder, ordered by 3-digit sequential numbers (`001`, `002`, `003`...) and timestamps to distinguish oldest from newest.
 
 ### 2. Implementation Summary
-- **Created Dedicated Archive Directory**: `PROJECT_ARCHIVE/` at the root of `SocailManager`.
+- **Created Dedicated Archive Directory**: `PROJECT_ARCHIVE/` at the root of `HudhudRadar`.
 - **Created Master Archive Catalog**: [`PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md`](PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md) documenting IDs, timestamps, document types, file links, and detailed contents.
 - **Archived Initial Historical Documents**:
   - `001_20260903_2224_implementation_plan_initialization.md`: Original approved project implementation plan.
@@ -238,7 +238,7 @@ The user requested a rigorous secondary audit to verify that all columns across 
 The user uploaded a screenshot of Meta's "Create an app" -> "Add use cases" screen and asked in Arabic: "اختار اي واحد" ("Which one do I choose?").
 
 ### 2. Architectural Analysis & Selection Mapping
-To support SocailManager's full omnichannel capabilities (Facebook Page moderation & insights, Facebook Messenger auto-replies, and Instagram DM/comment automation), the following use cases were identified from the screenshot:
+To support HudhudRadar's full omnichannel capabilities (Facebook Page moderation & insights, Facebook Messenger auto-replies, and Instagram DM/comment automation), the following use cases were identified from the screenshot:
 1. **`Manage messaging & content on Instagram`**: Required for Instagram Direct Messages (DMs), comment moderation, and post publishing.
 2. **`Engage with customers on Messenger from Meta`**: Required for Facebook Messenger conversation management, automated customer replies, and lead capture.
 3. **`Manage everything on your Page`**: Required for Facebook Page post management, comment replies, and reading Page engagement Insights.
@@ -317,7 +317,7 @@ The user reported that the Meta Developer application was successfully created a
 - The user provided the initial Meta access token.
 - Inspected via `debug_token` and `/me`:
   - **Authenticated User**: `Kareem Abdelwahid` (`911811081999175`).
-  - **App Name**: `SocailManager AI` (`2092880431308591`).
+  - **App Name**: `HudhudRadar AI` (`2092880431308591`).
   - **Identified Page**: `إبدأ ماركتينج - Karim Abdalwahid` (`1108892288983475`).
   - **Derived Page Access Token**: Successfully generated and validated.
   - **Linked Instagram Account**: Located linked page-backed account `17841435351674303`.
@@ -339,7 +339,7 @@ The user reported that the Meta Developer application was successfully created a
 - **Status**: PRODUCTION-READY & PERMANENT (100% OPERATIONAL)
 
 ### 1. Operational Milestone & Background
-The user successfully added the comprehensive messaging and Instagram use cases to the Meta App `SocailManager AI` (`2092880431308591`), resolving all developer role permissions:
+The user successfully added the comprehensive messaging and Instagram use cases to the Meta App `HudhudRadar AI` (`2092880431308591`), resolving all developer role permissions:
 - Instagram Account linked and verified: `@karim__abdalwahid` (ID: `17841459820747642`, Type: `MEDIA_CREATOR`).
 - Facebook Page verified: `إبدأ ماركتينج - Karim Abdalwahid` (ID: `1108892288983475`).
 - Granted Scopes:
@@ -638,7 +638,7 @@ Per user feedback rejecting single-page tab clutter, transformed the entire appl
 The user was angry that:
 1. Fake/mock posts appeared in the dashboard ("بوست مستحق النشر التلقائي فوراً", "اكسب فلوس مجانية") — test fixtures from pytest were polluting the live Supabase `content_posts` table.
 2. The "سحب منشوراتي الحقيقية" feature was missing — no real Facebook posts or Instagram reels were visible anywhere.
-3. All pages still showed old `SM` / `SocailManager` branding instead of `HH` / `هدهد · Hudhud`.
+3. All pages still showed old `SM` / `HudhudRadar` branding instead of `HH` / `هدهد · Hudhud`.
 
 ### 2. Implementations
 
@@ -681,9 +681,9 @@ Added complete JavaScript implementation:
 #### 2.7 Hudhud Branding Rollout — All Pages
 Replaced across all 8 templates (`analytics.html`, `identity.html`, `knowledge.html`, `leads.html`, `settings.html`, `overview.html`, `studio.html`, `dashboard.html`):
 - `<div class="brand-logo">SM</div>` → `<div class="brand-logo">HH</div>`
-- `<div class="brand-title">SocailManager</div>` → `<div class="brand-title">هدهد · Hudhud</div>`
-- `<span class="crumb-root">SocailManager</span>` → `<span class="crumb-root">هدهد · Hudhud</span>`
-- `<title>SocailManager` → `<title>هدهد · Hudhud`
+- `<div class="brand-title">HudhudRadar</div>` → `<div class="brand-title">هدهد · Hudhud</div>`
+- `<span class="crumb-root">HudhudRadar</span>` → `<span class="crumb-root">هدهد · Hudhud</span>`
+- `<title>HudhudRadar` → `<title>هدهد · Hudhud`
 
 ### 3. Technical Notes
 - Facebook `/{page_id}/feed` and `/{page_id}/posts` returned Error #10 (requires `pages_read_engagement`). Solution: use `/{page_id}/published_posts` which works with existing token.

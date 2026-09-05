@@ -179,7 +179,7 @@ class ContentEngine:
                 suggested_hashtags=hashtags,
                 script_breakdown=script,
                 cta=f"اكتب [{cta_word}] في التعليقات ليصلك الدليل في الـ DM",
-                model_used="SocailManager Reels Copywriter Pro",
+                model_used="HudhudRadar Reels Copywriter Pro",
             )
 
         elif req.post_type == PostType.STORY:
@@ -205,7 +205,7 @@ class ContentEngine:
                 suggested_hashtags=["#ستوري", "#إبدأ_ماركتينج"],
                 script_breakdown=breakdown,
                 cta=f"رد على الستوري بكلمة [{cta_word}]",
-                model_used="SocailManager Stories Copywriter Pro",
+                model_used="HudhudRadar Stories Copywriter Pro",
             )
 
         else:
@@ -231,7 +231,7 @@ class ContentEngine:
                 suggested_hook=hook,
                 suggested_hashtags=hashtags,
                 cta=f"اكتب [{cta_word}] في التعليقات للحصول على الدليل",
-                model_used="SocailManager Post Copywriter Pro",
+                model_used="HudhudRadar Post Copywriter Pro",
             )
 
 

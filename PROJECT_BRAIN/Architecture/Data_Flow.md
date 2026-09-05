@@ -1,4 +1,4 @@
-# 🌊 Data Flow — SocailManager
+# 🌊 Data Flow — HudhudRadar
 #architecture #dataflow #meta-api #supabase
 
 يوضح هذا المستند مسار البيانات التفصيلي من لحظة وصول رسالة أو تفاعل من فيسبوك أو إنستغرام، وحتى التخزين في Supabase واتخاذ القرار الذكي.

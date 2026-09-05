@@ -1,5 +1,5 @@
 -- ====================================================================
--- SocailManager: Supabase Production PostgreSQL Schema
+-- HudhudRadar: Supabase Production PostgreSQL Schema
 -- Version: 1.0.0
 -- Standards: Compliant with Zero-Assumption Policy & Strict Audit Trail
 -- ====================================================================

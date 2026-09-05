@@ -1,5 +1,5 @@
 """
-Structured Logger for SocailManager with sensitive data masking.
+Structured Logger for HudhudRadar with sensitive data masking.
 """
 import logging
 import re
@@ -25,7 +25,7 @@ class SensitiveDataFilter(logging.Filter):
         return True
 
 
-def get_logger(name: str = "SocailManager") -> logging.Logger:
+def get_logger(name: str = "HudhudRadar") -> logging.Logger:
     """Returns a configured logger instance with security filtering."""
     logger = logging.getLogger(name)
     if not logger.handlers:

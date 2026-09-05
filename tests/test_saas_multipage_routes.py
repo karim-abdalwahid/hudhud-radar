@@ -42,7 +42,7 @@ def test_saas_multipage_routes(client):
         resp = client.get(route)
         assert resp.status_code == 200, f"Route {route} failed with status {resp.status_code}"
         assert "text/html" in resp.headers.get("content-type", "")
-        assert (keyword in resp.text or "SocailManager" in resp.text), f"Keyword '{keyword}' not found in {route}"
+        assert (keyword in resp.text or "HudhudRadar" in resp.text), f"Keyword '{keyword}' not found in {route}"
         if route != "/":
             assert "/static/saas.css" in resp.text, f"saas.css stylesheet link missing in {route}"
             assert "/static/saas.js" in resp.text, f"saas.js client script missing in {route}"

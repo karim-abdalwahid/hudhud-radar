@@ -8,7 +8,7 @@
 
 ---
 
-تطوير نظام شامل متكامل داخل **SocailManager** لإدارة ونشر وجدولة المحتوى تلقائياً أو يدوياً عبر فيسبوك وإنستغرام (بوستات، ريلز، واستوري) مدعوماً بالذكاء الاصطناعي وبالتحكم اليدوي الكامل.
+تطوير نظام شامل متكامل داخل **HudhudRadar** لإدارة ونشر وجدولة المحتوى تلقائياً أو يدوياً عبر فيسبوك وإنستغرام (بوستات، ريلز، واستوري) مدعوماً بالذكاء الاصطناعي وبالتحكم اليدوي الكامل.
 
 ---
 
@@ -42,16 +42,16 @@ graph TD
 
 ### 1. 📋 الإجراءات القياسية وعقل المشروع (SOPs & Project Brain)
 
-#### [NEW] [`SOP_08_Content_Publishing_and_AI_Scheduling.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/SOPs/SOP_08_Content_Publishing_and_AI_Scheduling.md)
+#### [NEW] [`SOP_08_Content_Publishing_and_AI_Scheduling.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/SOPs/SOP_08_Content_Publishing_and_AI_Scheduling.md)
 * صياغة إجراء قياسي رقم 08 يحدد:
   - معايير أبعاد ونوع الميديا لكل منصة (Reels 9:16، Posts 1:1 أو 4:5، Stories 9:16).
   - دورة حياة المنشور: `draft` ⬅️ `scheduled` ⬅️ `publishing` ⬅️ `published` / `failed`.
   - معايير نبرة الصوت والمحتوى التسويقي المقنع المتوافق مع هوية `إبدأ ماركتينج`.
 
-#### [MODIFY] [`00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/00_Index.md)
+#### [MODIFY] [`00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/00_Index.md)
 * إضافة `SOP_08` في فهرس عقل المشروع وتحديث مسار المحتوى.
 
-#### [MODIFY] [`Development_Roadmap.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/Roadmap/Development_Roadmap.md)
+#### [MODIFY] [`Development_Roadmap.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/Roadmap/Development_Roadmap.md)
 * ترقية مرحلة الـ Content Engine إلى مرحلة نشطة قيد التشغيل.
 
 ---
@@ -78,7 +78,7 @@ graph TD
 
 ### 3. 🤖 محرك التوليد بالذكاء الاصطناعي (AI Content Engine)
 
-#### [NEW] [`src/agent/content_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/content_engine.py)
+#### [NEW] [`src/agent/content_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/content_engine.py)
 * فئة `ContentStudioEngine`:
   - `generate_post(topic, target_platform, tone, objective)`: توليد بوست كامل متكامل (عنوان جذاب، محتوى تسويقي بأسلوب AIDA، دعوة لاتخاذ إجراء CTA، هاشتاجات مستهدفة).
   - `generate_reel_script(topic, duration)`: كتابة سيناريو ريل كامل (الهوك الأولي في أول 3 ثوانٍ، صلب الموضوع في 3 نقاط، الـ Outro وطلب التعليق بكلمة معينة مثل "ابدأ").
@@ -89,7 +89,7 @@ graph TD
 
 ### 4. 🚀 عميل النشر المباشر لميتا (Meta Publishing Service)
 
-#### [NEW] [`src/meta_api/publishing.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/meta_api/publishing.py)
+#### [NEW] [`src/meta_api/publishing.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/meta_api/publishing.py)
 * تنفيذ واجهات Meta Graph API الرسمية للنشر:
   1. **نشر فيسبوك (Facebook Feed)**:
      - نداء `POST /{page_id}/feed` لنشر النصوص والروابط.
@@ -103,7 +103,7 @@ graph TD
 
 ### 5. ⏰ محرك الجدولة التلقائي (Background Scheduler)
 
-#### [NEW] [`src/agent/scheduler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/scheduler.py)
+#### [NEW] [`src/agent/scheduler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/scheduler.py)
 * خدمة خلفية غير متزامنة (Async Background Loop):
   - تفحص كل دقيقة المنشورات التي حالتها `scheduled` والتي حان وقت نشرها (`scheduled_for <= now()`).
   - تقوم بالنشر وتحديث الحالة وربط الـ `meta_post_id` وتسجيل العملية في سجل النشاطات `activity_logs`.
@@ -112,7 +112,7 @@ graph TD
 
 ### 6. 💻 واجهة استوديو صناعة المحتوى في لوحة التحكم (Executive Dashboard UI)
 
-#### [MODIFY] [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/main.py)
+#### [MODIFY] [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/main.py)
 * إضافة تبويب جديد وتفاعلي في لوحة التحكم: **"🎨 استوديو صناعة وجدولة المحتوى (Content Studio)"**:
   - **قسم التوليد بالذكاء الاصطناعي**:
     - حقل لإدخال الموضوع أو الفكرة.
@@ -130,7 +130,7 @@ graph TD
 ## 🧪 خطة التحقق والاختبار (Verification Plan)
 
 ### الاختبارات المؤتمتة (Automated Tests)
-* إنشاء [`tests/test_content_studio.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/tests/test_content_studio.py):
+* إنشاء [`tests/test_content_studio.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/tests/test_content_studio.py):
   1. اختبار توليد المحتوى بأنواعه الثلاثة (بوست، ريل، استوري).
   2. اختبار منطق الجدولة وتغيير الحالات (`draft` -> `scheduled` -> `published`).
   3. اختبار بناء واستدعاء نداءات Meta Publishing API بشكل mock والتأكد من توافق معاملات الـ Container.

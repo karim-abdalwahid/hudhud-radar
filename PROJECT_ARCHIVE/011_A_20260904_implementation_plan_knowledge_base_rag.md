@@ -8,7 +8,7 @@
 
 ---
 
-تطوير نظام معرفي متكامل وتقنية **RAG (Retrieval-Augmented Generation)** داخل **SocailManager** يمكن الذكاء الاصطناعي من:
+تطوير نظام معرفي متكامل وتقنية **RAG (Retrieval-Augmented Generation)** داخل **HudhudRadar** يمكن الذكاء الاصطناعي من:
 1. سحب وتحليل كافة بيانات حسابات ميتا التاريخية (منشورات صفحة فيسبوك، ريلز وإنستغرام ميديا، الكابشن، وتعليقات واستفسارات العملاء).
 2. استخلاص وتحليل طبيعة البيزنس، الخدمات، الأسعار، نبرة الصوت، وأسرار إغلاق المبيعات وصياغتها تلقائياً في ملفات `.md` منظمة تمثل الذاكرة الحية للنشاط التجاري.
 3. توفير استوديو متكامل في لوحة التحكم (`/dashboard`) لعرض، تصفح، وتعديل ملفات المعرفة لحظياً مع التحديث الفوري لمعرفة الوكيل الذكي (Live Hot-Reload).
@@ -44,14 +44,14 @@ graph TD
 ## 📋 خطة التغييرات المقترحة (Proposed Changes)
 
 ### 1. 📦 تثبيت الحزم المطلوبة (Dependencies)
-#### [MODIFY] [`requirements.txt`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/requirements.txt)
+#### [MODIFY] [`requirements.txt`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/requirements.txt)
 * إضافة `python-multipart>=0.0.9` (لدعم رفع الملفات في FastAPI).
 * إضافة `pypdf>=4.3.0` (لاستخراج النصوص من ملفات الـ PDF بأعلى كفاءة وبدون مكتبات C خارجية).
 
 ---
 
 ### 2. 🕷️ محرك سحب وتحليل محتوى ميتا (Meta Content Scraper & Business Profiler)
-#### [NEW] [`src/knowledge/meta_crawler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/knowledge/meta_crawler.py)
+#### [NEW] [`src/knowledge/meta_crawler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/knowledge/meta_crawler.py)
 * فئة `MetaContentCrawler`:
   - `fetch_facebook_feed(limit=50)`: استدعاء `/{page_id}/feed?fields=id,message,created_time,story,attachments,comments.limit(20){message}`.
   - `fetch_instagram_media(limit=50)`: استدعاء `/{ig_user_id}/media?fields=id,caption,media_type,media_url,permalink,timestamp,comments.limit(20){text}`.
@@ -68,7 +68,7 @@ graph TD
 ---
 
 ### 3. 📄 معالج الملفات متعددة الصيغ والرؤية البصرية (Multi-Format & Multimodal Vision)
-#### [NEW] [`src/knowledge/document_processor.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/knowledge/document_processor.py)
+#### [NEW] [`src/knowledge/document_processor.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/knowledge/document_processor.py)
 * فئة `DocumentProcessor`:
   - معالجة النصوص وMarkdown: قراءة الملفات، التحقق من الترميز، وتنظيف المحتوى وحفظه.
   - معالجة الـ PDF: استخراج النصوص بالاعتماد على `pypdf`، تنسيق العناوين والفقرات، وتوليد ملف Markdown متكامل.
@@ -80,7 +80,7 @@ graph TD
 ---
 
 ### 4. 🧠 تطوير مدير قاعدة المعرفة والـ RAG (Knowledge Base & RAG Engine)
-#### [MODIFY] [`src/agent/knowledge_base.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/knowledge_base.py)
+#### [MODIFY] [`src/agent/knowledge_base.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/knowledge_base.py)
 * توسيع فئة `KnowledgeBaseManager`:
   - `list_documents()`: جلب قائمة الوثائق مع عدد الكلمات، تاريخ آخر تعديل، ونوع الملف.
   - `get_document(name)`: قراءة محتوى أي وثيقة.
@@ -92,7 +92,7 @@ graph TD
 ---
 
 ### 5. 🤝 تحديث محرك المحادثات وإغلاق المبيعات (Conversational Sales Agent)
-#### [MODIFY] [`src/agent/conversation_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/conversation_engine.py)
+#### [MODIFY] [`src/agent/conversation_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/conversation_engine.py)
 * تحديث الـ System Prompt لدمج استراتيجيات إغلاق المبيعات التلقائية:
   - تحليل نية العميل (Lead Intent).
   - تقديم الحل المناسب استناداً لملف `products_and_services.md`.
@@ -102,7 +102,7 @@ graph TD
 ---
 
 ### 6. 🌐 واجهات الـ REST API في FastAPI
-#### [MODIFY] [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/main.py)
+#### [MODIFY] [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/main.py)
 * إضافة نقاط النهاية:
   - `POST /api/knowledge/sync-meta`: تشغيل عملية سحب وتحليل محتوى ميتا وتوليد المعرفة.
   - `GET /api/knowledge/documents`: استعراض قائمة ملفات قاعدة المعرفة.
@@ -115,7 +115,7 @@ graph TD
 ---
 
 ### 7. 💻 واجهة استوديو المعرفة والـ RAG في لوحة التحكم (Executive Dashboard UI)
-#### [MODIFY] [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/main.py)
+#### [MODIFY] [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/main.py)
 * إضافة قسم تفاعلي متقدم في لوحة التحكم: **"📚 إدارة قاعدة المعرفة والـ RAG (Knowledge & RAG Studio)"**:
   - **شريط الأدوات**:
     - زر **"🔄 سحب وتحليل بيانات الحساب من ميتا (Sync from Meta)"** مع مؤشر تقدم تفاعلي.
@@ -134,23 +134,23 @@ graph TD
 ---
 
 ### 8. 📜 معايير عقل المشروع والإجراءات القياسية (SOP & Project Brain)
-#### [NEW] [`PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md)
+#### [NEW] [`PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/SOPs/SOP_09_Knowledge_Base_and_RAG_Management.md)
 * صياغة الإجراء القياسي رقم 09 لتنظيم:
   - دورة حياة المعرفة من السحب والمعالجة وحتى الاستدعاء (Scrape ➡️ Synthesize ➡️ Store ➡️ RAG Retrieve).
   - قواعد معالجة الصور والمستندات عبر الذكاء الاصطناعي.
   - معايير أمان البيانات وصلاحيات تعديل وثائق المعرفة.
-#### [MODIFY] [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/00_Index.md)
-#### [MODIFY] [`PROJECT_BRAIN/Roadmap/Development_Roadmap.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/Roadmap/Development_Roadmap.md)
-#### [NEW] [`PROJECT_ARCHIVE/011_20260904_knowledge_base_rag_system.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_ARCHIVE/011_20260904_knowledge_base_rag_system.md)
-#### [MODIFY] [`PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md)
-#### [MODIFY] [`PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_MEMORY.md) (إضافة الإدخال رقم 011)
+#### [MODIFY] [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/00_Index.md)
+#### [MODIFY] [`PROJECT_BRAIN/Roadmap/Development_Roadmap.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/Roadmap/Development_Roadmap.md)
+#### [NEW] [`PROJECT_ARCHIVE/011_20260904_knowledge_base_rag_system.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_ARCHIVE/011_20260904_knowledge_base_rag_system.md)
+#### [MODIFY] [`PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md)
+#### [MODIFY] [`PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_MEMORY.md) (إضافة الإدخال رقم 011)
 
 ---
 
 ## 🧪 خطة التحقق والاختبار (Verification Plan)
 
 ### الاختبارات المؤتمتة (Automated Tests)
-* إنشاء [`tests/test_knowledge_base_rag.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/tests/test_knowledge_base_rag.py):
+* إنشاء [`tests/test_knowledge_base_rag.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/tests/test_knowledge_base_rag.py):
   1. اختبار إدارة الملفات (List, Read, Save, Delete, Reload).
   2. اختبار معالجة ملفات Markdown والنصوص العادية.
   3. اختبار معالجة واستخراج نصوص الـ PDF وتحويلها لـ Markdown.

@@ -4,7 +4,7 @@
 ---
 
 ## 📌 ملخص الوثيقة (Executive Summary)
-بناءً على التوسع في حالات الاستخدام (Use Cases) المختارة في بوابة مطوري ميتا (**Meta for Developers**)، تم توسيع نطاق قدرات وكيل الذكاء الاصطناعي **SocailManager** ليشمل رسمياً:
+بناءً على التوسع في حالات الاستخدام (Use Cases) المختارة في بوابة مطوري ميتا (**Meta for Developers**)، تم توسيع نطاق قدرات وكيل الذكاء الاصطناعي **HudhudRadar** ليشمل رسمياً:
 1. **فيسبوك ماسنجر (Facebook Messenger Platform)**
 2. **إنستغرام للأعمال (Instagram Graph API & Messaging)**
 3. **إدارة صفحات فيسبوك والتحليلات (Facebook Page Management & Insights)**
@@ -73,7 +73,7 @@
 1. **المرحلة الحالية (مكتملة):**
    * إنشاء تطبيق Meta Developer وتفعيل حالات الاستخدام الخمسة.
    * جاهزية قاعدة بيانات Supabase (الجداول الستة مفهرسة ومؤمنة).
-   * جاهزية لوحة التحكم `SocailManager` لاستقبال الـ Page Access Token.
+   * جاهزية لوحة التحكم `HudhudRadar` لاستقبال الـ Page Access Token.
 
 2. **المرحلة التالية (توليد المفتاح والربط الفعلي):**
    * إتمام إنشاء التطبيق وتوليد الـ `Page Access Token` عبر Graph API Explorer.

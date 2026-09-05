@@ -1,17 +1,17 @@
-# دليل إنجاز وبناء مشروع SocailManager وتدقيق PASS 1
+# دليل إنجاز وبناء مشروع HudhudRadar وتدقيق PASS 1
 **رقم الأرشفة: 002** | **التاريخ والوقت: 2026-09-03 22:35:17+03:00** | **النوع: Walkthrough (Initial Build & Audit Pass 1)**
 
 ---
 
-تم تأسيس وبناء نظام **SocailManager** بنجاح داخل المجلد:
-`c:\Users\Dell\Desktop\$AI_TESTING\SocailManager`
+تم تأسيس وبناء نظام **HudhudRadar** بنجاح داخل المجلد:
+`c:\Users\Dell\Desktop\$AI_TESTING\HudhudRadar`
 
 ---
 
 ## 📦 المكونات التي تم بناؤها وتأسيسها
 
 ### 1. 🧠 عقل المشروع (PROJECT BRAIN) — مهيأ لـ Obsidian
-- **الفهرس الرئيسي وخريطة المحتوى**: [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/00_Index.md)
+- **الفهرس الرئيسي وخريطة المحتوى**: [`PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/00_Index.md)
 - **المعمارية ونماذج البيانات**:
   - `System_Architecture.md`
   - `Data_Flow.md`

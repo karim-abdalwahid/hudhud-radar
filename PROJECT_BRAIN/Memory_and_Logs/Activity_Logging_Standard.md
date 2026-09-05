@@ -1,7 +1,7 @@
 # 📜 معايير تسجيل الأنشطة والعمليات (Activity Logging Standard)
 #logging #audit #analytics #monitoring
 
-يحدد هذا المستند معايير تسجيل كل نشاط، عملية، واستجابة ينفذها نظام **SocailManager**.
+يحدد هذا المستند معايير تسجيل كل نشاط، عملية، واستجابة ينفذها نظام **HudhudRadar**.
 
 ---
 

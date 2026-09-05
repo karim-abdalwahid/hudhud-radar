@@ -1,7 +1,7 @@
 @echo off
-title SocailManager - AI Social Media Agent Server
+title HudhudRadar - AI Social Media Agent Server
 echo =======================================================
-echo           Starting SocailManager Server...
+echo           Starting HudhudRadar Server...
 echo =======================================================
 echo.
 cd /d "%~dp0"

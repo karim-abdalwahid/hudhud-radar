@@ -1,6 +1,6 @@
 # 🌐 دليل ربط صفحات فيسبوك وإنستغرام بحساب Meta Developers خطوة بخطوة
 
-هذا الدليل يشرح لك بالتفصيل ومن الصفر كيف تسجل دخول وتربط حساباتك الرسمية في فيسبوك وإنستغرام بوكيل الذكاء الاصطناعي **SocailManager**.
+هذا الدليل يشرح لك بالتفصيل ومن الصفر كيف تسجل دخول وتربط حساباتك الرسمية في فيسبوك وإنستغرام بوكيل الذكاء الاصطناعي **HudhudRadar**.
 
 ---
 
@@ -21,7 +21,7 @@
 ### الخطوة 2: إنشاء تطبيق جديد (Create App)
 1. اضغط على زر **Create App** (إنشاء تطبيق).
 2. اختر نوع التطبيق: **Business** (للأعمال).
-3. أدخل اسم التطبيق: مثلاً `SocailManager AI`.
+3. أدخل اسم التطبيق: مثلاً `HudhudRadar AI`.
 4. أدخل بريدك الإلكتروني واضغط **Create App**.
 
 ---
@@ -46,7 +46,7 @@
 1. اذهب إلى أداة مستكشف الـ API الرسمية:
    👉 **[https://developers.facebook.com/tools/explorer/](https://developers.facebook.com/tools/explorer/)**
 2. في القائمة اليمنى:
-   - في خانة **Meta App**: اختر تطبيقك `SocailManager AI`.
+   - في خانة **Meta App**: اختر تطبيقك `HudhudRadar AI`.
    - في خانة **User or Page**: اضغط واختر **صفحتك على فيسبوك** (ستظهر لك خيارات مثل: *Page Access Token*).
 3. في خانة **Permissions** (الصلاحيات)، تأكد من إضافة الصلاحيات التالية:
    - `pages_show_list`
@@ -60,7 +60,7 @@
 
 ---
 
-### الخطوة 6: إدخال البيانات في لوحة التحكم (SocailManager Dashboard)
+### الخطوة 6: إدخال البيانات في لوحة التحكم (HudhudRadar Dashboard)
 
 افتح لوحة التحكم في متصفحك:
 👉 **[http://localhost:8000/dashboard](http://localhost:8000/dashboard)**
@@ -76,7 +76,7 @@
 لكي يستقبل الوكيل رسائل الزبائن ويرد عليها فوراً:
 1. في لوحة مطوري فيسبوك (Developers Dashboard) تحت **Messenger** > **Webhooks**:
    - **Callback URL**: رابط السيرفر الخاص بك متبوعاً بـ `/webhooks/meta` (إذا كنت تشغل محلياً استخدم ngrok مثلاً: `https://your-domain.ngrok-free.app/webhooks/meta`).
-   - **Verify Token**: اكتب: `socail_manager_secret_verify_token_2026` (الموجود في ملف `.env`).
+   - **Verify Token**: اكتب: `hudhud_radar_secret_verify_token_2026` (الموجود في ملف `.env`).
 2. اشترك في أحداث: `messages`, `messaging_postbacks`.
 
 ---

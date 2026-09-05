@@ -1,10 +1,10 @@
 # 🏛️ دليل نظام تصميم وهندسة مواقع الـ SaaS متعددة الصفحات (Master Design System)
-#brain #design-system #saas #architecture #reusable #socailmanager
+#brain #design-system #saas #architecture #reusable #hudhud-radar
 
-> **وثيقة معتمدة في عقل المشروع**: هذا الدليل يمثل المرجع الشامل لكيفية تصميم وبناء واجهات الـ SaaS الاحترافية عالية الأداء في منصة SocailManager وأي مشروع قادم، مع التوثيق الكامل للألوان والخطوط والمكونات ودليل الاستنساخ للأجيال القادمة من الوكلاء والمطورين.
+> **وثيقة معتمدة في عقل المشروع**: هذا الدليل يمثل المرجع الشامل لكيفية تصميم وبناء واجهات الـ SaaS الاحترافية عالية الأداء في منصة HudhudRadar وأي مشروع قادم، مع التوثيق الكامل للألوان والخطوط والمكونات ودليل الاستنساخ للأجيال القادمة من الوكلاء والمطورين.
 
 يرجى الرجوع للنسخة الأرشيفية الكاملة المعتمدة:
-👉 [`../../PROJECT_ARCHIVE/016_20260904_multipage_saas_architecture_and_replication_guide.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_ARCHIVE/016_20260904_multipage_saas_architecture_and_replication_guide.md)
+👉 [`../../PROJECT_ARCHIVE/016_20260904_multipage_saas_architecture_and_replication_guide.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_ARCHIVE/016_20260904_multipage_saas_architecture_and_replication_guide.md)
 
 ---
 

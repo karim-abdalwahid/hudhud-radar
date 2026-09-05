@@ -120,7 +120,7 @@
 
 ## 4. نتيجة الاختبار الحي عبر السحابة (Live E2E Verification)
 ```
-[INFO] [SocailManager] Successfully connected to Supabase cloud instance.
+[INFO] [HudhudRadar] Successfully connected to Supabase cloud instance.
 Testing Live CRUD against Supabase Cloud...
 Lead inserted successfully: bf22f098-ed6f-489e-b307-96910c15714d
 Message inserted and linked by FK: 5e7533fb-92d9-4f01-befb-e86c3b213994

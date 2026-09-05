@@ -24,7 +24,7 @@ class ReportGenerator:
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         lines = [
-            f"# 📈 تقرير أداء الصفحات — SocailManager",
+            f"# 📈 تقرير أداء الصفحات — HudhudRadar",
             f"**تاريخ التوليد**: `{now_str}` | **المنصة**: `{platform.upper()}`",
             "",
             "## 🎯 الملخص التنفيذي ومؤشرات الأداء الرئيسية (KPIs)",
@@ -63,7 +63,7 @@ class ReportGenerator:
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         lines = [
-            f"# 📋 تقرير تنفيذ الأنشطة والعمليات — SocailManager",
+            f"# 📋 تقرير تنفيذ الأنشطة والعمليات — HudhudRadar",
             f"**تاريخ التوليد**: `{now_str}`",
             "",
             "## ⚖️ إحصاءات النجاح والفشل",

@@ -1,4 +1,4 @@
-// SocailManager / Hudhud — Unified SaaS Common Client JS
+// HudhudRadar / Hudhud — Unified SaaS Common Client JS
 // Provides: System Health Polling, Meta Status, and Client vs Developer Role Separation
 
 let lastMetaData = null;

@@ -1,4 +1,4 @@
-# خطة تنفيذ مشروع SocailManager (AI Social Media Management Agent)
+# خطة تنفيذ مشروع HudhudRadar (AI Social Media Management Agent)
 **رقم الأرشفة: 001** | **التاريخ والوقت: 2026-09-03 22:24:17+03:00** | **النوع: Implementation Plan**
 
 ---
@@ -35,10 +35,10 @@
 ## Proposed Changes
 
 سيتم إنشاء هيكل المشروع بالكامل داخل المجلد:
-`c:\Users\Dell\Desktop\$AI_TESTING\SocailManager`
+`c:\Users\Dell\Desktop\$AI_TESTING\HudhudRadar`
 
 ```
-SocailManager/
+HudhudRadar/
 ├── PROJECT_MEMORY.md                     # السجل الدائم والتراكمي (Append-Only) لجميع المحادثات والقرارات
 ├── PROJECT_BRAIN/                        # عقل المشروع المهيأ للربط مع Obsidian (Wikilinks & MOCs)
 │   ├── 00_Index.md                       # الفهرس الرئيسي وخريطة المحتوى (Map of Content)
@@ -191,6 +191,6 @@ SocailManager/
 3. تدقيق الاعتماديات بحثاً عن الثغرات الأمنية (`safety check` أو `pip audit`).
 
 ### الفحص اليدوي (Manual Verification):
-1. مراجعة هيكل المجلدات المنشأة داخل `SocailManager`.
+1. مراجعة هيكل المجلدات المنشأة داخل `HudhudRadar`.
 2. معاينة ملفات `PROJECT_MEMORY.md` و `PROJECT_BRAIN/00_Index.md` وتناسق الروابط في Obsidian.
 3. مراجعة سكريبت قاعدة بيانات Supabase والتأكد من مطابقة جميع الحقول والمتطلبات.

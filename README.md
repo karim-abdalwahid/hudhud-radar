@@ -1,4 +1,4 @@
-# ⚡ SocailManager (AI Social Media Management Agent)
+# ⚡ HudhudRadar (AI Social Media Management Agent)
 
 نظام متطور وشامل لإدارة وتشغيل صفحات **Facebook** و **Instagram** بالكامل بواسطة وكيل ذكاء اصطناعي مستقل، متصل بقاعدة بيانات **Supabase (PostgreSQL)**، ومزود بمحرك إحصاءات متقدم وتحليل سببي، ونظام التقاط عملاء محتملين بدون أي تخمين (Zero-Assumption Identity Resolution)، ونظام حوكمة وتوثيق مدعوم بـ **Project Brain** متوافق مع **Obsidian**.
 
@@ -33,7 +33,7 @@
 ## 🏗️ هيكلية المشروع (Project Structure)
 
 ```
-SocailManager/
+HudhudRadar/
 ├── PROJECT_MEMORY.md                     # السجل التراكمي الدائم (Append-Only)
 ├── PROJECT_BRAIN/                        # عقل المشروع لـ Obsidian
 │   ├── 00_Index.md                       # الفهرس الرئيسي (MOC)

@@ -1,7 +1,7 @@
 # 📋 SOP-03: إدارة وترحيل قواعد البيانات (Database Migrations)
 #sop #database #supabase #postgresql #migrations
 
-يحدد هذا المستند المعايير الصارمة لإنشاء وتعديل جداول ومخططات قاعدة بيانات Supabase لنظام **SocailManager**.
+يحدد هذا المستند المعايير الصارمة لإنشاء وتعديل جداول ومخططات قاعدة بيانات Supabase لنظام **HudhudRadar**.
 
 ---
 

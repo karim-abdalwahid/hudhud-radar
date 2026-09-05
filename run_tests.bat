@@ -1,7 +1,7 @@
 @echo off
-title SocailManager - Automated Unit Tests
+title HudhudRadar - Automated Unit Tests
 echo =======================================================
-echo          Running SocailManager Test Suite...
+echo          Running HudhudRadar Test Suite...
 echo =======================================================
 echo.
 cd /d "%~dp0"

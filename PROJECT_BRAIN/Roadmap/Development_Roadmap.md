@@ -1,7 +1,7 @@
-# 🚀 Development Roadmap — SocailManager
+# 🚀 Development Roadmap — HudhudRadar
 #roadmap #milestones #features
 
-خطة التطوير المستمر لنظام **SocailManager**.
+خطة التطوير المستمر لنظام **HudhudRadar**.
 
 ---
 

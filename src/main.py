@@ -1,5 +1,5 @@
 """
-SocailManager: Main FastAPI Application.
+HudhudRadar: Main FastAPI Application.
 Exposes Webhooks, Management APIs, Identity Review Queue, Analytics, and Executive Dashboard.
 """
 import sys
@@ -59,7 +59,7 @@ content_studio_service = ContentStudioService()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application startup and shutdown hooks."""
-    logger.info("Initializing SocailManager system...")
+    logger.info("Initializing HudhudRadar system...")
     knowledge_base.reload()
 
     # In serverless environments (Vercel, Lambda), background infinite loops are disabled
@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
         # Start background content publishing scheduler loop
         scheduler_task = asyncio.create_task(content_scheduler.start_loop(interval_seconds=30))
         content_scheduler._task = scheduler_task
-        logger.info("SocailManager AI Engine & Content Scheduler running.")
+        logger.info("HudhudRadar AI Engine & Content Scheduler running.")
     else:
         logger.info("Running in Vercel Serverless environment: background cron scheduler managed via Vercel Cron/Webhooks.")
 
@@ -77,11 +77,11 @@ async def lifespan(app: FastAPI):
 
     if scheduler_task:
         content_scheduler.stop_loop()
-    logger.info("Shutting down SocailManager...")
+    logger.info("Shutting down HudhudRadar...")
 
 
 app = FastAPI(
-    title="SocailManager API",
+    title="HudhudRadar API",
     description="Autonomous AI Social Media Agent for Instagram & Facebook",
     version="1.0.0",
     lifespan=lifespan

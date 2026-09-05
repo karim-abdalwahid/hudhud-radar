@@ -12,7 +12,7 @@
 
 ## 🔢 نظام الترقيم والتسمية القياسي
 يتم حفظ كل وثيقة في مسار:
-`c:\Users\Dell\Desktop\$AI_TESTING\SocailManager\PROJECT_ARCHIVE\`
+`c:\Users\Dell\Desktop\$AI_TESTING\HudhudRadar\PROJECT_ARCHIVE\`
 
 صيغة اسم الملف الإلزامية:
 `[الرقم التسلسلي المكون من 3 خانات]_[التاريخ بصيغة YYYYMMDD]_[الساعة بصيغة HHMM]_[نوع الوثيقة]_[الوصف المختصر].md`

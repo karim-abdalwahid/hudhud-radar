@@ -1,5 +1,5 @@
 # 🎨 تقرير دراسة المهارات والمكتبات المتقدمة وإعادة التصميم الهادئ (Skills, LEANN, Ruflo & UI Redesign)
-#skills #leann #ruflo #ui-redesign #frontend-design #archive #socailmanager
+#skills #leann #ruflo #ui-redesign #frontend-design #archive #hudhud-radar
 
 **التاريخ والوقت**: `2026-09-04 11:03 UTC+3`  
 **الحالة**: ✅ مكتمل ومختبر بنسبة 100% (29/29 اختبارات ناجحة)  
@@ -28,7 +28,7 @@
 * **الابتكار الأساسي**:
   - حساب الـ Embeddings عند الطلب (On-demand Vector Computation) مع تقنيات تقليم الجراف والضغط.
   - توفير مساحة تخزين تصل إلى **97%** مقارنة بقواعد المتجهات التقليدية (مثل Pinecone أو ChromaDB أو Milvus) دون التضحية بدقة الاسترجاع.
-* **كيفية الاستفادة في SocailManager**:
+* **كيفية الاستفادة في HudhudRadar**:
   - حالياً يعتمد محرك `knowledge_base.py` على مطابقة الكلمات المفتاحية والأوزان المنطقية.
   - فكرة LEANN تفتح لنا الباب لإضافة بحث دلالي هجين (Hybrid Semantic Search) فائق الخفة بدون الحاجة لتثبيت قواعد بيانات متجهات ثقيلة تستهلك موارد السيرفر أو الذاكرة.
 
@@ -39,8 +39,8 @@
 * **الابتكار الأساسي**:
   - التحول من نموذج "الوكيل الواحد المتكدس" إلى **سرب وكلاء متخصصين (Specialized Swarm Agents)** يعملون بعقود بيانات صارمة (Typed Contracts) ودورات عمل متوازية.
   - وجود أدوار واضحة: الباحث (Crawler)، صانع المحتوى (Content Creator)، مدقق السياسات والجودة (Reviewer/Gatekeeper)، مغلق الصفقات (Sales Closer)، ومحلل البيانات (Analyst).
-* **كيفية الاستفادة في SocailManager**:
-  - معمارية Ruflo هي النموذج المثالي لتنظيم دورات العمل المعقدة في SocailManager:
+* **كيفية الاستفادة في HudhudRadar**:
+  - معمارية Ruflo هي النموذج المثالي لتنظيم دورات العمل المعقدة في HudhudRadar:
     - فصل صناعة المحتوى إلى وكيل توليد (Generator) ووكيل فحص الجودة ومطابقة نبرة الصوت والنافذة الزمنية (Compliance Gatekeeper) قبل أن يصل المنشور إلى الجدولة والنشر.
     - فصل التعامل مع الرسائل إلى وكيل استخراج هوية (Identity Extractor) ووكيل مبيعات متخصص (Sales Closer).
 
@@ -50,7 +50,7 @@
 
 تمت الاستجابة فوراً لانتقاد المستخدم الصائب بخصوص واجهة الـ AI القديمة المليئة بالتدرجات والنيون:
 1. **فصل طبقة العرض عن الباك إند**:
-   - تم استخراج أكثر من 1300 سطر من أكواد HTML/CSS/JS من داخل [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/main.py) ونقلها إلى قالب مخصص ونظيف [`src/templates/dashboard.html`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/templates/dashboard.html).
+   - تم استخراج أكثر من 1300 سطر من أكواد HTML/CSS/JS من داخل [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/main.py) ونقلها إلى قالب مخصص ونظيف [`src/templates/dashboard.html`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/templates/dashboard.html).
    - انخفض حجم `src/main.py` من **1787 سطراً إلى 485 سطراً فقط** من كود بايثون الصافي والخفيف.
 
 2. **لغة تصميم هادئة وبسيطة وعالية الأداء**:

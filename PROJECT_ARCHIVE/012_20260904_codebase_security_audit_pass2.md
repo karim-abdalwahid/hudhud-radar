@@ -1,5 +1,5 @@
 # 🛡️ تقرير التدقيق البرمجي والأمني الشامل - المرحلة الثانية (SOP-02 Audit Pass 2 Fixes)
-#security #audit #code-quality #pass2 #archive #socailmanager
+#security #audit #code-quality #pass2 #archive #hudhud-radar
 
 **التاريخ والوقت**: `2026-09-04 10:52 UTC+3`  
 **الحالة**: ✅ مكتمل ومختبر بنسبة 100% (29/29 اختبارات ناجحة)  
@@ -66,7 +66,7 @@
 ```text
 ============================= test session starts =============================
 platform win32 -- Python 3.14.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: C:\Users\Dell\Desktop\$AI_TESTING\SocailManager
+rootdir: C:\Users\Dell\Desktop\$AI_TESTING\HudhudRadar
 collected 29 items
 
 tests/test_analytics_and_reporting.py ...                                [ 10%]

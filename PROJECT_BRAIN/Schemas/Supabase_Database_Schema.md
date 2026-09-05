@@ -1,7 +1,7 @@
 # 💾 Supabase Database Schema Specification
 #schema #supabase #postgresql #leads #messages
 
-مواصفات جداول قاعدة بيانات Supabase الخاصة بنظام **SocailManager**.
+مواصفات جداول قاعدة بيانات Supabase الخاصة بنظام **HudhudRadar**.
 
 ---
 

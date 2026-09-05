@@ -1,7 +1,7 @@
-# 🏛️ System Architecture — SocailManager
+# 🏛️ System Architecture — HudhudRadar
 #architecture #system-design #backend
 
-نظام **SocailManager** مبني وفق نمط المعمارية الطبقية المعيارية (Modular Layered Architecture)، لضمان الفصل الواضح للمسؤوليات وسهولة الصيانة والإضافة.
+نظام **HudhudRadar** مبني وفق نمط المعمارية الطبقية المعيارية (Modular Layered Architecture)، لضمان الفصل الواضح للمسؤوليات وسهولة الصيانة والإضافة.
 
 ---
 
@@ -15,7 +15,7 @@ graph TD
         SUPA[(Supabase PostgreSQL)]
     end
 
-    subgraph SocailManager Core
+    subgraph HudhudRadar Core
         WH[Webhooks Handler / API]
         SEC[Rate Limiter & Policy Enforcer]
         EXT[Zero-Assumption Extractor]

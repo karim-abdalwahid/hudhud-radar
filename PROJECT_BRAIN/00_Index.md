@@ -1,7 +1,7 @@
-# 🧠 SocailManager — Project Brain (MOC)
+# 🧠 HudhudRadar — Project Brain (MOC)
 #project-brain #social-manager #meta-agent #index
 
-مرحباً بك في **عقل المشروع (Project Brain)** المخصص لنظام **SocailManager**. تم تصميم هذا العقل ليعمل كـ Map of Content (MOC) متوافق بالكامل مع **Obsidian** ويدعم الروابط التشعبية المزدوجة `[[wikilinks]]` والرسوم البيانية للعلاقات (Graph View).
+مرحباً بك في **عقل المشروع (Project Brain)** المخصص لنظام **HudhudRadar**. تم تصميم هذا العقل ليعمل كـ Map of Content (MOC) متوافق بالكامل مع **Obsidian** ويدعم الروابط التشعبية المزدوجة `[[wikilinks]]` والرسوم البيانية للعلاقات (Graph View).
 
 ---
 

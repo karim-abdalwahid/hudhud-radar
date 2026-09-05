@@ -2,7 +2,7 @@
 #design-system #ui-ux #frontend-engineering #linear-style #vercel-guidelines #best-practices #archive
 
 **التاريخ والوقت**: `2026-09-04 11:10 UTC+3`  
-**المرجع الأصلي**: [`PROJECT_BRAIN/Design_System/CALM_MINIMAL_DESIGN_SYSTEM.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/Design_System/CALM_MINIMAL_DESIGN_SYSTEM.md)  
+**المرجع الأصلي**: [`PROJECT_BRAIN/Design_System/CALM_MINIMAL_DESIGN_SYSTEM.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/Design_System/CALM_MINIMAL_DESIGN_SYSTEM.md)  
 **الهدف**: توثيق المعيار الذهبي الموحد لبناء وتصميم واجهات المستخدم (UI/UX) في هذا المشروع وأي مشروع برمجي قادم، لضمان إنتاج واجهات هادئة، راقية، مريحة للعين، ومنظمة، مع التخلص النهائي من كليشيهات الذكاء الاصطناعي المشوهة.
 
 ---

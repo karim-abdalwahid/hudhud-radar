@@ -40,6 +40,6 @@
 ---
 
 ## 🔗 روابط الربط المباشرة مع عقل المشروع وذاكرته
-- **ذاكرة المشروع الدائمة**: [`../PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_MEMORY.md)
-- **عقل المشروع (Obsidian MOC)**: [`../PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/00_Index.md)
-- **إجراء الأرشفة والترقيم القياسي**: [`../PROJECT_BRAIN/SOPs/SOP_07_Document_Archiving_and_Versioning.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/SOPs/SOP_07_Document_Archiving_and_Versioning.md)
+- **ذاكرة المشروع الدائمة**: [`../PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_MEMORY.md)
+- **عقل المشروع (Obsidian MOC)**: [`../PROJECT_BRAIN/00_Index.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/00_Index.md)
+- **إجراء الأرشفة والترقيم القياسي**: [`../PROJECT_BRAIN/SOPs/SOP_07_Document_Archiving_and_Versioning.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/SOPs/SOP_07_Document_Archiving_and_Versioning.md)

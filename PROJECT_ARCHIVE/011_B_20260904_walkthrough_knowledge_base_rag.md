@@ -8,7 +8,7 @@
 
 ---
 
-تم بنجاح بناء وتفعيل نظام **قاعدة المعرفة والـ RAG (Retrieval-Augmented Generation)** المتكامل داخل **SocailManager**.
+تم بنجاح بناء وتفعيل نظام **قاعدة المعرفة والـ RAG (Retrieval-Augmented Generation)** المتكامل داخل **HudhudRadar**.
 أصبح النظام يمتلك ذاكرة حية ومستمرة تفهم كافة تفاصيل النشاط التجاري لـ **كريم عبد الواحد (@karim__abdalwahid / إبدأ ماركتينج)**، مع القدرة على سحب وتحليل المحتوى التاريخي من ميتا، وقراءة ملفات الـ PDF والنصوص، وتحليل الصور الإعلانية بالذكاء الاصطناعي (Gemini Vision)، وتطبيق تكتيكات إغلاق المبيعات (Sales Closing Tactics) في الردود التلقائية، مع محرر مباشر داخل لوحة التحكم.
 
 ---
@@ -16,7 +16,7 @@
 ## 🎯 الميزات المنفذة والمختبرة بنجاح
 
 ### 1. 🕷️ سحب وتحليل محتوى ميتا التاريخي (Meta Scraping & Business Synthesis)
-* **المسار البرمجي**: [`src/knowledge/meta_crawler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/knowledge/meta_crawler.py)
+* **المسار البرمجي**: [`src/knowledge/meta_crawler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/knowledge/meta_crawler.py)
 * **الوظائف**:
   - جلب منشورات صفحة فيسبوك التاريخية والتعليقات المصاحبة (`/{page_id}/feed`).
   - جلب مواد وريلز إنستغرام وكابشن المنشورات والتعليقات (`/{ig_user_id}/media`).
@@ -28,19 +28,19 @@
     5. `synced_meta_history.md`: سجل توثيقي بالمنشورات والريلز المحللة.
 
 ### 2. 📄 معالجة المستندات متعددة الصيغ والرؤية البصرية (Multi-Format & Gemini Vision)
-* **المسار البرمجي**: [`src/knowledge/document_processor.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/knowledge/document_processor.py)
+* **المسار البرمجي**: [`src/knowledge/document_processor.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/knowledge/document_processor.py)
 * **الصيغ المدعومة**:
   - **نصوص وMarkdown (`.md`, `.txt`)**: تنظيف النصوص وحفظها فورياً.
   - **مستندات PDF (`.pdf`)**: استخراج تلقائي بواسطة مكتبة `pypdf` صفحة بصفحة وتنسيقها في مستند Markdown موحد.
   - **الصور والإنفوجرافيك (`.png`, `.jpg`, `.jpeg`, `.webp`)**: فحص واستخراج البيانات التجارية (العروض، الأسعار، الخدمات، أرقام التواصل) عبر تقنية **Gemini Multimodal Vision**.
 
 ### 3. 🧠 مدير المعرفة والـ RAG المحدث (Live In-Memory Hot-Reload)
-* **المسار البرمجي**: [`src/agent/knowledge_base.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/knowledge_base.py)
+* **المسار البرمجي**: [`src/agent/knowledge_base.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/knowledge_base.py)
 * استرجاع الأجزاء المعرفية الأكثر صلة باستفسار العميل (`search_relevant_chunks`) مع ترجيح أوزان أسئلة المبيعات والأسعار.
 * تحديث الذاكرة فورياً دون الحاجة لإعادة تشغيل السيرفر بمجرد حفظ أي تعديل في المحرر.
 
 ### 4. 🤝 تكتيكات إغلاق المبيعات في محرك المحادثات (Sales Closing Engine)
-* **المسار البرمجي**: [`src/agent/conversation_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/conversation_engine.py)
+* **المسار البرمجي**: [`src/agent/conversation_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/conversation_engine.py)
 * **الردود الذكية**:
   - **استفسار السعر ("بكام"، "السعر"، "الباقات")**: التأكيد على وجود باقات مرنة تناسب أهداف النشاط وطلب رقم الهاتف أو الواتساب فوراً لإرسال العرض المخصص.
   - **كلمات الـ CTA في الريلز ("ابدأ")**: تقديم خطة العمل وتدقيق الحساب وطلب الهاتف/البريد للمتابعة.

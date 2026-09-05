@@ -87,4 +87,4 @@ class ContentGenerationResponse(BaseModel):
     suggested_hashtags: List[str] = Field(default_factory=list)
     script_breakdown: Optional[Dict[str, str]] = None
     cta: str
-    model_used: str = "SocailManager Content Studio Engine"
+    model_used: str = "HudhudRadar Content Studio Engine"

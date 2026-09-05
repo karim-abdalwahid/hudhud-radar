@@ -9,7 +9,7 @@
 ---
 
 ## 🎯 الغرض من الوثيقة
-توثيق الإنجاز المحوري في جعل وكيل **SocailManager** متصلاً بحسابات Meta الحقيقية دون انقطاع، وشرح الخوارزمية البرمجية الدقيقة التي تم بها تجاوز مشكلة انتهاء التوكن المؤقت (Short-lived Token) وتحويله إلى **Page Access Token دائم مدى الحياة (`expires_at = 0`)**.
+توثيق الإنجاز المحوري في جعل وكيل **HudhudRadar** متصلاً بحسابات Meta الحقيقية دون انقطاع، وشرح الخوارزمية البرمجية الدقيقة التي تم بها تجاوز مشكلة انتهاء التوكن المؤقت (Short-lived Token) وتحويله إلى **Page Access Token دائم مدى الحياة (`expires_at = 0`)**.
 
 ---
 
@@ -17,7 +17,7 @@
 
 | البيان | القيمة الحقيقية في Meta | الحالة |
 |---|---|:---:|
-| **اسم تطبيق Meta** | `SocailManager AI` | نشط ومفعل |
+| **اسم تطبيق Meta** | `HudhudRadar AI` | نشط ومفعل |
 | **معرف التطبيق (App ID)** | `2092880431308591` | موثق في `.env` |
 | **سر التطبيق (App Secret)** | `1ddbef5f0c9292a82fd5f2382afdbb65` | مشفر ومحمي في `.env` |
 | **اسم صفحة فيسبوك** | `إبدأ ماركتينج - Karim Abdalwahid` | متصلة |
@@ -75,7 +75,7 @@ GET https://graph.facebook.com/debug_token?
   "data": {
     "app_id": "2092880431308591",
     "type": "PAGE",
-    "application": "SocailManager AI",
+    "application": "HudhudRadar AI",
     "expires_at": 0,
     "is_valid": true,
     "profile_id": "1108892288983475"
@@ -98,6 +98,6 @@ POST https://graph.facebook.com/v21.0/{PAGE_ID}/subscribed_apps?
 ---
 
 ## 🔗 الروابط المرجعية ذات الصلة
-- ذاكرة المشروع الدائمة: [`../../PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_MEMORY.md)
-- إجراءات التكامل مع Meta: [`../PROJECT_BRAIN/SOPs/SOP_04_Meta_API_Integration.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_BRAIN/SOPs/SOP_04_Meta_API_Integration.md)
-- فهرس الأرشيف الشامل: [`000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md)
+- ذاكرة المشروع الدائمة: [`../../PROJECT_MEMORY.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_MEMORY.md)
+- إجراءات التكامل مع Meta: [`../PROJECT_BRAIN/SOPs/SOP_04_Meta_API_Integration.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_BRAIN/SOPs/SOP_04_Meta_API_Integration.md)
+- فهرس الأرشيف الشامل: [`000_ARCHIVE_CATALOG.md`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/PROJECT_ARCHIVE/000_ARCHIVE_CATALOG.md)

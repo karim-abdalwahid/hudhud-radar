@@ -1,5 +1,5 @@
 # 🚀 تقرير إنجاز محرك البحث الدلالي LEANN ووكيل فحص الامتثال Ruflo (Milestone 015)
-#leann #ruflo #hybrid-rag #compliance-agent #swarm #archive #socailmanager
+#leann #ruflo #hybrid-rag #compliance-agent #swarm #archive #hudhud-radar
 
 **التاريخ والوقت**: `2026-09-04 11:15 UTC+3`  
 **الحالة**: ✅ مكتمل ومختبر بنسبة 100% (38/38 اختباراً ناجحاً)  
@@ -10,8 +10,8 @@
 ## 1. محرك البحث الدلالي الهجين فائق الخفة (LEANN-Inspired Semantic Hybrid RAG)
 
 ### المعمارية المنفذة:
-1. **الملف المنشأ**: [`src/knowledge/semantic_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/knowledge/semantic_engine.py).
-2. **التكامل**: دمج المحرك مع [`src/agent/knowledge_base.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/knowledge_base.py) في دالة `search_relevant_chunks`.
+1. **الملف المنشأ**: [`src/knowledge/semantic_engine.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/knowledge/semantic_engine.py).
+2. **التكامل**: دمج المحرك مع [`src/agent/knowledge_base.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/knowledge_base.py) في دالة `search_relevant_chunks`.
 3. **الخصائص التقنية**:
    - حساب المتجهات عند الطلب (On-Demand Vector Computation) للمقاطع المعرفية مع كاش داخلي في الذاكرة لتجنب إعادة الحساب المتكررة.
    - حساب التشابه الدلالي (Cosine Similarity) بكود بايثون صلب وخفيف بدون مكتبات خارجية ضخمة.
@@ -24,14 +24,14 @@
 ## 2. وكيل فحص الامتثال والجودة (Ruflo-Inspired Compliance Gatekeeper Agent)
 
 ### المعمارية المنفذة:
-1. **الملف المنشأ**: [`src/content_studio/compliance_agent.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/content_studio/compliance_agent.py).
+1. **الملف المنشأ**: [`src/content_studio/compliance_agent.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/content_studio/compliance_agent.py).
 2. **عقد البيانات الصارم (Typed Contract)**:
    - فئة `ComplianceVerdict` التي تعيد: `is_compliant`, `quality_score`, `passed_checks`, `warnings`, `prohibited_terms`, `suggested_revision`.
 3. **بوابة الفحص قبل النشر (Scheduler Gatekeeper)**:
-   - تم تعديل [`src/agent/scheduler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/agent/scheduler.py): قبل نشر أي منشور مجدول، يتم تمريره إجبارياً على وكيل فحص الامتثال.
+   - تم تعديل [`src/agent/scheduler.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/agent/scheduler.py): قبل نشر أي منشور مجدول، يتم تمريره إجبارياً على وكيل فحص الامتثال.
    - إذا تم رصد عبارات مضللة (مثل "أرباح مضمونة"، "ثراء سريع") أو إذا كان المنشور لإنستغرام ولا يحتوي على وسائط، يتم **إيقاف النشر فوراً** وتسجيل سبب الرفض الدقيق في قاعدة البيانات.
 4. **نقطة نهاية الـ API**:
-   - `POST /api/content/compliance-check` في [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/SocailManager/src/main.py) لاختبار جودة وامتثال أي مسودة قبل اعتمادها.
+   - `POST /api/content/compliance-check` في [`src/main.py`](file:///c:/Users/Dell/Desktop/$AI_TESTING/HudhudRadar/src/main.py) لاختبار جودة وامتثال أي مسودة قبل اعتمادها.
 
 ---
 
