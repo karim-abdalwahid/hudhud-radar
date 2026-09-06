@@ -845,3 +845,31 @@ The user requested a full professional study of the entire project followed by a
 - Never leave any small broken thing unaddressed — the owner demands absolute precision.
 
 
+
+---
+
+## [Entry 021] Roadmap v2: Eight-Phase Improvement Plan (Owner-Approved)
+- **Timestamp**: 2026-09-06T21:30:00+03:00
+- **Actor**: User (كريم) & AI Agent (opencode/GLM)
+- **Status**: PLAN APPROVED — EXECUTION STARTED
+
+### 1. Owner Requirements (verbatim intent)
+1. Login page must reach sendrad.com professionalism: product animation, NOT a custom-invented logo — the approved hudhud. wordmark from the landing page applied SITE-WIDE.
+2. Phone field: not Egypt-locked — full country selector with flags, searchable by country name (AR+EN) or dial code; auth page needs REAL AR/EN versions via the central i18n engine (not cosmetic direction flip).
+3. Full Supabase audit: every table's purpose/columns/RLS/grants/relations/indexes, app-code data-flow mapping, dead/duplicate tables, ERD diagram, security holes, followed by a corrective migration.
+4. Two test users (admin + user) to log in and verify every page/API permission matrix; fix discovered bugs.
+5. Google sign-in option (like sendrad.com) — via native Supabase Auth Google provider.
+6. RAG decision (after deep study of github.com/StarTrail-org/LEANN): LEANN is unsuitable for Vercel serverless (C++ builds, local-disk index, no server mode, no cloud storage) — APPROVED alternative: **Supabase pgvector** + Gemini embeddings + hybrid search (cosine + tsvector + RRF); migrate KB from markdown files to DB (fixes serverless read-only writes permanently); DELETE the fabricated knowledge base content; rebuild Meta-sync analysis as structured Gemini per-post analysis (classify every comment: CTA-response vs real question vs complaint vs spam, mandatory citation of post/comment IDs, zero guessing — the CTA keyword is business-prompted, not organic interest). Analysis prompt design to be shown to owner before implementation.
+7. Admin expiry/health alerting system: Threads token (warn <14 days + refresh button), Meta token validity, webhook health, Gemini quota errors, scheduler last-run, insights freshness, Supabase connectivity — colored banners + daily cron refresh.
+8. AI Provider/Model management (opencode-style, researched): i_providers + i_models tables; official providers with logos (Google AI, Anthropic, OpenAI, OpenRouter); AUTO-DISCOVERY of models available to the account's credentials on save/login/refresh-button; unavailable models hidden from clients; Custom provider form exactly like opencode (Provider ID, Display name, Base URL, optional API key, +Add model, +Add header — all optional); admin enable/disable per model; client picks their agent's brain from enabled models only; unified llm_router speaking Gemini/OpenAI-compatible/Anthropic formats; API keys never returned to frontend (masked).
+
+### 2. Owner Decisions Recorded
+- pgvector direction: APPROVED (LEANN rejected after full study).
+- Logo: unified text wordmark hudhud. everywhere (owner images could not be read by the model; text logo per landing page is the source of truth; owner may later supply a static/logo.png to swap in).
+- Execution order: documentation → login/auth UX → Supabase audit → test users → Google OAuth → RAG/pgvector → App Review package → admin alerts → AI providers system.
+- META_APP_SECRET remains unrotated for now (private repo).
+
+### 3. Phase 0 — This entry + [PROJECT_ARCHIVE/021_20260906_2130_roadmap_v2_eight_phases.md] + catalog update.
+### 4. Execution Log (updated as work proceeds)
+- [x] Phase 0 documented.
+- [ ] Phase 1 login/auth UX → [ ] Phase 2 Supabase audit → [ ] Phase 3 test users → [ ] Phase 4 Google OAuth → [ ] Phase 5 RAG/pgvector → [ ] Phase 6 App Review package → [ ] Phase 7 admin alerts → [ ] Phase 8 AI providers.
