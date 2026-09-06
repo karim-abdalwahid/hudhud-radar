@@ -1,5 +1,8 @@
 """
-HudhudRadar Entrypoint for Local Development & Cloud Serverless Deployment (Vercel).
+HudhudRadar — Single unified entrypoint.
+
+- Local development: `python main.py` (uvicorn with reload)
+- Vercel serverless: api/index.py imports `src.main:app` (this module wires sys.path)
 """
 import sys
 from pathlib import Path

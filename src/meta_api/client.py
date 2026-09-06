@@ -2,6 +2,7 @@
 Meta Graph API Async Client.
 Handles Facebook Page and Instagram Business Account messaging, profile retrieval, and insights.
 """
+import asyncio
 from typing import Dict, Any, Optional
 import httpx
 from datetime import datetime, timezone, timedelta
@@ -10,6 +11,11 @@ from src.core.logger import logger
 from src.core.exceptions import MetaAPIError, MessagingWindowExpiredError
 from src.meta_api.rate_limiter import rate_limiter
 from src.core.supabase_client import supabase_db
+
+# Transient HTTP status codes worth retrying (network/server throttling hiccups)
+RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
+MAX_SEND_RETRIES = 2
+RETRY_BASE_DELAY_SECONDS = 1.0
 
 
 class MetaGraphClient:
@@ -26,6 +32,41 @@ class MetaGraphClient:
         self.access_token = access_token
         self.page_id = page_id
         self.instagram_id = instagram_id
+
+    async def _post_with_retry(
+        self, url: str, params: Dict[str, Any], json_payload: Dict[str, Any],
+        platform: str, target_id: str, action: str
+    ) -> httpx.Response:
+        """
+        POST with bounded exponential backoff on transient failures.
+        Never retries 4xx policy errors (they are deterministic).
+        """
+        last_error: Optional[Exception] = None
+        for attempt in range(MAX_SEND_RETRIES + 1):
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post(url, params=params, json=json_payload)
+                    rate_limiter.update_from_headers(platform, dict(resp.headers))
+                if resp.status_code == 200:
+                    return resp
+                if resp.status_code in RETRYABLE_STATUS_CODES and attempt < MAX_SEND_RETRIES:
+                    delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                    logger.warning(
+                        f"Transient Meta {resp.status_code} on {action} to {target_id} — retrying in {delay:.0f}s "
+                        f"(attempt {attempt + 1}/{MAX_SEND_RETRIES})"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                return resp
+            except httpx.RequestError as e:
+                last_error = e
+                if attempt < MAX_SEND_RETRIES:
+                    delay = RETRY_BASE_DELAY_SECONDS * (2 ** attempt)
+                    logger.warning(f"Network error on {action} to {target_id} — retrying in {delay:.0f}s: {e}")
+                    await asyncio.sleep(delay)
+                    continue
+                raise
+        raise last_error or MetaAPIError(f"{action} failed after retries")
 
     async def get_profile(self, user_id: str, fields: str = "id,name,first_name,last_name,profile_pic,username") -> Dict[str, Any]:
         """Fetches public user profile information via Graph API."""
@@ -93,17 +134,15 @@ class MetaGraphClient:
                 self._log_activity("send_message", "facebook", recipient_id, "success", None)
                 return simulated_resp
 
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(url, params=params, json=payload)
-                rate_limiter.update_from_headers("facebook", dict(resp.headers))
-                if resp.status_code != 200:
-                    err_msg = resp.text
-                    self._log_activity("send_message", "facebook", recipient_id, "failed", err_msg)
-                    raise MetaAPIError(f"Meta Send API Error: {err_msg}", status_code=resp.status_code)
+            resp = await self._post_with_retry(url, params, payload, "facebook", recipient_id, "send_message")
+            if resp.status_code != 200:
+                err_msg = resp.text
+                self._log_activity("send_message", "facebook", recipient_id, "failed", err_msg)
+                raise MetaAPIError(f"Meta Send API Error: {err_msg}", status_code=resp.status_code)
 
-                data = resp.json()
-                self._log_activity("send_message", "facebook", recipient_id, "success", None)
-                return data
+            data = resp.json()
+            self._log_activity("send_message", "facebook", recipient_id, "success", None)
+            return data
         except httpx.RequestError as e:
             self._log_activity("send_message", "facebook", recipient_id, "failed", str(e))
             raise MetaAPIError(f"Network error sending message: {str(e)}")
@@ -134,17 +173,15 @@ class MetaGraphClient:
                 self._log_activity("send_message", "instagram", recipient_id, "success", None)
                 return simulated_resp
 
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(url, params=params, json=payload)
-                rate_limiter.update_from_headers("instagram", dict(resp.headers))
-                if resp.status_code != 200:
-                    err_msg = resp.text
-                    self._log_activity("send_message", "instagram", recipient_id, "failed", err_msg)
-                    raise MetaAPIError(f"Instagram Send API Error: {err_msg}", status_code=resp.status_code)
+            resp = await self._post_with_retry(url, params, payload, "instagram", recipient_id, "send_ig_message")
+            if resp.status_code != 200:
+                err_msg = resp.text
+                self._log_activity("send_message", "instagram", recipient_id, "failed", err_msg)
+                raise MetaAPIError(f"Instagram Send API Error: {err_msg}", status_code=resp.status_code)
 
-                data = resp.json()
-                self._log_activity("send_message", "instagram", recipient_id, "success", None)
-                return data
+            data = resp.json()
+            self._log_activity("send_message", "instagram", recipient_id, "success", None)
+            return data
         except httpx.RequestError as e:
             self._log_activity("send_message", "instagram", recipient_id, "failed", str(e))
             raise MetaAPIError(f"Network error sending IG message: {str(e)}")

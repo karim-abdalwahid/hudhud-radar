@@ -83,46 +83,49 @@ class IdentityResolver:
         return created, True, None
 
     def _find_potential_candidate(self, incoming: LeadCreate) -> Tuple[Optional[Dict[str, Any]], float, str]:
-        """Scans database for candidate identities and computes confidence score."""
+        """
+        Scans ALL leads, evaluates every possible match signal per lead, and
+        returns the HIGHEST-confidence candidate (not the first found).
+        """
         all_leads = self.db.select("leads")
 
-        # Sub-check 1: Official cross-link specified directly in payload
-        if incoming.source == PlatformSource.FACEBOOK and incoming.instagram_account_id:
-            for lead in all_leads:
-                if lead.get("instagram_account_id") == incoming.instagram_account_id:
-                    return lead, 1.00, "Official API-linked Instagram account detected in Facebook profile"
+        best_lead: Optional[Dict[str, Any]] = None
+        best_score = 0.0
+        best_reason = "No candidate match found"
 
-        if incoming.source == PlatformSource.INSTAGRAM and incoming.facebook_account_id:
-            for lead in all_leads:
-                if lead.get("facebook_account_id") == incoming.facebook_account_id:
-                    return lead, 1.00, "Official API-linked Facebook page detected in Instagram profile"
+        for lead in all_leads:
+            score = 0.0
+            reason = None
 
-        # Sub-check 2: Exact matching contact email
-        if incoming.contact_email:
-            for lead in all_leads:
-                if lead.get("contact_email") and lead["contact_email"].lower() == incoming.contact_email.lower():
-                    return lead, 0.90, f"Exact email match ({incoming.contact_email})"
+            # Signal 1: Official cross-link specified directly in payload (strongest)
+            if (incoming.source == PlatformSource.FACEBOOK and incoming.instagram_account_id
+                    and lead.get("instagram_account_id") == incoming.instagram_account_id):
+                score, reason = 1.00, "Official API-linked Instagram account detected in Facebook profile"
+            elif (incoming.source == PlatformSource.INSTAGRAM and incoming.facebook_account_id
+                    and lead.get("facebook_account_id") == incoming.facebook_account_id):
+                score, reason = 1.00, "Official API-linked Facebook page detected in Instagram profile"
+            # Signal 2: Exact email match
+            elif (incoming.contact_email and lead.get("contact_email")
+                    and lead["contact_email"].lower() == incoming.contact_email.lower()):
+                score, reason = 0.90, f"Exact email match ({incoming.contact_email})"
+            # Signal 3: Exact phone match
+            elif (incoming.contact_phone and lead.get("contact_phone")
+                    and lead["contact_phone"] == incoming.contact_phone):
+                score, reason = 0.88, f"Exact phone number match ({incoming.contact_phone})"
+            # Signal 4: Identical username across platforms
+            elif (incoming.username and lead.get("username")
+                    and lead["username"].lower() == incoming.username.lower()):
+                score, reason = 0.70, f"Identical username match (@{incoming.username})"
+            # Signal 5: Identical full name + same location
+            elif (incoming.full_name and incoming.location and lead.get("full_name") and lead.get("location")
+                    and lead["full_name"].lower() == incoming.full_name.lower()
+                    and lead["location"].lower() == incoming.location.lower()):
+                score, reason = 0.55, f"Same full name and location match ({incoming.full_name} in {incoming.location})"
 
-        # Sub-check 3: Exact matching contact phone
-        if incoming.contact_phone:
-            for lead in all_leads:
-                if lead.get("contact_phone") and lead["contact_phone"] == incoming.contact_phone:
-                    return lead, 0.88, f"Exact phone number match ({incoming.contact_phone})"
+            if score > best_score:
+                best_lead, best_score, best_reason = lead, score, reason
 
-        # Sub-check 4: Identical username across platforms
-        if incoming.username:
-            for lead in all_leads:
-                if lead.get("username") and lead["username"].lower() == incoming.username.lower():
-                    return lead, 0.70, f"Identical username match (@{incoming.username})"
-
-        # Sub-check 5: Identical full name + same location
-        if incoming.full_name and incoming.location:
-            for lead in all_leads:
-                if (lead.get("full_name") and lead["full_name"].lower() == incoming.full_name.lower() and
-                    lead.get("location") and lead["location"].lower() == incoming.location.lower()):
-                    return lead, 0.55, f"Same full name and location match ({incoming.full_name} in {incoming.location})"
-
-        return None, 0.0, "No candidate match found"
+        return best_lead, best_score, best_reason
 
     def _add_to_verification_queue(self, primary_lead_id: str, candidate_lead_id: str, match_reason: str, confidence_score: float) -> Dict[str, Any]:
         """Inserts candidate pair into the verification queue table for human approval."""

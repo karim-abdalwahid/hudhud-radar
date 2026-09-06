@@ -1,15 +1,9 @@
 """
 Unit & Integration tests for Multi-Page SaaS Web Application Architecture.
-Verifies all 7 dedicated routes, static asset delivery, and LEANN-hybrid search API.
+Verifies all dedicated routes, static asset delivery, LEANN-hybrid search API,
+and authentication protection (shared authed `client` from conftest).
 """
 import pytest
-from starlette.testclient import TestClient
-from src.main import app
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
 
 
 def test_saas_static_assets(client):

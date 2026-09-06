@@ -39,7 +39,6 @@ class AgentOrchestrator:
         # 1. Zero-Assumption Profile Extraction
         if platform == PlatformSource.FACEBOOK:
             profile_payload = {"id": sender_id}
-            # If available from raw_event or graph api
             lead_in = ProfileDataExtractor.extract_from_facebook(profile_payload)
         else:
             profile_payload = {"id": sender_id, "username": raw_event.get("sender", {}).get("username")}
@@ -49,7 +48,19 @@ class AgentOrchestrator:
         lead_record, is_new, queue_id = self.resolver.resolve_and_save_lead(lead_in)
         lead_id = lead_record["id"]
 
-        # 3. Store Inbound Message linked to lead
+        # 3. Human Takeover check: never auto-reply when a human is in control
+        if lead_record.get("human_takeover"):
+            logger.info(f"Human takeover active for lead {lead_id} — skipping AI auto-reply.")
+            return {
+                "lead_id": lead_id,
+                "is_new_lead": is_new,
+                "queue_id": queue_id,
+                "reply_sent": None,
+                "is_converted": False,
+                "human_takeover": True,
+            }
+
+        # 4. Store Inbound Message linked to lead
         inbound_msg = MessageCreate(
             lead_id=lead_id,
             platform=platform,
@@ -60,7 +71,7 @@ class AgentOrchestrator:
         )
         self.lead_svc.add_message(inbound_msg)
 
-        # 4. Check for contact details extracted directly from message text
+        # 5. Check for contact details extracted directly from message text
         contact_info = self.engine.extract_contact_info(text)
         updates = {}
         if contact_info["email"] and not lead_record.get("contact_email"):
@@ -71,12 +82,21 @@ class AgentOrchestrator:
             self.lead_svc.update_lead(lead_id, LeadUpdate(**updates))
             lead_record.update(updates)
 
-        # 5. Generate AI Response
+        # 6. Generate AI Response
         history = self.lead_svc.get_messages_for_lead(lead_id)
         reply_text, is_converted = await self.engine.generate_response(lead_record, text, history)
 
-        # 6. Send Outbound Response adhering to 24-hr window & Rate Limits
-        last_interaction = datetime.now(timezone.utc)
+        # 7. Send Outbound Response adhering to 24-hr window & Rate Limits.
+        # Use the real event timestamp when available (accurate 24h-window basis).
+        event_ts = event.get("timestamp")
+        try:
+            last_interaction = (
+                datetime.fromtimestamp(int(event_ts) / 1000, tz=timezone.utc)
+                if event_ts else datetime.now(timezone.utc)
+            )
+        except (TypeError, ValueError):
+            last_interaction = datetime.now(timezone.utc)
+
         send_result = {}
         try:
             if platform == PlatformSource.FACEBOOK:
@@ -92,7 +112,7 @@ class AgentOrchestrator:
                     last_interaction_time=last_interaction
                 )
 
-            # 7. Store Outbound Message
+            # 8. Store Outbound Message
             outbound_msg = MessageCreate(
                 lead_id=lead_id,
                 platform=platform,

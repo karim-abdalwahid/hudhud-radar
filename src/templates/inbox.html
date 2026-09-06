@@ -278,8 +278,7 @@
                             <div class="filter-chip-row">
                                 <button class="filter-chip active" onclick="filterChannel('all', this)" data-i18n="inbox.filter_all">All</button>
                                 <button class="filter-chip" onclick="filterChannel('instagram', this)" data-i18n="inbox.filter_ig">Instagram</button>
-                                <button class="filter-chip" onclick="filterChannel('messenger', this)" data-i18n="inbox.filter_fb">Messenger</button>
-                                <button class="filter-chip" onclick="filterChannel('whatsapp', this)" data-i18n="inbox.filter_wa">WhatsApp</button>
+                                <button class="filter-chip" onclick="filterChannel('facebook', this)" data-i18n="inbox.filter_fb">Messenger</button>
                             </div>
                         </div>
 
@@ -347,16 +346,20 @@
                             </div>
                         </div>
 
-                        <div>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <button class="btn-primary" onclick="sendBookingLink()" style="font-size: 12.5px; padding: 9px; width: 100%; justify-content: center;" data-i18n="inbox.dossier_send_link">
-                                    📅 Send Booking Link
-                                </button>
-                                <button class="btn-secondary" onclick="markLeadWon()" style="font-size: 12.5px; padding: 9px; width: 100%; justify-content: center; border-color: #059669; color: #059669;" data-i18n="inbox.dossier_close_won">
-                                    ✓ Mark Deal Won
-                                </button>
+                            <div>
+                                <div style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;" data-i18n="inbox.dossier_contact">Contact Captured:</div>
+                                <div style="font-size: 13px; line-height: 1.6; background: #ffffff; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); color: var(--text-primary);" id="lead-panel-contact">
+                                    —
+                                </div>
                             </div>
-                        </div>
+
+                            <div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <button class="btn-primary" onclick="sendBookingLink()" style="font-size: 12.5px; padding: 9px; width: 100%; justify-content: center;" data-i18n="inbox.dossier_send_link">
+                                        📅 Send Booking Link
+                                    </button>
+                                </div>
+                            </div>
 
                         <div style="margin-top: auto; border-top: 1px solid var(--border-default); padding-top: 14px; font-size: 11.5px; color: var(--text-muted); line-height: 1.5;" data-i18n="inbox.source_kb_note">
                             AI Note: Answer generated strictly from Knowledge Base prices.
@@ -467,9 +470,8 @@
             document.getElementById('lead-panel-name').textContent = isAr ? 'لم يتم تحديد عميل بعد' : 'No Lead Selected';
             document.getElementById('lead-panel-handle').textContent = '—';
             document.getElementById('lead-panel-badge').textContent = isAr ? 'بانتظار الرسائل' : 'Awaiting Inquiries';
-            document.getElementById('lead-panel-need').textContent = isAr 
-                ? 'عند ورود أي استفسار أو تعليق من عميل جديد، سيقوم الذكاء الاصطناعي بتحليله وتلخيص اهتمامه هنا تلقائياً.'
-                : 'When a new inquiry arrives from Instagram, Messenger, or WhatsApp, the AI will analyze intent and summarize customer details here.';
+            const contactEl = document.getElementById('lead-panel-contact');
+            if (contactEl) contactEl.textContent = '—';
 
             const container = document.getElementById('chat-messages');
             if (container) {
@@ -502,8 +504,12 @@
 
             document.getElementById('lead-panel-name').textContent = conv.name;
             document.getElementById('lead-panel-handle').textContent = conv.handle;
-            document.getElementById('lead-panel-badge').textContent = conv.leadBadge;
-            document.getElementById('lead-panel-need').textContent = conv.need;
+            // Real captured contact info (Zero-Fabrication)
+            document.getElementById('lead-panel-badge').textContent = conv.contactCaptured
+                ? (isAr ? '✅ تم التقاط بيانات التواصل' : '✅ Contact Captured')
+                : (isAr ? '⏳ بانتظار بيانات التواصل' : '⏳ Awaiting Contact Info');
+            const contactEl = document.getElementById('lead-panel-contact');
+            if (contactEl) contactEl.textContent = '—';
 
             const takeoverBanner = document.getElementById('takeover-banner');
             const takeoverBtn = document.getElementById('btn-takeover');
@@ -560,16 +566,32 @@
             const data = getActiveConversationsData();
             const conv = data.find(c => c.id === activeConvId);
             if (!conv) return;
-            conv.isHumanTakeover = !conv.isHumanTakeover;
-            selectConversation(activeConvId);
+            const newValue = !conv.isHumanTakeover;
+            // Persist takeover state to backend (real AI pause/resume)
+            fetch(`/api/inbox/conversations/${conv.lead_id}/takeover`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ takeover: newValue })
+            }).then(r => r.json()).then(res => {
+                conv.isHumanTakeover = res.human_takeover !== undefined ? res.human_takeover : newValue;
+                selectConversation(activeConvId);
+            }).catch(() => {
+                selectConversation(activeConvId);
+            });
         }
 
         function resumeAI() {
             const data = getActiveConversationsData();
             const conv = data.find(c => c.id === activeConvId);
             if (!conv) return;
-            conv.isHumanTakeover = false;
-            selectConversation(activeConvId);
+            fetch(`/api/inbox/conversations/${conv.lead_id}/takeover`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ takeover: false })
+            }).then(r => r.json()).then(res => {
+                conv.isHumanTakeover = res.human_takeover !== undefined ? res.human_takeover : false;
+                selectConversation(activeConvId);
+            }).catch(() => selectConversation(activeConvId));
         }
 
         function sendManualReply() {
@@ -581,19 +603,26 @@
             const conv = data.find(c => c.id === activeConvId);
             if (!conv) return;
 
-            conv.isHumanTakeover = true;
-
-            const now = new Date();
-            const timeStr = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
-
-            conv.messages.push({
-                sender: 'outgoing',
-                text: text,
-                time: timeStr
-            });
-
             input.value = '';
-            selectConversation(activeConvId);
+            // Send a REAL message via the backend (Meta Send API) and enable takeover
+            fetch(`/api/inbox/conversations/${conv.lead_id}/send-message`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            }).then(r => r.json()).then(res => {
+                if (res.status === 'success') {
+                    conv.isHumanTakeover = true;
+                    const now = new Date();
+                    const timeStr = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
+                    conv.messages.push({ sender: 'outgoing', text, time: timeStr });
+                } else {
+                    alert(res.detail || 'تعذر إرسال الرسالة');
+                }
+                selectConversation(activeConvId);
+            }).catch(() => {
+                alert('تعذر الاتصال بالخادم');
+                selectConversation(activeConvId);
+            });
         }
 
         function handleInputKey(e) {
@@ -607,26 +636,20 @@
             const data = getActiveConversationsData();
             const conv = data.find(c => c.id === activeConvId);
             if (!conv) return;
-            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-            const link = "https://calendly.com/your-business/strategy-call";
-            const msgText = isAr 
-                ? `يسعدنا جداً يا فندم! تقدر تختار الميعاد المناسب لمكالمتك مع فريقنا عبر الرابط ده: ${link}`
-                : `We'd love to connect! You can pick the best time for your 1-on-1 strategy call with our team here: ${link}`;
-            
-            const now = new Date();
-            const timeStr = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
-            conv.messages.push({ sender: 'outgoing', text: msgText, time: timeStr });
-            selectConversation(activeConvId);
-        }
-
-        function markLeadWon() {
-            const data = getActiveConversationsData();
-            const conv = data.find(c => c.id === activeConvId);
-            if (!conv) return;
-            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-            conv.leadBadge = isAr ? "🏆 صفقة ناجحة (Closed Won)" : "🏆 Closed Won ($2,500)";
-            selectConversation(activeConvId);
-            alert(isAr ? `🎉 مبروك! تم تسجيل العميل (${conv.name}) كصفقة ناجحة في نظام الـ CRM!` : `🎉 Congratulations! Marked lead (${conv.name}) as Won in CRM!`);
+            // Send the real configured booking link via the backend (from rules_and_guidelines.md)
+            fetch(`/api/inbox/conversations/${conv.lead_id}/send-booking-link`, { method: 'POST' })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        const now = new Date();
+                        const timeStr = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
+                        conv.messages.push({ sender: 'outgoing', text: '📅 Booking link sent to the customer', time: timeStr });
+                    } else {
+                        alert(res.detail || 'تعذر إرسال رابط الحجز');
+                    }
+                    selectConversation(activeConvId);
+                })
+                .catch(() => alert('تعذر الاتصال بالخادم'));
         }
 
         document.addEventListener('DOMContentLoaded', () => {

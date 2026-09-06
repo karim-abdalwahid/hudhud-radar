@@ -1,12 +1,11 @@
 """
 Tests for Content Studio: AI Generation, Persistence, Scheduler, Meta Publishing, and REST APIs.
+API tests use the authenticated admin `client` fixture from conftest.
 """
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone, timedelta
-from fastapi.testclient import TestClient
 
-from src.main import app
 from src.content_studio.models import (
     ContentPlatform,
     PostType,
@@ -23,8 +22,9 @@ from src.agent.scheduler import ContentScheduler
 
 
 @pytest.fixture
-def test_client():
-    return TestClient(app)
+def test_client(client):
+    """Authenticated admin client (from conftest)."""
+    return client
 
 
 @pytest.fixture

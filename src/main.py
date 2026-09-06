@@ -15,7 +15,7 @@ import httpx
 import asyncio
 from pydantic import BaseModel
 from fastapi import FastAPI, Request, Response, HTTPException, Query, BackgroundTasks, UploadFile, File
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 import os
 from typing import Optional, List, Dict, Any
@@ -24,6 +24,20 @@ from contextlib import asynccontextmanager
 from src.config import settings
 from src.core.logger import logger
 from src.core.supabase_client import supabase_db
+from src.core.auth import (
+    create_session_token,
+    verify_session_token,
+    user_store,
+    auth_limiter,
+    SESSION_COOKIE_NAME,
+    SESSION_TTL_SECONDS,
+    PUBLIC_EXACT_PATHS,
+    PUBLIC_PATH_PREFIXES,
+    ADMIN_EXACT_PATHS,
+    ADMIN_PAGE_PATHS,
+    ADMIN_PATH_PREFIXES,
+    ADMIN_MUTATION_PREFIXES,
+)
 from src.meta_api.webhooks import webhook_handler
 from src.automations.service import automations_service
 from src.agent.orchestrator import agent_orchestrator
@@ -36,6 +50,12 @@ from src.knowledge.meta_crawler import meta_crawler, knowledge_synthesizer
 from src.knowledge.document_processor import document_processor
 from src.meta_api.feed_sync import meta_feed_sync
 from src.meta_api.token_manager import meta_token_manager
+from src.meta_api.extended_api import (
+    meta_insights_sync,
+    threads_publisher,
+    marketing_leads_sync,
+)
+from src.meta_api.compliance_pages import register_compliance_routes
 
 from src.content_studio.models import (
     ContentPostCreate,
@@ -95,10 +115,164 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+
+# --------------------------------------------------------------------
+# Authentication Middleware: protects dashboard pages & APIs
+# --------------------------------------------------------------------
+def _is_public(path: str) -> bool:
+    if path in PUBLIC_EXACT_PATHS:
+        return True
+    return any(path.startswith(p) for p in PUBLIC_PATH_PREFIXES)
+
+
+def _is_admin_route(path: str, method: str) -> bool:
+    if path in ADMIN_EXACT_PATHS or path in ADMIN_PAGE_PATHS:
+        return True
+    if any(path.startswith(p) for p in ADMIN_PATH_PREFIXES):
+        return True
+    if method != "GET" and any(path.startswith(p) for p in ADMIN_MUTATION_PREFIXES):
+        return True
+    return False
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if _is_public(path):
+        return await call_next(request)
+
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    session = verify_session_token(token) if token else None
+    request.state.session = session
+
+    if not session:
+        if path.startswith("/api/") or path.startswith("/webhooks"):
+            return JSONResponse(status_code=401, content={"detail": "غير مصرح — يرجى تسجيل الدخول"})
+        return RedirectResponse(url=f"/login?next={path}", status_code=303)
+
+    if _is_admin_route(path, request.method) and session.get("role") != "admin":
+        if path.startswith("/api/"):
+            return JSONResponse(status_code=403, content={"detail": "هذه العملية تتطلب صلاحيات المدير"})
+        return HTMLResponse(
+            content="<h1 style='font-family:sans-serif;direction:rtl'>403 — هذه الصفحة للمدير فقط</h1>",
+            status_code=403,
+        )
+
+    return await call_next(request)
+
+
+# --------------------------------------------------------------------
+# Auth Pages & API
+# --------------------------------------------------------------------
+class RegisterPayload(BaseModel):
+    email: str
+    password: str
+    phone: Optional[str] = None
+    full_name: Optional[str] = None
+
+
+class LoginPayload(BaseModel):
+    email: str
+    password: str
+
+
+class AuthErrorResponse(BaseModel):
+    detail: str
+
+
+@app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/register", response_class=HTMLResponse, include_in_schema=False)
+async def auth_page(request: Request):
+    """SendRad-style login/register page with phone field (owner requirement)."""
+    return HTMLResponse((TEMPLATES_DIR / "auth.html").read_text(encoding="utf-8"))
+
+
+@app.post("/auth/register", tags=["Auth"])
+async def register_user(payload: RegisterPayload, request: Request):
+    """Creates a new account. First-ever user becomes admin (owner)."""
+    client_ip = request.client.host if request.client else "unknown"
+    if auth_limiter.is_blocked(f"reg:{client_ip}"):
+        raise HTTPException(status_code=429, detail="محاولات كثيرة — انتظر 5 دقائق")
+
+    if len(payload.password) < 8:
+        raise HTTPException(status_code=400, detail="كلمة المرور يجب أن تكون 8 أحرف على الأقل")
+    if "@" not in payload.email or "." not in payload.email:
+        raise HTTPException(status_code=400, detail="البريد الإلكتروني غير صالح")
+    if user_store.count() >= 50:
+        raise HTTPException(status_code=403, detail="التسجيل مغلق حالياً")
+
+    auth_limiter.record(f"reg:{client_ip}")
+    try:
+        user = user_store.create_user(
+            email=payload.email,
+            password=payload.password,
+            phone=payload.phone,
+            full_name=payload.full_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    token = create_session_token(user["id"], user.get("role", "user"), user["email"])
+    resp = JSONResponse({"status": "success", "role": user.get("role", "user")})
+    resp.set_cookie(
+        SESSION_COOKIE_NAME, token,
+        max_age=SESSION_TTL_SECONDS, httponly=True, samesite="lax",
+        secure=(settings.APP_ENV.lower() == "production"),
+    )
+    return resp
+
+
+@app.post("/auth/login", tags=["Auth"])
+async def login_user(payload: LoginPayload, request: Request):
+    """Authenticates a user and issues a signed session cookie."""
+    client_ip = request.client.host if request.client else "unknown"
+    if auth_limiter.is_blocked(f"login:{client_ip}"):
+        raise HTTPException(status_code=429, detail="محاولات كثيرة — انتظر 5 دقائق")
+
+    user = user_store.authenticate(payload.email, payload.password)
+    if not user:
+        auth_limiter.record(f"login:{client_ip}")
+        raise HTTPException(status_code=401, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
+
+    token = create_session_token(user["id"], user.get("role", "user"), user["email"])
+    resp = JSONResponse({"status": "success", "role": user.get("role", "user")})
+    resp.set_cookie(
+        SESSION_COOKIE_NAME, token,
+        max_age=SESSION_TTL_SECONDS, httponly=True, samesite="lax",
+        secure=(settings.APP_ENV.lower() == "production"),
+    )
+    return resp
+
+
+@app.post("/auth/logout", tags=["Auth"])
+async def logout_user():
+    """Clears the session cookie."""
+    resp = JSONResponse({"status": "success"})
+    resp.delete_cookie(SESSION_COOKIE_NAME)
+    return resp
+
+
+@app.get("/auth/me", tags=["Auth"])
+async def whoami(request: Request):
+    """Returns the current session user info (reads cookie directly: /auth is public)."""
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    session = verify_session_token(token) if token else None
+    if not session:
+        return {"authenticated": False}
+    return {
+        "authenticated": True,
+        "user_id": session.get("sub"),
+        "email": session.get("email"),
+        "role": session.get("role"),
+    }
+
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = TEMPLATES_DIR / "static"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+# Register privacy policy + data deletion routes (Meta App Review readiness)
+register_compliance_routes(app)
 
 
 # --------------------------------------------------------------------
@@ -157,14 +331,24 @@ async def receive_meta_webhook(request: Request, background_tasks: BackgroundTas
     events = webhook_handler.parse_messaging_events(payload)
     comment_events = webhook_handler.parse_comment_events(payload)
 
+    from src.core.event_dedup import event_deduplicator
+
+    queued = 0
     for ev in events:
         if not ev.get("is_echo"):
+            # Idempotency: skip events Meta already delivered (prevents duplicate AI replies)
+            if not event_deduplicator.claim(f"msg:{ev.get('message_id') or ev.get('sender_id')}:{ev.get('timestamp', '')}", "message"):
+                continue
             background_tasks.add_task(agent_orchestrator.process_incoming_message_event, ev)
+            queued += 1
 
     for cev in comment_events:
+        if not event_deduplicator.claim(f"comment:{cev.get('comment_id')}", "comment"):
+            continue
         background_tasks.add_task(automations_service.process_comment_event, cev)
+        queued += 1
 
-    return {"status": "received", "events_queued": len(events) + len(comment_events)}
+    return {"status": "received", "events_queued": queued}
 
 
 
@@ -260,9 +444,23 @@ class MetaUserPagesPayload(BaseModel):
     user_token: str
 
 
+import time
+
+_meta_status_cache: Dict[str, Any] = {"ts": 0.0, "data": None}
+META_STATUS_CACHE_TTL = 60.0
+
+
 @app.get("/api/meta/status", tags=["Meta Integration"])
 async def get_meta_status():
-    """Checks the live connection status of Meta Facebook Page and Instagram Account."""
+    """
+    Checks the live connection status of Meta Facebook Page and Instagram Account.
+    Results are cached server-side for 60s to avoid burning Meta Graph API rate
+    limits when multiple browser tabs poll this endpoint.
+    """
+    now = time.time()
+    if _meta_status_cache["data"] is not None and (now - _meta_status_cache["ts"]) < META_STATUS_CACHE_TTL:
+        return _meta_status_cache["data"]
+
     # Check Supabase app_settings first for dynamic cloud persistence
     cached_creds = supabase_db.get_setting("meta_credentials")
     active_token = (cached_creds and cached_creds.get("page_access_token")) or settings.META_PAGE_ACCESS_TOKEN
@@ -288,7 +486,7 @@ async def get_meta_status():
         except Exception:
             token_valid = False
 
-    return {
+    result = {
         "configured": has_token,
         "token_valid": token_valid,
         "page_name": page_name,
@@ -298,6 +496,9 @@ async def get_meta_status():
         "supabase_connected": supabase_db.is_connected,
         "supabase_url": settings.SUPABASE_URL
     }
+    _meta_status_cache["ts"] = now
+    _meta_status_cache["data"] = result
+    return result
 
 
 @app.get("/api/meta/posts", tags=["Meta Integration"])
@@ -386,6 +587,10 @@ async def configure_meta_credentials(payload: MetaConfigPayload):
         "app_id": settings.META_APP_ID or ""
     })
 
+    # Invalidate status cache so the next poll reflects new credentials immediately
+    _meta_status_cache["ts"] = 0.0
+    _meta_status_cache["data"] = None
+
     return {
         "status": "success",
         "message": f"تم ربط والتحقق من حساب فيسبوك بنجاح! صفحة: {page_name or payload.page_id}",
@@ -405,6 +610,9 @@ async def exchange_permanent_meta_token(payload: MetaExchangeTokenPayload):
             any_user_token=payload.user_token,
             target_page_id=payload.target_page_id
         )
+        # Invalidate status cache so the next poll reflects the new token immediately
+        _meta_status_cache["ts"] = 0.0
+        _meta_status_cache["data"] = None
         return result
     except Exception as e:
         logger.error(f"Failed to generate permanent token: {e}")
@@ -577,6 +785,86 @@ async def trigger_scheduler_tick():
     """Manually checks and executes all scheduled posts that are due."""
     results = await content_scheduler.check_and_publish_due_posts()
     return {"status": "success", "due_posts_processed": len(results), "details": results}
+
+
+# --------------------------------------------------------------------
+# Cron Endpoints (Vercel Cron / external cron-job.org)
+# Protected by CRON_SECRET (Vercel sends 'Authorization: Bearer $CRON_SECRET').
+# --------------------------------------------------------------------
+def _verify_cron_secret(request: Request):
+    """Validates the cron caller secret when CRON_SECRET is configured.
+
+    Accepts either:
+    - Authorization: Bearer <secret> header (Vercel Cron), or
+    - ?key=<secret> / ?secret=<secret> query param (cron-job.org free plan
+      does not support custom headers).
+    """
+    secret = settings.CRON_SECRET
+    if not secret:
+        return  # Not configured (local dev) — allow
+    auth_header = request.headers.get("authorization") or ""
+    provided = ""
+    if auth_header.startswith("Bearer "):
+        provided = auth_header[7:].strip()
+    if not provided:
+        provided = (request.query_params.get("key") or request.query_params.get("secret") or "").strip()
+    if not provided or provided != secret:
+        raise HTTPException(status_code=401, detail="Invalid cron secret")
+
+
+@app.get("/api/cron/scheduler-tick", tags=["Cron"])
+async def cron_scheduler_tick(request: Request):
+    """
+    Cron-safe GET trigger for the content scheduler (serverless environments
+    have no background loop). Publishes all posts whose scheduled_for <= now.
+    """
+    _verify_cron_secret(request)
+    results = await content_scheduler.check_and_publish_due_posts()
+    return {"status": "success", "due_posts_processed": len(results), "details": results}
+
+
+@app.get("/api/cron/insights-sync", tags=["Cron"])
+async def cron_insights_sync(request: Request):
+    """Cron trigger for daily Meta Insights sync (Facebook + Instagram metrics)."""
+    _verify_cron_secret(request)
+    return await meta_insights_sync.sync_recent_metrics(days=7)
+
+
+# --------------------------------------------------------------------
+# Extended Meta APIs: Threads & Marketing (spec v2.1 scopes)
+# --------------------------------------------------------------------
+class ThreadsPublishPayload(BaseModel):
+    text: str
+    link: Optional[str] = None
+
+
+@app.post("/api/threads/publish", tags=["Threads"])
+async def publish_threads_post(payload: ThreadsPublishPayload):
+    """Publishes a text thread via the Meta Threads API (linked IG account)."""
+    if not payload.text.strip():
+        raise HTTPException(status_code=400, detail="نص الثريد فارغ")
+    result = await threads_publisher.publish_thread(payload.text, payload.link)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=502, detail=result.get("detail", "Threads publish failed"))
+    return result
+
+
+@app.get("/api/threads/{thread_id}/replies", tags=["Threads"])
+async def get_threads_replies(thread_id: str, limit: int = Query(20, ge=1, le=100)):
+    """Reads replies of a published thread."""
+    return await threads_publisher.get_thread_replies(thread_id, limit)
+
+
+@app.post("/api/marketing/sync-leads", tags=["Marketing API"])
+async def sync_marketing_leads(form_id: Optional[str] = None):
+    """Imports Meta Lead Ads leads into the CRM with full provenance."""
+    return await marketing_leads_sync.sync_lead_forms(form_id)
+
+
+@app.post("/api/marketing/sync-campaigns", tags=["Marketing API"])
+async def sync_marketing_campaigns():
+    """Pulls ad campaign performance metrics into the campaigns table."""
+    return await marketing_leads_sync.sync_campaign_insights()
 
 
 # --------------------------------------------------------------------
@@ -906,33 +1194,155 @@ async def save_onboarding_wizard(payload: OnboardingSavePayload):
 
 @app.get("/api/inbox/conversations", tags=["Live Inbox"])
 async def get_inbox_conversations():
-    """Returns real-time conversation threads with lead status and takeover state."""
+    """
+    Returns real conversation threads built from actual `messages` records.
+    Zero-fabrication: every message shown exists in the database.
+    """
+    from src.core.event_dedup import event_deduplicator  # noqa: F401 (import guard)
     leads = supabase_db.select("leads", {}) or []
     threads = []
-    for lead in leads[:20]:
-        platform = (lead.get("platform") or lead.get("source") or "instagram").lower()
-        # Retrieve actual interaction messages if stored in lead record
-        raw_msgs = lead.get("messages") or []
-        if not raw_msgs and (lead.get("intent") or lead.get("last_message")):
-            raw_msgs = [
-                {"sender": "customer", "text": lead.get("last_message") or lead.get("intent"), "time": "recently"}
-            ]
+    for lead in leads[:50]:
+        lead_id = lead.get("id")
+        platform = (lead.get("source") or "other").lower()
+        # Real message history from the messages table (Zero-Fabrication policy)
+        msgs = lead_service.get_messages_for_lead(lead_id) or []
+        message_items = []
+        last_inbound_at = None
+        for m in msgs:
+            sender = m.get("sender_type") or "lead"
+            if sender == "lead" and m.get("sent_at"):
+                last_inbound_at = m.get("sent_at")
+            message_items.append({
+                "sender": "agent" if sender == "agent" else "customer",
+                "text": m.get("content") or "",
+                "time": m.get("sent_at") or "",
+                "mid": m.get("platform_message_id") or "",
+            })
+        if not message_items:
+            # Lead exists but no conversation yet — show as empty thread (no fabricated chat)
+            continue
+        display_name = lead.get("full_name") or (lead.get("username") or "Lead")
         threads.append({
-            "id": f"conv_{lead.get('id', '0')}",
-            "name": lead.get("full_name") or lead.get("username") or "Customer Lead",
-            "handle": f"@{lead.get('username', 'user')}",
-            "channel": platform,
-            "platformText": "📸 Instagram Direct" if "instagram" in platform else "💬 Messenger",
-            "lastTime": lead.get("last_contact") or "Active",
-            "leadStage": lead.get("status", "new"),
-            "leadBadge": f"Lead ({lead.get('lead_score', 0)}%)",
-            "need": lead.get("intent") or "General Inquiry",
+            "id": f"conv_{lead_id}",
+            "lead_id": lead_id,
+            "name": display_name,
+            "handle": f"@{lead.get('username')}" if lead.get("username") else "",
+            "channel": platform if platform in ("instagram", "facebook") else "instagram",
+            "platformText": "📸 Instagram Direct" if platform == "instagram" else ("💬 Messenger" if platform == "facebook" else "💬 Direct"),
+            "lastTime": (message_items[-1]["time"] or "Active"),
+            "leadStage": "new",
+            "contactCaptured": bool(lead.get("contact_phone") or lead.get("contact_email")),
             "isHumanTakeover": bool(lead.get("human_takeover", False)),
-            "messages": raw_msgs
+            "lastInboundAt": last_inbound_at,
+            "messages": message_items
         })
     return {"status": "success", "conversations": threads}
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("src.main:app", host=settings.HOST, port=settings.PORT, reload=settings.APP_DEBUG)
+class TakeoverPayload(BaseModel):
+    takeover: bool
+
+
+class ManualMessagePayload(BaseModel):
+    text: str
+
+
+def _get_lead_recipient(lead: Dict[str, Any]) -> Optional[str]:
+    """Resolves the platform recipient id for direct messaging a lead."""
+    source = (lead.get("source") or "").lower()
+    if source == "facebook" and lead.get("facebook_account_id"):
+        return lead["facebook_account_id"]
+    if source == "instagram" and lead.get("instagram_account_id"):
+        return lead["instagram_account_id"]
+    return lead.get("facebook_account_id") or lead.get("instagram_account_id")
+
+
+async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_meta: Optional[Dict[str, Any]] = None):
+    """Sends a real DM to the lead via Meta Send API and stores it in messages."""
+    from src.meta_api.client import meta_client
+    from src.leads.models import MessageCreate, PlatformSource, SenderType
+    from datetime import datetime, timezone as tz
+
+    recipient = _get_lead_recipient(lead)
+    if not recipient:
+        raise HTTPException(status_code=400, detail="لا يوجد معرّف حساب مرتبط بهذا العميل لإرسال رسالة")
+    source = (lead.get("source") or "").lower()
+    platform = PlatformSource.FACEBOOK if source == "facebook" else PlatformSource.INSTAGRAM
+
+    send_result = {}
+    if platform == PlatformSource.FACEBOOK:
+        send_result = await meta_client.send_facebook_message(recipient_id=recipient, message_text=text)
+    else:
+        send_result = await meta_client.send_instagram_message(recipient_id=recipient, message_text=text)
+
+    stored = lead_service.add_message(MessageCreate(
+        lead_id=lead["id"],
+        platform=platform,
+        platform_message_id=send_result.get("message_id"),
+        sender_type=SenderType.AGENT,
+        content=text,
+        sent_at=datetime.now(tz.utc),
+        metadata=extra_meta or {},
+    ))
+    return {"message_id": send_result.get("message_id"), "stored": stored is not None}
+
+
+@app.post("/api/inbox/conversations/{lead_id}/takeover", tags=["Live Inbox"])
+async def set_human_takeover(lead_id: str, payload: TakeoverPayload):
+    """
+    Human Takeover: pauses/resumes the AI agent for this lead.
+    The orchestrator checks this flag before generating auto-replies.
+    """
+    lead = lead_service.get_lead_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    updated = lead_service.update_lead(lead_id, {"human_takeover": bool(payload.takeover)})
+    return {
+        "status": "success",
+        "lead_id": lead_id,
+        "human_takeover": bool((updated or {}).get("human_takeover", False)),
+        "message": "تم إيقاف الردود الآلية لهذه المحادثة" if payload.takeover else "تم استئناف الردود الآلية"
+    }
+
+
+@app.post("/api/inbox/conversations/{lead_id}/send-message", tags=["Live Inbox"])
+async def send_manual_inbox_message(lead_id: str, payload: ManualMessagePayload):
+    """
+    Sends a REAL human message to the lead (Human Takeover chat) and stores it.
+    Also enables takeover automatically so the AI does not double-reply.
+    """
+    lead = lead_service.get_lead_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="نص الرسالة فارغ")
+    result = await _send_and_store_agent_message(lead, text, extra_meta={"sent_by": "human"})
+    if not lead.get("human_takeover"):
+        lead_service.update_lead(lead_id, {"human_takeover": True})
+    return {"status": "success", **result}
+
+
+@app.post("/api/inbox/conversations/{lead_id}/send-booking-link", tags=["Live Inbox"])
+async def send_booking_link_message(lead_id: str):
+    """
+    Sends the configured booking link (saved via Onboarding -> rules_and_guidelines.md)
+    as a real DM. Zero-fabrication: if no link is configured, an explicit error is returned.
+    """
+    lead = lead_service.get_lead_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    import re as _re
+    guidelines = knowledge_base.get_document("rules_and_guidelines.md") or ""
+    match = _re.search(r"https?://[^\s\)\]]+", guidelines)
+    if not match:
+        raise HTTPException(
+            status_code=400,
+            detail="لم يتم تحديد رابط حجز المواعيد بعد — أضفه من صفحة الإعدادات (Onboarding) أولاً"
+        )
+    booking_link = match.group(0)
+    text = f"يسعدنا تواصلك! تقدر تحجز مكالمة استشارية مجانية مع فريقنا من هنا: {booking_link}"
+    result = await _send_and_store_agent_message(lead, text, extra_meta={"sent_by": "human", "type": "booking_link"})
+    return {"status": "success", **result}
+

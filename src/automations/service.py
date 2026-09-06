@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+﻿from typing import List, Dict, Any, Optional
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -17,23 +17,23 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
         {
             "id": "wf_ig_reel_sales",
             "name": "Instagram Reel Viral Comment-to-DM Sales Closer",
-            "description": "Monitors Reel comments for keywords [سوشيال, كورس, تفاصيل], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
+            "description": "Monitors Reel comments for keywords [Ø³ÙˆØ´ÙŠØ§Ù„, ÙƒÙˆØ±Ø³, ØªÙØ§ØµÙŠÙ„], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
             "platform": "instagram",
             "trigger_type": "comment_to_dm",
             "status": "active",
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Reels & Posts",
-            "keywords": ["سوشيال", "كورس", "تفاصيل", "سعر", "مهتم"],
+            "keywords": ["Ø³ÙˆØ´ÙŠØ§Ù„", "ÙƒÙˆØ±Ø³", "ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…"],
             "like_comment": True,
             "reply_comment": True,
-            "reply_comment_text": "تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك على الدايركت فوراً 🚀",
+            "reply_comment_text": "ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ Ø¹Ù„Ù‰ Ø§Ù„Ø¯Ø§ÙŠØ±ÙƒØª ÙÙˆØ±Ø§Ù‹ ðŸš€",
             "send_dm": True,
-            "dm_text": "أهلاً بحضرتك! إليك تفاصيل الكورس والعرض الخاص لليوم:",
-            "dm_link": "https://hudhud.ai/social-course",
+            "dm_text": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø¥Ù„ÙŠÙƒ ØªÙØ§ØµÙŠÙ„ Ø§Ù„ÙƒÙˆØ±Ø³ ÙˆØ§Ù„Ø¹Ø±Ø¶ Ø§Ù„Ø®Ø§Øµ Ù„Ù„ÙŠÙˆÙ…:",
+            "dm_link": "",
             "dm_image": "",
-            "executions_count": 142,
-            "last_executed_at": datetime.now(timezone.utc).isoformat(),
+            "executions_count": 0,
+            "last_executed_at": None,
             "nodes": [
                 {
                     "id": "node_trig_1",
@@ -41,9 +41,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "ig_comment_trigger",
                     "label": "Instagram Reel Comment",
                     "platform": "instagram",
-                    "icon": "📸",
+                    "icon": "ðŸ“¸",
                     "config": {
-                        "keywords": ["سوشيال", "كورس", "تفاصيل", "سعر", "مهتم"],
+                        "keywords": ["Ø³ÙˆØ´ÙŠØ§Ù„", "ÙƒÙˆØ±Ø³", "ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…"],
                         "match_type": "any"
                     },
                     "position": {"x": 100, "y": 220}
@@ -54,7 +54,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "keyword_filter",
                     "label": "Intent & Keyword Filter",
                     "platform": "general",
-                    "icon": "🔍",
+                    "icon": "ðŸ”",
                     "config": {
                         "filter_mode": "contains_commercial_intent",
                         "exclude_spam": True
@@ -67,7 +67,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "ai_reply_action",
                     "label": "Gemini Sales Pitch Synthesizer",
                     "platform": "general",
-                    "icon": "🤖",
+                    "icon": "ðŸ¤–",
                     "config": {
                         "tone": "egyptian_professional",
                         "include_offer": True,
@@ -81,7 +81,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "meta_dm_action",
                     "label": "Send Instagram Direct Message",
                     "platform": "instagram",
-                    "icon": "💬",
+                    "icon": "ðŸ’¬",
                     "config": {
                         "cta_button": "Book Free 15-min Call",
                         "calendar_link": "https://calendar.app.google/hudhud-meeting"
@@ -94,7 +94,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "crm_lead_action",
                     "label": "Capture & Qualify in CRM",
                     "platform": "general",
-                    "icon": "🎯",
+                    "icon": "ðŸŽ¯",
                     "config": {
                         "stage": "qualified",
                         "deal_value": 250,
@@ -122,16 +122,16 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Facebook Posts & Reels",
-            "keywords": ["تفاصيل", "سعر", "مهتم", "خدمات", "عرض"],
+            "keywords": ["ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…", "Ø®Ø¯Ù…Ø§Øª", "Ø¹Ø±Ø¶"],
             "like_comment": True,
             "reply_comment": True,
-            "reply_comment_text": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀",
+            "reply_comment_text": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ùƒ! ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ ÙÙˆØ±Ø§Ù‹ ðŸš€",
             "send_dm": True,
-            "dm_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
-            "dm_link": "https://hudhud.ai/services",
+            "dm_text": "Ù…Ø±Ø­Ø¨Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø§Ø³ØªÙØ³Ø§Ø±Ùƒ Ø¨Ø®ØµÙˆØµ Ø§Ù„Ø®Ø¯Ù…Ø© Ù…Ø­Ù„ Ø§Ù‡ØªÙ…Ø§Ù…Ù†Ø§ØŒ ØªÙØ¶Ù„ Ø¨Ø§Ù„Ø§Ø·Ù„Ø§Ø¹ Ø¹Ù„Ù‰ Ø§Ù„ØªÙØ§ØµÙŠÙ„:",
+            "dm_link": "",
             "dm_image": "",
-            "executions_count": 89,
-            "last_executed_at": datetime.now(timezone.utc).isoformat(),
+            "executions_count": 0,
+            "last_executed_at": None,
             "nodes": [
                 {
                     "id": "node_fb_trig",
@@ -139,7 +139,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_comment_trigger",
                     "label": "Facebook Post / Reel Comment",
                     "platform": "facebook",
-                    "icon": "📘",
+                    "icon": "ðŸ“˜",
                     "config": {
                         "pages": ["1108892288983475"],
                         "trigger_on": "all_comments"
@@ -152,9 +152,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_public_reply",
                     "label": "Reply to Public Comment",
                     "platform": "facebook",
-                    "icon": "📢",
+                    "icon": "ðŸ“¢",
                     "config": {
-                        "reply_template": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀"
+                        "reply_template": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ùƒ! ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ ÙÙˆØ±Ø§Ù‹ ðŸš€"
                     },
                     "position": {"x": 450, "y": 120}
                 },
@@ -164,9 +164,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_send_message",
                     "label": "Send Messenger Private Message",
                     "platform": "facebook",
-                    "icon": "💬",
+                    "icon": "ðŸ’¬",
                     "config": {
-                        "message_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
+                        "message_text": "Ù…Ø±Ø­Ø¨Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø§Ø³ØªÙØ³Ø§Ø±Ùƒ Ø¨Ø®ØµÙˆØµ Ø§Ù„Ø®Ø¯Ù…Ø© Ù…Ø­Ù„ Ø§Ù‡ØªÙ…Ø§Ù…Ù†Ø§ØŒ ØªÙØ¶Ù„ Ø¨Ø§Ù„Ø§Ø·Ù„Ø§Ø¹ Ø¹Ù„Ù‰ Ø§Ù„ØªÙØ§ØµÙŠÙ„:",
                         "attach_booking_link": True
                     },
                     "position": {"x": 450, "y": 300}
@@ -182,12 +182,12 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
         {
             "id": "wf_n8n_http_bridge",
             "name": "n8n / External Webhook Lead Forwarder",
-            "description": "Dispatches qualified high-intent social conversations to external n8n HTTP Request API nodes or Make.com webhooks.",
+            "description": "Dispatches qualified high-intent social conversations to external n8n HTTP Request API nodes or Make.com webhooks. Configure a real webhook URL before activating.",
             "platform": "both",
             "trigger_type": "webhook",
-            "status": "active",
-            "executions_count": 34,
-            "last_executed_at": datetime.now(timezone.utc).isoformat(),
+            "status": "paused",
+            "executions_count": 0,
+            "last_executed_at": None,
             "nodes": [
                 {
                     "id": "node_lead_trig",
@@ -195,7 +195,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "lead_qualified_trigger",
                     "label": "Lead Form / Phone Confirmed",
                     "platform": "both",
-                    "icon": "⭐",
+                    "icon": "â­",
                     "config": {"min_deal_value": 100},
                     "position": {"x": 120, "y": 200}
                 },
@@ -205,7 +205,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "n8n_http_action",
                     "label": "HTTP Request Node (n8n API format)",
                     "platform": "general",
-                    "icon": "🌐",
+                    "icon": "ðŸŒ",
                     "config": {
                         "method": "POST",
                         "url": "https://n8n.webhook.internal/webhook/hudhud-leads",
@@ -225,18 +225,63 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
 
 
 class AutomationsService:
-    """Manages storage, lifecycle, and execution of visual automation workflows."""
+    """Manages storage, lifecycle, and execution of visual automation workflows.
+
+    Persistence strategy (serverless-safe):
+    - Primary: Supabase `app_settings['automations_workflows']` (survives cold starts).
+    - Secondary: local JSON file (fast local cache / offline dev).
+    """
 
     def __init__(self):
         self._workflows: Dict[str, Workflow] = {}
-        self._load_from_disk()
+        self._load()
 
-    def _load_from_disk(self):
-        """Loads workflows from JSON file or initializes defaults."""
+    # ------------------------------------------------------------------
+    # Persistence helpers
+    # ------------------------------------------------------------------
+    def _load_supabase(self) -> Optional[Dict[str, Any]]:
         try:
-            STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
+            from src.core.supabase_client import supabase_db
+            if not supabase_db.is_connected:
+                return None
+            data = supabase_db.get_setting("automations_workflows")
+            if data and isinstance(data, dict) and data.get("workflows"):
+                return data
+        except Exception as e:
+            logger.warning(f"Automations Supabase load failed: {e}")
+        return None
+
+    def _save_supabase(self) -> bool:
+        try:
+            from src.core.supabase_client import supabase_db
+            if not supabase_db.is_connected:
+                return False
+            payload = {
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "total_count": len(self._workflows),
+                "workflows": [wf.model_dump() for wf in self._workflows.values()],
+            }
+            return supabase_db.set_setting("automations_workflows", payload)
+        except Exception as e:
+            logger.warning(f"Automations Supabase save failed: {e}")
+            return False
+
+    def _load(self):
+        """Loads workflows: Supabase first, then disk, then defaults."""
+        # 1. Supabase (serverless-safe source of truth)
+        cloud = self._load_supabase()
+        if cloud:
+            try:
+                for item in cloud.get("workflows", []):
+                    wf = Workflow(**item)
+                    self._workflows[wf.id] = wf
+                logger.info(f"Loaded {len(self._workflows)} workflows from Supabase app_settings")
+                return
+            except Exception as e:
+                logger.error(f"Error parsing Supabase workflows: {e}")
+                self._workflows = {}
+
+        # 2. Local disk cache
         if STORE_PATH.exists():
             try:
                 data = json.loads(STORE_PATH.read_text(encoding="utf-8"))
@@ -248,15 +293,16 @@ class AutomationsService:
             except Exception as e:
                 logger.error(f"Error loading automations store: {e}")
 
-        # Initialize defaults
+        # 3. First-run defaults
         defaults = _get_default_workflows()
         for item in defaults:
             wf = Workflow(**item)
             self._workflows[wf.id] = wf
-        self._save_to_disk()
+        self._save()
 
-    def _save_to_disk(self):
-        """Saves workflows to disk."""
+    def _save(self):
+        """Persists workflows to Supabase (primary) and disk (cache)."""
+        saved_cloud = self._save_supabase()
         try:
             try:
                 STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -269,7 +315,8 @@ class AutomationsService:
             }
             STORE_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         except Exception as e:
-            logger.warning(f"Could not persist automations store to disk (ephemeral/serverless environment): {e}")
+            if not saved_cloud:
+                logger.warning(f"Could not persist automations store (Supabase + disk both failed): {e}")
 
     def list_workflows(self) -> List[Workflow]:
         return list(self._workflows.values())
@@ -286,7 +333,7 @@ class AutomationsService:
 
         # Auto-generate visual nodes if not provided
         if not nodes:
-            platform_icon = "📸" if payload.platform == "instagram" else ("📘" if payload.platform == "facebook" else "⚡")
+            platform_icon = "ðŸ“¸" if payload.platform == "instagram" else ("ðŸ“˜" if payload.platform == "facebook" else "âš¡")
             nodes = [
                 NodeData(
                     id=f"node_trig_{wf_id[:6]}",
@@ -309,7 +356,7 @@ class AutomationsService:
                     type="keyword_filter",
                     label="Keywords & Intent Filter",
                     platform="general",
-                    icon="🔍",
+                    icon="ðŸ”",
                     config={"keywords": payload.keywords},
                     position=NodePosition(x=420, y=200)
                 )
@@ -331,7 +378,7 @@ class AutomationsService:
                     type="comment_reply_action",
                     label="Public Comment Reply & Like",
                     platform=payload.platform,
-                    icon="📢",
+                    icon="ðŸ“¢",
                     config={
                         "like_comment": payload.like_comment,
                         "reply_text": payload.reply_comment_text
@@ -353,7 +400,7 @@ class AutomationsService:
                     type="meta_dm_action",
                     label=f"Send {payload.platform.capitalize()} Direct Message",
                     platform=payload.platform,
-                    icon="💬",
+                    icon="ðŸ’¬",
                     config={
                         "dm_text": payload.dm_text,
                         "dm_link": payload.dm_link,
@@ -394,7 +441,7 @@ class AutomationsService:
             updated_at=now
         )
         self._workflows[wf_id] = wf
-        self._save_to_disk()
+        self._save()
         return wf
 
     def update_workflow(self, wf_id: str, payload: WorkflowUpdate) -> Optional[Workflow]:
@@ -441,13 +488,13 @@ class AutomationsService:
 
         wf.updated_at = datetime.now(timezone.utc).isoformat()
         self._workflows[wf_id] = wf
-        self._save_to_disk()
+        self._save()
         return wf
 
     def delete_workflow(self, wf_id: str) -> bool:
         if wf_id in self._workflows:
             del self._workflows[wf_id]
-            self._save_to_disk()
+            self._save()
             return True
         return False
 
@@ -457,7 +504,7 @@ class AutomationsService:
             return None
         wf.status = "paused" if wf.status == "active" else "active"
         wf.updated_at = datetime.now(timezone.utc).isoformat()
-        self._save_to_disk()
+        self._save()
         return wf
 
     def simulate_execution(self, wf_id: str, sample_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -468,7 +515,7 @@ class AutomationsService:
 
         wf.executions_count += 1
         wf.last_executed_at = datetime.now(timezone.utc).isoformat()
-        self._save_to_disk()
+        self._save()
 
         steps = []
         for i, node in enumerate(wf.nodes):
@@ -506,10 +553,15 @@ class AutomationsService:
 
         platform_str = platform.value if hasattr(platform, "value") else str(platform).lower()
 
+        # Policy guard: outbound API bursts must respect the shared rate limiter
+        from src.meta_api.rate_limiter import rate_limiter
+        from src.core.exceptions import RateLimitExceededError
+
         for wf in self._workflows.values():
             if wf.status != "active":
                 continue
-            if wf.platform != "omnichannel" and wf.platform != platform_str:
+            # FIX B1: 'both'/'omnichannel' both mean all-platform workflows
+            if wf.platform not in ("both", "omnichannel", "all") and wf.platform != platform_str:
                 continue
             if wf.target_type == "specific" and wf.target_post_id and str(wf.target_post_id) != str(media_id):
                 continue
@@ -524,51 +576,62 @@ class AutomationsService:
             logger.info(f"Live Automation Triggered: Workflow '{wf.name}' for comment '{comment_id}'")
             wf.executions_count += 1
             wf.last_executed_at = datetime.now(timezone.utc).isoformat()
-            self._save_to_disk()
+            self._save()
 
-            # 1. Like comment
-            if wf.like_comment and comment_id:
-                try:
-                    async with httpx.AsyncClient(timeout=10.0) as client:
-                        if "instagram" in platform_str and settings.META_INSTAGRAM_ACCOUNT_ID:
-                            await client.post(
-                                f"{settings.META_GRAPH_API_BASE_URL}/{settings.META_INSTAGRAM_ACCOUNT_ID}/likes",
-                                data={"comment_id": comment_id, "access_token": token}
-                            )
-                        else:
-                            await client.post(
-                                f"{settings.META_GRAPH_API_BASE_URL}/{comment_id}/likes",
-                                data={"access_token": token}
-                            )
-                except Exception as e:
-                    logger.warning(f"Failed to like comment {comment_id}: {e}")
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    # 1. Like comment
+                    if wf.like_comment and comment_id:
+                        try:
+                            rate_limiter.check_and_acquire(platform_str)
+                            if "instagram" in platform_str and settings.META_INSTAGRAM_ACCOUNT_ID:
+                                await client.post(
+                                    f"{settings.META_GRAPH_API_BASE_URL}/{settings.META_INSTAGRAM_ACCOUNT_ID}/likes",
+                                    data={"comment_id": comment_id, "access_token": token}
+                                )
+                            else:
+                                await client.post(
+                                    f"{settings.META_GRAPH_API_BASE_URL}/{comment_id}/likes",
+                                    data={"access_token": token}
+                                )
+                        except RateLimitExceededError:
+                            logger.warning(f"Automation like skipped (rate limit) for comment {comment_id}")
+                        except Exception as e:
+                            logger.warning(f"Failed to like comment {comment_id}: {e}")
 
-            # 2. Public reply to comment
-            if wf.reply_comment and wf.reply_comment_text and comment_id:
-                try:
-                    async with httpx.AsyncClient(timeout=10.0) as client:
-                        await client.post(
-                            f"{settings.META_GRAPH_API_BASE_URL}/{comment_id}/replies",
-                            data={"message": wf.reply_comment_text, "access_token": token}
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to reply to comment {comment_id}: {e}")
-
-            # 3. Private reply / DM
-            if wf.send_dm and wf.dm_text and comment_id:
-                try:
-                    async with httpx.AsyncClient(timeout=10.0) as client:
-                        target_id = settings.META_INSTAGRAM_ACCOUNT_ID if "instagram" in platform_str else settings.META_PAGE_ID
-                        if target_id:
-                            msg_payload = {"text": wf.dm_text}
-                            if wf.dm_link:
-                                msg_payload["text"] += f"\n{wf.dm_link}"
+                    # 2. Public reply to comment
+                    if wf.reply_comment and wf.reply_comment_text and comment_id:
+                        try:
+                            rate_limiter.check_and_acquire(platform_str)
                             await client.post(
-                                f"{settings.META_GRAPH_API_BASE_URL}/{target_id}/messages?access_token={token}",
-                                json={"recipient": {"comment_id": comment_id}, "message": msg_payload}
+                                f"{settings.META_GRAPH_API_BASE_URL}/{comment_id}/replies",
+                                data={"message": wf.reply_comment_text, "access_token": token}
                             )
-                except Exception as e:
-                    logger.warning(f"Failed to send private reply for comment {comment_id}: {e}")
+                        except RateLimitExceededError:
+                            logger.warning(f"Automation reply skipped (rate limit) for comment {comment_id}")
+                        except Exception as e:
+                            logger.warning(f"Failed to reply to comment {comment_id}: {e}")
+
+                    # 3. Private reply / DM (policy-safe: private replies are allowed
+                    #    within 7 days of the comment even outside the 24h window)
+                    if wf.send_dm and wf.dm_text and comment_id:
+                        try:
+                            rate_limiter.check_and_acquire(platform_str)
+                            target_id = settings.META_INSTAGRAM_ACCOUNT_ID if "instagram" in platform_str else settings.META_PAGE_ID
+                            if target_id:
+                                msg_payload = {"text": wf.dm_text}
+                                if wf.dm_link:
+                                    msg_payload["text"] += f"\n{wf.dm_link}"
+                                await client.post(
+                                    f"{settings.META_GRAPH_API_BASE_URL}/{target_id}/messages?access_token={token}",
+                                    json={"recipient": {"comment_id": comment_id}, "message": msg_payload}
+                                )
+                        except RateLimitExceededError:
+                            logger.warning(f"Automation DM skipped (rate limit) for comment {comment_id}")
+                        except Exception as e:
+                            logger.warning(f"Failed to send private reply for comment {comment_id}: {e}")
+            except Exception as e:
+                logger.error(f"Automation execution error for comment {comment_id}: {e}")
 
             return {"status": "executed", "workflow_id": wf.id}
         return None

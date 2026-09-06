@@ -7,7 +7,8 @@
       "config": {
         "includeFiles": [
           "src/**",
-          "docs/**"
+          "docs/**",
+          "database/**"
         ]
       }
     }
@@ -16,6 +17,12 @@
     {
       "src": "/(.*)",
       "dest": "api/index.py"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/scheduler-tick",
+      "schedule": "0 3 * * *"
     }
   ]
 }

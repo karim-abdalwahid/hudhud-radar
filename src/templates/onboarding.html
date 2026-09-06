@@ -504,8 +504,7 @@
                 <div>
                     <label class="form-label" data-i18n="onboard.brain_label">AI Brain Engine</label>
                     <select id="agent-brain" class="rad-select">
-                        <option value="gemini" selected>✨ Google Gemini 1.5 Flash</option>
-                        <option value="openai">🧠 OpenAI GPT-4o</option>
+                        <option value="gemini" selected>✨ Google Gemini 2.5 Flash</option>
                     </select>
                 </div>
             </div>
@@ -536,14 +535,6 @@
             <p class="step-subheading" data-i18n="onboard.step3_desc">Connect where your customers message you. Your AI agent will be active immediately upon connection.</p>
 
             <div class="platforms-deck">
-                <!-- WhatsApp -->
-                <div class="platform-tile">
-                    <div class="platform-icon-circle" style="color: #25d366;">📱</div>
-                    <div class="platform-title" data-i18n="onboard.platform_wa_title">WhatsApp Cloud</div>
-                    <div class="platform-caption" data-i18n="onboard.platform_wa_desc">Automate WhatsApp business conversations and follow-ups 24/7.</div>
-                    <button class="btn-connect" id="btn-connect-wa" onclick="triggerConnect('whatsapp')" data-i18n="onboard.btn_connect">Connect Channel</button>
-                </div>
-
                 <!-- Instagram -->
                 <div class="platform-tile">
                     <div class="platform-icon-circle" style="color: #e1306c;">📸</div>
@@ -669,7 +660,7 @@
         }
 
         async function triggerConnect(platform) {
-            const btn = document.getElementById(`btn-connect-${platform === 'instagram' ? 'ig' : platform === 'messenger' ? 'fb' : 'wa'}`);
+            const btn = document.getElementById(`btn-connect-${platform === 'instagram' ? 'ig' : 'fb'}`);
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
             const res = await fetch('/api/meta/status');
             const data = await res.json();

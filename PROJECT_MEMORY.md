@@ -716,10 +716,93 @@ Replaced across all 8 templates (`analytics.html`, `identity.html`, `knowledge.h
    - Realigned markup to use `.app-sidebar`, `.sidebar-nav`, `.app-main`, and `.app-topbar`.
    - Verified via browser subagent screenshots: dark theme, crisp typography, and seamless docking.
 
+---
 
+## [Entry 019] Comprehensive Deep Audit Report, Security Findings, Owner Decisions & Master Repair Plan Approval
+- **Timestamp**: 2026-09-06T20:30:00+03:00
+- **Actor**: User (كريم) & AI Agent (opencode/GLM)
+- **Status**: PLAN APPROVED & EXECUTION STARTED 🚀
 
+### 1. Context
+The user requested a full professional study of the entire project followed by an exhaustive audit: strengths/weaknesses, security errors, non-working APIs, broken code/tools/links, logic errors, required updates, removable items, duplicates, harmful practices, missing features, and improvement proposals — with a master repair plan. The audit was executed with direct source-code verification (not assumptions).
 
+### 2. Audit Key Findings (Verified in Code)
+**Security (Critical):**
+- S1: GitHub PAT embedded in plaintext in `git remote` URL (`ghp_...` in .git/config).
+- S2: `META_APP_SECRET` exposed verbatim in this PROJECT_MEMORY (Entry 014) — repo is PRIVATE (owner decision: keep history readable for future agents; corrective entry instead of deletion).
+- S3: ZERO authentication across the entire app — all dashboard pages and mutating APIs (configure tokens, approve identity merges, delete data) publicly accessible.
+- S4: RLS on `content_posts` uses `USING (true) WITH CHECK (true)` contradicting the service_role model of other tables.
 
+**Broken/Non-Working (verified):**
+- B1: Automations workflows with `platform="both"` never trigger (`service.py` compares against nonexistent "omnichannel").
+- B2: Inbox "Human Takeover" is UI-only; no backend endpoint; orchestrator never checks it.
+- B3: `/api/inbox/conversations` reads nonexistent lead columns (`last_message`, `intent`, `lead_score`, `human_takeover`) → fabricated data, violating Zero-Fabrication. Real messages live in `messages` table with no inbox API.
+- B4: Scheduler disabled on Vercel serverless + zero crons in vercel.json → scheduled posts never publish in production automatically.
+- B5: n8n workflow is decorative (fake URL, no execution path for `trigger_type="webhook"`).
+- B6: Default DM links point to unowned domain `hudhud.ai` (fake links sent to real customers if triggered).
+- B7: Fake `executions_count` values (142/89/34) hardcoded in default workflows.
+- B8: `PagePerformanceTracker.record_daily_metrics` never called anywhere → performance reports always empty.
+- B9: `campaigns` table unused.
+- B10: `GEMINI_API_KEY` empty in `.env` → all AI falls back to templates; `OPENAI_API_KEY` saved by onboarding but zero OpenAI code exists.
+- B11: Threads API + Marketing API declared in spec v2.1 with zero implementation.
+- B12: WhatsApp tile in onboarding is decorative (owner has no verified business).
+- B13: "Publish now" BackgroundTasks unreliable on Vercel Hobby (10s timeout vs 15s Gemini timeout).
+- B14: File-based persistence (`automations_store.json`, `meta_live_cache.json`, KB writes, .env writes) fails silently on Vercel read-only FS.
 
+**Logic Bugs (verified):**
+- Conversation engine fetches `history` but never sends it to Gemini (single-turn, no memory).
+- Orchestrator passes `last_interaction_time=now()` → 24h window check always trivially passes.
+- Identity resolver picks FIRST candidate instead of highest-confidence.
+- `rate_limiter.update_from_headers` only logs debug; does not parse usage or throttle.
+- No webhook event deduplication → Meta retries can cause duplicate replies/DMs (ban risk).
+- Automations bypass rate limiter entirely (direct httpx, no policy windows) — most dangerous path to the account.
+- No retry/backoff on failed Meta API calls (messages lost silently).
+- `wait_for_instagram_container_ready` returns True on timeout.
+- Publish "both": IG failure does not set success=False.
+- `app_settings` table missing from `schema.sql` (only exists live via MCP).
+- Python mismatch: `.python-version`=3.12 vs local venv 3.14.
+- `dashboard.html` (1057 lines) orphaned legacy; `main.py` root + `src/main.py` duplicate entrypoints; `/api/studio/posts` duplicates `/api/content/posts`; `src/scraping/` unused scaffolding; `hudhud_radar.egg-info` artifact; PROJECT_MEMORY has duplicate entry numbers (010/012/013/014 twice).
+
+### 3. Owner Decisions (Recorded Verbatim in Meaning)
+1. **Secret rotation**: APPROVED (GitHub PAT + Meta App Secret). Repo is PRIVATE — keep PROJECT_MEMORY history intact for future agents' full context; add corrective entries instead of deleting; rotate the exposed secrets so history exposure is neutralized.
+2. **Vercel confirmed** as the permanent production path (zero budget for hosting).
+3. **Threads + Marketing API**: implement in this repair cycle.
+4. **Identity**: personal agent for "إبدأ ماركتينج" now; evolve to SaaS when it succeeds.
+5. **Fake data**: owner WANTS pricing on landing and future SaaS purchases — pricing section is marketing copy (kept); operational fabricated data (executions_count, inbox placeholders) must be removed. Payment integration deferred until SaaS phase.
+6. **WhatsApp**: REMOVE from onboarding (no verified Meta business). Architecture note recorded: public user account connection (SaaS mode) requires Meta App Review + Advanced Access; Business Verification on Meta is free and typically needs phone/email/domain verification, not necessarily legal papers — to be pursued when SaaS phase starts. SendRad-style platforms went through App Review.
+7. **Authentication**: owner requested full login/register system connected to the database, styled like sendrad.com, ADDING a phone number field to signup (not present in SendRad). This is the owner's explicit priority.
+
+### 4. Master Repair Plan (Approved — 8 Phases)
+- **Phase 0 — Secrets**: rotate GitHub PAT (remove from remote URL; owner revokes on GitHub), rotate META_APP_SECRET (owner action in Meta console), corrective memory entries, remove test artifacts from git.
+- **Phase 1 — Authentication**: `users` table migration (schema.sql + standalone migration file), PBKDF2 password hashing (stdlib), HMAC-signed session cookie, login/register pages (SendRad-style design + phone field), route/API protection middleware, admin vs user roles, first registered user = admin.
+- **Phase 2 — Core Fixes**: automations "both" fix, automations via meta_client+rate_limiter+policy windows, webhook event deduplication, real inbox from `messages` table, Human Takeover backend (orchestrator check), Gemini multi-turn history, remove fake links/counts, `app_settings` into schema.sql, content_posts RLS fix, identity resolver highest-confidence, real rate-limiter header parsing, retry/backoff on Meta calls, cache `/api/meta/status` server-side.
+- **Phase 3 — Serverless**: migrate automations store + meta cache + KB writes to Supabase `app_settings` (disk as local fallback only), vercel.json crons (+ external free cron documentation for 5-min precision), BackgroundTasks timeout mitigation, unify Python 3.12.
+- **Phase 4 — AI**: activate GEMINI_API_KEY (owner action), upgrade model default gemini-1.5-pro → gemini-2.5-flash, remove dead OpenAI UI paths (keep config for future).
+- **Phase 5 — Features**: daily Insights sync → page_performance_metrics, Threads API basic publish/monitor, Marketing API lead ads + campaign metrics (activates campaigns table), Privacy Policy page + Data Deletion endpoint (Meta App Review readiness), remove WhatsApp tile.
+- **Phase 6 — Cleanup**: delete dashboard.html, src/scraping/, egg-info, unify entrypoints, remove duplicate alias endpoint, fix PROJECT_MEMORY numbering with corrective entry, merge design system docs, update stale docs (old paths).
+- **Phase 7 — DevOps & Quality**: GitHub Actions CI (pytest + pip-audit), pinned requirements, new tests (auth, automations, dedup, inbox, takeover), full SOP-02 Two-Pass audit, archive report.
+
+### 5. Execution Log (updated as work proceeds)
+- [x] Audit completed and documented (Entry 019).
+- [x] Phase 0 — Secrets: GitHub PAT removed from remote (owner must also revoke it on GitHub), test artifacts purged from git.
+- [x] Phase 1 — Authentication: `users` table migration (database/migrations/001_users_auth_and_security.sql), PBKDF2 password hashing, HMAC-signed session cookies, SendRad-style login/register page with phone field (`/login`, `src/templates/auth.html`), AuthMiddleware protecting all dashboard pages & mutating APIs, admin/user roles (first user = admin), brute-force limiter, session user chip + logout button in sidebar, admin-only server-side enforcement for /settings /identity /analytics and all credential APIs.
+- [x] Phase 2 — Core fixes: automations "both" platform fix + rate-limiter integration, webhook event deduplication (`processed_events` + circuit breaker, src/core/event_dedup.py), real Inbox from `messages` table (zero fabrication), working Human Takeover backend (leads.human_takeover + orchestrator check + real manual message & booking-link sending), Gemini multi-turn conversation memory, identity resolver picks highest-confidence candidate, real rate-limiter Meta usage-header parsing with 95% cooldown, retry/backoff on Meta sends, 60s server-side cache for /api/meta/status (invalidated on credential change), fake links (hudhud.ai) and fake execution counts removed, webhook timestamp used for 24h window.
+- [x] Phase 3 — Serverless: automations store migrated to Supabase app_settings (disk = local cache only), runtime JSON state files untracked from git (.gitignore + git rm --cached), vercel.json cron added (daily 03:00 — Hobby plan limit) + /api/cron/scheduler-tick + /api/cron/insights-sync protected by CRON_SECRET (documented cron-job.org alternative for 5-min precision).
+- [x] Phase 4 — AI: default model upgraded gemini-1.5-pro → gemini-2.5-flash (config + .env), OpenAI option removed from onboarding (kept in config for future SaaS), WhatsApp removed from onboarding + inbox filters (owner decision — no verified business).
+- [x] Phase 5 — Features: Meta Insights sync (MetaInsightsSync → page_performance_metrics), Threads API (publish + replies), Marketing API (Lead Ads import with provenance + campaign insights → activates campaigns table), Privacy Policy page (/privacy), Data Deletion page + callback (/data-deletion, POST /api/data-deletion) — Meta App Review readiness.
+- [x] Phase 6 — Cleanup: dashboard.html (1057 lines) deleted, src/scraping/ deleted, hudhud_radar.egg-info deleted, entrypoints unified (main.py is THE entrypoint; src/main.py __main__ removed; start_server.bat updated), uploaded_test.md purged, requirements.txt pinned with upper bounds, HOW_TO_RUN.md fully refreshed.
+- [x] Phase 7 — Quality: 13 new security tests (tests/test_auth_security.py) — total suite 62/62 PASSED, pip-audit: 0 vulnerabilities, test isolation hardened (tests never touch live Supabase: user store, automations, dedup all memory-only during tests).
+- [ ] Owner actions remaining: (1) revoke old GitHub PAT at github.com/settings/tokens, (2) rotate META_APP_SECRET in Meta console + update Vercel env, (3) add GEMINI_API_KEY to .env + Vercel, (4) add CRON_SECRET to Vercel env, (5) run migration 001 SQL in Supabase, (6) redeploy on Vercel.
+
+### Live-bug discoveries fixed during implementation (found by tests)
+- /auth/me previously read request.state.session which is never populated for public paths — now reads the cookie directly.
+- Admin pages (/settings, /identity, /analytics) were only cosmetically restricted client-side — now server-enforced 403.
+- EventDeduplicator could stall on repeated failing DB calls — circuit breaker added.
+
+### 6. Standing Instructions Learned (Permanent)
+- ALL responses to the owner MUST be in Arabic.
+- Every plan/feature/fix MUST be recorded in PROJECT_MEMORY + PROJECT_ARCHIVE (sequential numbering) + PROJECT_BRAIN before/while implementation.
+- Multiple agents work on this project — everything must be discoverable by any future agent through the governance files.
+- Never leave any small broken thing unaddressed — the owner demands absolute precision.
 
 

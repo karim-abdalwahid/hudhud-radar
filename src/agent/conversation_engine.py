@@ -103,9 +103,9 @@ class ConversationEngine:
         ), False
 
     async def _call_gemini_api(self, lead_data: Dict[str, Any], message: str, history: list) -> Optional[str]:
-        """Calls Google Gemini API with targeted RAG context and sales closing instructions."""
+        """Calls Google Gemini API with multi-turn conversation memory + RAG context."""
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
-        
+
         # Dynamic RAG context
         rag_context = self.kb.search_relevant_chunks(message, top_k=3)
         sales_tactics = self.kb.get_sales_closing_context()
@@ -121,10 +121,21 @@ class ConversationEngine:
             f"--- تكتيكات البيع المعتمدة ---\n{sales_tactics}"
         )
 
+        # Multi-turn conversation memory: include real prior turns (most recent first, capped)
+        contents = []
+        prior_turns = [
+            m for m in (history or [])[:-1]  # exclude the just-stored duplicate of the current message
+            if (m.get("content") or "").strip()
+        ]
+        for turn in prior_turns[-8:]:
+            role = "model" if turn.get("sender_type") == "agent" else "user"
+            contents.append({"role": role, "parts": [{"text": turn["content"]}]})
+        contents.append({"role": "user", "parts": [{"text": message}]})
+
         payload = {
-            "contents": [
-                {"role": "user", "parts": [{"text": f"System Context:\n{system_prompt}\n\nUser Message: {message}"}]}
-            ]
+            "system_instruction": {"parts": [{"text": system_prompt}]},
+            "contents": contents,
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 600}
         }
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(url, json=payload)

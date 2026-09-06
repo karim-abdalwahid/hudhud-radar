@@ -28,15 +28,16 @@ class Settings(BaseSettings):
     META_INSTAGRAM_ACCOUNT_ID: Optional[str] = Field(default=None, description="Instagram Business Account ID")
     META_WEBHOOK_VERIFY_TOKEN: str = Field(default="hudhud-radar-verify-token-secret", description="Webhook verify token")
     WEBHOOK_VERIFY_TOKEN: Optional[str] = Field(default=None, description="Legacy/Vercel alias for Webhook verify token")
+    CRON_SECRET: Optional[str] = Field(default=None, description="Shared secret for cron endpoints (Authorization: Bearer <secret>)")
 
     @property
     def EFFECTIVE_WEBHOOK_VERIFY_TOKEN(self) -> str:
         return self.WEBHOOK_VERIFY_TOKEN or self.META_WEBHOOK_VERIFY_TOKEN
 
-    LLM_PROVIDER: str = Field(default="gemini", description="LLM provider: gemini or openai")
+    LLM_PROVIDER: str = Field(default="gemini", description="LLM provider: gemini (OpenAI reserved for future SaaS phase)")
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key")
-    OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key")
-    LLM_MODEL: str = Field(default="gemini-1.5-pro", description="LLM model name")
+    OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key (unused — reserved for future)")
+    LLM_MODEL: str = Field(default="gemini-2.5-flash", description="LLM model name")
 
     # Rate Limiting & Safety Governance
     MAX_MESSAGES_PER_MINUTE: int = Field(default=20, description="Maximum outbound messages per minute")

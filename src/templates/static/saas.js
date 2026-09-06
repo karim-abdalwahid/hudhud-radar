@@ -186,6 +186,42 @@ async function checkSystemMetaStatus() {
     }
 }
 
+// Session user chip + logout (injected into sidebar footer)
+async function injectSessionUser() {
+    try {
+        const res = await fetch('/auth/me');
+        const me = await res.json();
+        if (!me.authenticated) return;
+
+        const sidebar = document.querySelector('.app-sidebar');
+        if (!sidebar) return;
+
+        const footer = sidebar.querySelector('.sidebar-footer') || sidebar;
+        const existing = document.getElementById('hudhud-user-chip');
+        if (existing) return;
+
+        const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+        const chip = document.createElement('div');
+        chip.id = 'hudhud-user-chip';
+        chip.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 12px;margin-top:8px;border-top:1px solid var(--border-default);';
+        chip.innerHTML = `
+            <div style="min-width:0;flex:1;">
+                <div style="font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(me.email || '')}</div>
+                <div style="font-size:10.5px;color:var(--text-muted);">${me.role === 'admin' ? (isAr ? 'مدير النظام' : 'Administrator') : (isAr ? 'مستخدم' : 'User')}</div>
+            </div>
+            <button onclick="hudhudLogout()" title="${isAr ? 'تسجيل الخروج' : 'Sign out'}" style="flex-shrink:0;background:none;border:1px solid var(--border-default);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--text-secondary);">⏻</button>
+        `;
+        footer.appendChild(chip);
+    } catch (e) {
+        console.debug('Session user check skipped:', e);
+    }
+}
+
+async function hudhudLogout() {
+    try { await fetch('/auth/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
+    window.location.href = '/login';
+}
+
 function updateMetaStatusBadge(data) {
     if (!data) return;
     const badge = document.getElementById('meta-status-badge');
@@ -227,7 +263,9 @@ function escapeHtml(str) {
 document.addEventListener('DOMContentLoaded', () => {
     hudhudRoleManager.init();
     checkSystemMetaStatus();
-    setInterval(checkSystemMetaStatus, 15000);
+    // Poll every 60s instead of 15s to avoid burning Meta Graph API rate limits
+    setInterval(checkSystemMetaStatus, 60000);
+    injectSessionUser();
 });
 
 window.addEventListener('hudhud_lang_change', () => {

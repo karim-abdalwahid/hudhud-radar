@@ -56,3 +56,8 @@ htmlcov/
 *.log
 logs/
 
+
+# Runtime state files (source of truth is Supabase app_settings)
+src/knowledge/automations_store.json
+src/knowledge/meta_live_cache.json
+.tempmediaStorage/

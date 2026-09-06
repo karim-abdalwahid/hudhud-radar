@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>هدهد · تسجيل الدخول</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-subtle: #f1f5f9;
+            --border-default: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --accent-blue: #2563eb;
+            --accent-blue-hover: #1d4ed8;
+            --brand-gradient: linear-gradient(135deg, #2563eb, #3b82f6);
+            --error: #dc2626;
+            --success: #059669;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tajawal', 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -20%; right: -10%;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(37,99,235,0.07), transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -25%; left: -10%;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(59,130,246,0.05), transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .auth-shell { width: 100%; max-width: 420px; position: relative; z-index: 1; }
+        .brand-head { text-align: center; margin-bottom: 28px; }
+        .brand-logo {
+            width: 56px; height: 56px;
+            margin: 0 auto 14px;
+            background: var(--brand-gradient);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: 800; font-size: 22px;
+            box-shadow: 0 8px 24px rgba(37,99,235,0.25);
+        }
+        .brand-head h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+        .brand-head p { font-size: 14px; color: var(--text-secondary); }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.06);
+        }
+        .tabs { display: flex; background: var(--bg-subtle); border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+        .tab {
+            flex: 1; text-align: center; padding: 9px 0; font-size: 14px; font-weight: 600;
+            color: var(--text-secondary); cursor: pointer; border-radius: 8px;
+            transition: all .15s ease; border: none; background: transparent; font-family: inherit;
+        }
+        .tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 3px rgba(15,23,42,0.08); }
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+        .field input {
+            width: 100%; padding: 11px 14px; font-size: 14px; font-family: inherit;
+            border: 1px solid var(--border-default); border-radius: 10px;
+            background: #fff; color: var(--text-primary); outline: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        .field input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .field input::placeholder { color: var(--text-muted); }
+        .field .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .btn-submit {
+            width: 100%; padding: 12px; font-size: 15px; font-weight: 700; font-family: inherit;
+            background: var(--brand-gradient); color: #fff; border: none; border-radius: 10px;
+            cursor: pointer; transition: filter .15s ease, transform .1s ease;
+            box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+        }
+        .btn-submit:hover { filter: brightness(1.06); }
+        .btn-submit:active { transform: scale(0.99); }
+        .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+        .msg { display: none; padding: 11px 14px; border-radius: 10px; font-size: 13.5px; margin-bottom: 16px; line-height: 1.6; }
+        .msg.error { display: block; background: #fef2f2; color: var(--error); border: 1px solid #fecaca; }
+        .msg.success { display: block; background: #ecfdf5; color: var(--success); border: 1px solid #a7f3d0; }
+        .foot-note { text-align: center; font-size: 13px; color: var(--text-secondary); margin-top: 22px; }
+        .foot-note a { color: var(--accent-blue); text-decoration: none; font-weight: 600; }
+        .foot-note a:hover { text-decoration: underline; }
+        .dir-toggle { position: fixed; top: 20px; inset-inline-end: 20px; z-index: 2; }
+        .dir-toggle button {
+            font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
+            border: 1px solid var(--border-default); border-radius: 99px; background: var(--bg-card);
+            color: var(--text-secondary); cursor: pointer;
+        }
+        .dir-toggle button:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .phone-row { display: flex; gap: 8px; }
+        .phone-row .cc {
+            flex-shrink: 0; width: 84px; display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-subtle);
+            font-size: 14px; color: var(--text-secondary); direction: ltr;
+        }
+        .phone-row input { direction: ltr; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="dir-toggle"><button id="langBtn" onclick="toggleLang()">English</button></div>
+
+    <div class="auth-shell">
+        <div class="brand-head">
+            <div class="brand-logo">HH</div>
+            <h1 data-i18n="welcome">مرحباً بك في هدهد</h1>
+            <p data-i18n="subtitle">وكيل الذكاء الاصطناعي لإدارة صفحاتك وتحويل المتابعين إلى عملاء</p>
+        </div>
+
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" id="tabLogin" onclick="switchTab('login')" data-i18n="login">تسجيل الدخول</button>
+                <button class="tab" id="tabRegister" onclick="switchTab('register')" data-i18n="register">إنشاء حساب جديد</button>
+            </div>
+
+            <div class="msg" id="msg"></div>
+
+            <!-- Login Form -->
+            <form id="loginForm" onsubmit="return submitLogin(event)">
+                <div class="field">
+                    <label data-i18n="email">البريد الإلكتروني</label>
+                    <input type="email" id="loginEmail" required autocomplete="email" data-i18n-placeholder="email_ph" placeholder="you@example.com">
+                </div>
+                <div class="field">
+                    <label data-i18n="password">كلمة المرور</label>
+                    <input type="password" id="loginPassword" required autocomplete="current-password" data-i18n-placeholder="password_ph" placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-submit" id="loginBtn" data-i18n="login_btn">دخول إلى لوحة التحكم</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" style="display:none" onsubmit="return submitRegister(event)">
+                <div class="field">
+                    <label data-i18n="fullname">الاسم الكامل</label>
+                    <input type="text" id="regName" required autocomplete="name" data-i18n-placeholder="fullname_ph" placeholder="اسمك الكامل">
+                </div>
+                <div class="field">
+                    <label data-i18n="email">البريد الإلكتروني</label>
+                    <input type="email" id="regEmail" required autocomplete="email" data-i18n-placeholder="email_ph" placeholder="you@example.com">
+                </div>
+                <div class="field">
+                    <label data-i18n="phone">رقم الموبايل</label>
+                    <div class="phone-row">
+                        <div class="cc">+20</div>
+                        <input type="tel" id="regPhone" required autocomplete="tel" data-i18n-placeholder="phone_ph" placeholder="1X XXXX XXXX">
+                    </div>
+                    <div class="hint" data-i18n="phone_hint">يُستخدم للتواصل البطي المؤثر وتأمين حسابك — بدون رمز تحقق حالياً</div>
+                </div>
+                <div class="field">
+                    <label data-i18n="password">كلمة المرور</label>
+                    <input type="password" id="regPassword" required minlength="8" autocomplete="new-password" data-i18n-placeholder="password_ph" placeholder="8 أحرف على الأقل">
+                    <div class="hint" data-i18n="password_hint">8 أحرف على الأقل — مزيج حروف وأرقام أقوى</div>
+                </div>
+                <div class="field">
+                    <label data-i18n="confirm">تأكيد كلمة المرور</label>
+                    <input type="password" id="regConfirm" required minlength="8" autocomplete="new-password" data-i18n-placeholder="password_ph" placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-submit" id="regBtn" data-i18n="register_btn">إنشاء الحساب والدخول</button>
+            </form>
+        </div>
+
+        <div class="foot-note">
+            <span data-i18n="back_home">العودة إلى</span> <a href="/" data-i18n="home">الصفحة الرئيسية</a>
+        </div>
+    </div>
+
+<script>
+const T = {
+    ar: {
+        welcome: "مرحباً بك في هدهد",
+        subtitle: "وكيل الذكاء الاصطناعي لإدارة صفحاتك وتحويل المتابعين إلى عملاء",
+        login: "تسجيل الدخول", register: "إنشاء حساب جديد",
+        email: "البريد الإلكتروني", password: "كلمة المرور",
+        fullname: "الاسم الكامل", phone: "رقم الموبايل",
+        confirm: "تأكيد كلمة المرور",
+        email_ph: "you@example.com", password_ph: "••••••••",
+        fullname_ph: "اسمك الكامل", phone_ph: "1X XXXX XXXX",
+        phone_hint: "يُستخدم للتواصل المباشر وتأمين حسابك — بدون رمز تحقق حالياً",
+        password_hint: "8 أحرف على الأقل — مزيج حروف وأرقام أقوى",
+        login_btn: "دخول إلى لوحة التحكم", register_btn: "إنشاء الحساب والدخول",
+        back_home: "العودة إلى", home: "الصفحة الرئيسية"
+    },
+    en: {
+        welcome: "Welcome to Hudhud",
+        subtitle: "The AI agent that manages your pages and turns followers into customers",
+        login: "Sign In", register: "Create Account",
+        email: "Email Address", password: "Password",
+        fullname: "Full Name", phone: "Mobile Number",
+        confirm: "Confirm Password",
+        email_ph: "you@example.com", password_ph: "••••••••",
+        fullname_ph: "Your full name", phone_ph: "1X XXXX XXXX",
+        phone_hint: "Used for direct contact and account security — no verification code yet",
+        password_hint: "At least 8 characters — letters + numbers is stronger",
+        login_btn: "Sign in to Dashboard", register_btn: "Create Account & Sign In",
+        back_home: "Back to", home: "Home"
+    }
+};
+let lang = localStorage.getItem("hudhud_lang") || "ar";
+let mode = "login";
+
+function applyLang() {
+    const l = T[lang];
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+        const k = el.getAttribute("data-i18n");
+        if (l[k]) el.textContent = l[k];
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        const k = el.getAttribute("data-i18n-placeholder");
+        if (l[k]) el.placeholder = l[k];
+    });
+    const isAr = lang === "ar";
+    document.documentElement.lang = lang;
+    document.documentElement.dir = isAr ? "rtl" : "ltr";
+    document.body.style.fontFamily = isAr ? "'Tajawal', 'Plus Jakarta Sans', sans-serif" : "'Plus Jakarta Sans', sans-serif";
+    document.getElementById("langBtn").textContent = isAr ? "English" : "العربية";
+    localStorage.setItem("hudhud_lang", lang);
+}
+function toggleLang() { lang = lang === "ar" ? "en" : "ar"; applyLang(); }
+
+function switchTab(m) {
+    mode = m;
+    document.getElementById("tabLogin").classList.toggle("active", m === "login");
+    document.getElementById("tabRegister").classList.toggle("active", m === "register");
+    document.getElementById("loginForm").style.display = m === "login" ? "block" : "none";
+    document.getElementById("registerForm").style.display = m === "register" ? "block" : "none";
+    hideMsg();
+}
+function showMsg(type, text) {
+    const el = document.getElementById("msg");
+    el.className = "msg " + type;
+    el.textContent = text;
+}
+function hideMsg() { document.getElementById("msg").className = "msg"; }
+
+async function submitLogin(e) {
+    e.preventDefault();
+    hideMsg();
+    const btn = document.getElementById("loginBtn");
+    btn.disabled = true;
+    try {
+        const res = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: document.getElementById("loginEmail").value.trim(),
+                password: document.getElementById("loginPassword").value
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === "success") {
+            window.location.href = "/dashboard";
+        } else {
+            showMsg("error", data.detail || (lang === "ar" ? "فشل تسجيل الدخول — تحقق من البيانات" : "Sign-in failed — check your credentials"));
+        }
+    } catch (err) {
+        showMsg("error", lang === "ar" ? "تعذر الاتصال بالخادم" : "Could not reach the server");
+    }
+    btn.disabled = false;
+    return false;
+}
+
+async function submitRegister(e) {
+    e.preventDefault();
+    hideMsg();
+    const pwd = document.getElementById("regPassword").value;
+    const confirm = document.getElementById("regConfirm").value;
+    if (pwd !== confirm) {
+        showMsg("error", lang === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match");
+        return false;
+    }
+    let phone = document.getElementById("regPhone").value.replace(/[^0-9+\s]/g, "").trim();
+    if (phone && !phone.startsWith("+")) phone = "+20" + phone.replace(/^0+/, "");
+    const btn = document.getElementById("regBtn");
+    btn.disabled = true;
+    try {
+        const res = await fetch("/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: document.getElementById("regEmail").value.trim(),
+                password: pwd,
+                phone: phone,
+                full_name: document.getElementById("regName").value.trim()
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === "success") {
+            window.location.href = "/dashboard";
+        } else {
+            showMsg("error", data.detail || (lang === "ar" ? "تعذر إنشاء الحساب" : "Could not create the account"));
+        }
+    } catch (err) {
+        showMsg("error", lang === "ar" ? "تعذر الاتصال بالخادم" : "Could not reach the server");
+    }
+    btn.disabled = false;
+    return false;
+}
+
+applyLang();
+</script>
+</body>
+</html>

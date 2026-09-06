@@ -1,15 +1,10 @@
 """
 Test suite for Visual Automations & Workflows System and Meta Feed Sync & Filtering.
+Automations API now requires authentication — the shared `client` fixture
+(defined in tests/conftest.py) logs in as an admin.
 """
 import pytest
-from starlette.testclient import TestClient
-from src.main import app
 from src.automations.service import automations_service
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
 
 
 def test_automations_crud_and_simulation(client):

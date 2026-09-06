@@ -92,9 +92,8 @@ async def test_scheduler_blocks_non_compliant_post():
     assert "Ruflo Compliance Rejection" in (updated_post.error_message or "")
 
 
-def test_api_compliance_check_endpoint():
-    client = TestClient(app)
-
+def test_api_compliance_check_endpoint(client):
+    """Uses authenticated admin client from conftest (endpoint is admin-only)."""
     payload = {
         "content_text": "ابدأ الآن وطوّر حملاتك الإعلانية مع إبدأ ماركتينج. تواصل معنا للحصول على خطة مخصصة.",
         "platform": "facebook",

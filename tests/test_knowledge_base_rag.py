@@ -139,48 +139,45 @@ async def test_conversation_engine_sales_closing():
     assert "شكراً جزيلاً لمشاركتك" in reply_conv
 
 
-@pytest.mark.asyncio
-async def test_fastapi_knowledge_endpoints():
-    """Tests FastAPI REST endpoints for knowledge documents, meta sync, and upload."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        # 1. List documents
-        resp = await client.get("/api/knowledge/documents")
-        assert resp.status_code == 200
-        docs = resp.json()["documents"]
-        assert isinstance(docs, list)
+def test_fastapi_knowledge_endpoints(client):
+    """Tests FastAPI REST endpoints for knowledge documents, meta sync, and upload (authed admin)."""
+    # 1. List documents
+    resp = client.get("/api/knowledge/documents")
+    assert resp.status_code == 200
+    docs = resp.json()["documents"]
+    assert isinstance(docs, list)
 
-        # 2. Create document via API
-        create_resp = await client.post("/api/knowledge/documents", json={
-            "filename": "api_test_doc.md",
-            "content": "# API Test Document\nTesting knowledge REST API."
-        })
-        assert create_resp.status_code == 200
+    # 2. Create document via API
+    create_resp = client.post("/api/knowledge/documents", json={
+        "filename": "api_test_doc.md",
+        "content": "# API Test Document\nTesting knowledge REST API."
+    })
+    assert create_resp.status_code == 200
 
-        # 3. Get document
-        get_resp = await client.get("/api/knowledge/documents/api_test_doc.md")
-        assert get_resp.status_code == 200
-        assert "API Test Document" in get_resp.json()["content"]
+    # 3. Get document
+    get_resp = client.get("/api/knowledge/documents/api_test_doc.md")
+    assert get_resp.status_code == 200
+    assert "API Test Document" in get_resp.json()["content"]
 
-        # 4. Update document
-        put_resp = await client.put("/api/knowledge/documents/api_test_doc.md", json={
-            "content": "# API Test Document Updated\nUpdated content."
-        })
-        assert put_resp.status_code == 200
+    # 4. Update document
+    put_resp = client.put("/api/knowledge/documents/api_test_doc.md", json={
+        "content": "# API Test Document Updated\nUpdated content."
+    })
+    assert put_resp.status_code == 200
 
-        # 5. Sync from Meta
-        sync_resp = await client.post("/api/knowledge/sync-meta")
-        assert sync_resp.status_code == 200
-        assert sync_resp.json()["status"] == "success"
+    # 5. Sync from Meta
+    sync_resp = client.post("/api/knowledge/sync-meta")
+    assert sync_resp.status_code == 200
+    assert sync_resp.json()["status"] == "success"
 
-        # 6. Upload file
-        file_payload = {"file": ("uploaded_test.txt", b"Uploaded via REST multipart", "text/plain")}
-        upload_resp = await client.post("/api/knowledge/upload", files=file_payload)
-        assert upload_resp.status_code == 200
+    # 6. Upload file
+    file_payload = {"file": ("uploaded_test.txt", b"Uploaded via REST multipart", "text/plain")}
+    upload_resp = client.post("/api/knowledge/upload", files=file_payload)
+    assert upload_resp.status_code == 200
 
-        # 7. Delete test doc
-        del_resp = await client.delete("/api/knowledge/documents/api_test_doc.md")
-        assert del_resp.status_code == 200
+    # 7. Delete test doc
+    del_resp = client.delete("/api/knowledge/documents/api_test_doc.md")
+    assert del_resp.status_code == 200
 
 
 def test_security_path_traversal_and_sanitization(temp_kb):
