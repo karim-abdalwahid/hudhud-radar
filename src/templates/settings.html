@@ -62,6 +62,15 @@
             </header>
 
             <div class="app-content">
+                <!-- Settings Tabs (reduces clutter — owner feedback #6) -->
+                <div class="studio-tab-bar" style="display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap;">
+                    <button type="button" class="set-tab active" onclick="switchSettingsTab('meta')" id="set-tab-meta" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-card); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600;">📘 Meta (فيسبوك وإنستجرام)</button>
+                    <button type="button" class="set-tab" onclick="switchSettingsTab('threads')" id="set-tab-threads" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--text-secondary);">🧵 Threads</button>
+                    <button type="button" class="set-tab" onclick="switchSettingsTab('ai')" id="set-tab-ai" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--text-secondary);">🧠 عقول الذكاء الاصطناعي</button>
+                    <button type="button" class="set-tab" onclick="switchSettingsTab('webhooks')" id="set-tab-webhooks" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--text-secondary);">📡 Webhooks & السياسات</button>
+                </div>
+
+                <div id="set-tab-page-meta">
                 <!-- Platform Connection Status Card -->
                 <div class="panel-section">
                     <div class="panel-header">
@@ -187,36 +196,9 @@
                         <div id="config-status-msg" style="font-size: 12px;"></div>
                     </div>
                 </div>
+                </div><!-- /set-tab-page-meta -->
 
-                <!-- Webhooks & Security Policies -->
-                <div class="panel-section">
-                    <div class="panel-header">
-                        <div>
-                            <h3 class="panel-title" data-i18n="set.webhooks_title">3. Webhook Subscriptions & Messaging Policies</h3>
-                            <div class="panel-desc" data-i18n="set.webhooks_desc">Live inbound channels for AI message handling and comment auto-replies</div>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
-                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.callback_label">Verified Meta Webhook Callback URL:</div>
-                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                                <code id="webhook-callback-display" class="mono" style="color: var(--accent-blue); word-break: break-all;">https://hudhud-radar.vercel.app/api/webhook/meta</code>
-                                <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 12px; cursor: pointer;" onclick="copyWebhookUrl()">📋 Copy</button>
-                            </div>
-                        </div>
-
-                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
-                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.fields_label">Subscribed Webhook Fields:</div>
-                            <code class="mono" style="color: var(--badge-green-text);">messages, messaging_postbacks, feed, mention</code>
-                        </div>
-
-                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
-                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.window_label">24h Messaging Window Policy:</div>
-                            <div style="color: var(--badge-green-text); font-weight: 600;" data-i18n="set.window_desc">Strict Enforcement — No promotional messages allowed outside Meta's official 24-hour window.</div>
-                        </div>
-                    </div>
-                </div>
+                <div id="set-tab-page-threads" style="display:none">
 
                 <!-- Threads OAuth Connection -->
                 <div class="panel-section">
@@ -247,8 +229,20 @@
                         </div>
                         <div id="threads-status-msg" style="font-size: 12.5px; color: var(--text-secondary);"></div>
                     </div>
-                </div>
 
+                    <!-- Where to configure each redirect (clears the "Form can't be saved" confusion) -->
+                    <div style="margin-top:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:#1e40af; line-height:1.7;">
+                        <strong>📍 أين يُضبط كل رابط؟ (مهم — كل تطبيق منفصل)</strong><br>
+                        1️⃣ <b>تطبيق Threads</b> (2373862910115515) → Threads API use case → Configuration → Redirect URIs:<br>
+                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/api/threads/oauth/callback</code><br>
+                        2️⃣ <b>تطبيق Meta الرئيسي</b> (2092880431308591) → Facebook Login → Settings → Valid OAuth Redirect URIs:<br>
+                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/settings</code><br>
+                        ⚠️ عفواً وضح: رابط Threads لا يوضع أبداً في تطبيق فيسبوك الرئيسي — لهذا كان الفورم يرفض الحفظ.
+                    </div>
+                </div>
+                </div><!-- /set-tab-page-threads -->
+
+                <div id="set-tab-page-ai" style="display:none">
                 <!-- AI Providers & Models (opencode-style) -->
                 <div class="panel-section">
                     <div class="panel-header">
@@ -293,6 +287,39 @@
 
                     <div id="providers-list" style="display:flex; flex-direction:column; gap:10px;"></div>
                 </div>
+                </div><!-- /set-tab-page-ai -->
+
+                <div id="set-tab-page-webhooks" style="display:none">
+                <!-- Webhooks & Security Policies -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title" data-i18n="set.webhooks_title">3. Webhook Subscriptions & Messaging Policies</h3>
+                            <div class="panel-desc" data-i18n="set.webhooks_desc">Live inbound channels for AI message handling and comment auto-replies</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.callback_label">Verified Meta Webhook Callback URL:</div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                                <code id="webhook-callback-display" class="mono" style="color: var(--accent-blue); word-break: break-all;">https://hudhud-radar.vercel.app/api/webhook/meta</code>
+                                <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 12px; cursor: pointer;" onclick="copyWebhookUrl()">📋 Copy</button>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.fields_label">Subscribed Webhook Fields:</div>
+                            <code class="mono" style="color: var(--badge-green-text);">messages, messaging_postbacks, feed, mention</code>
+                        </div>
+
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.window_label">24h Messaging Window Policy:</div>
+                            <div style="color: var(--badge-green-text); font-weight: 600;" data-i18n="set.window_desc">Strict Enforcement — No promotional messages allowed outside Meta's official 24-hour window.</div>
+                        </div>
+                    </div>
+                </div>
+                </div><!-- /set-tab-page-webhooks -->
             </div>
         </main>
     </div>
@@ -302,6 +329,21 @@
     <script>
         function t(key) {
             return window.hudhudI18n ? window.hudhudI18n.t(key) : key;
+        }
+
+        // ==================== Settings Tabs (owner feedback #6: reduce clutter) ====================
+        function switchSettingsTab(tab) {
+            ['meta', 'threads', 'ai', 'webhooks'].forEach(t_ => {
+                const page = document.getElementById(`set-tab-page-${t_}`);
+                const btn = document.getElementById(`set-tab-${t_}`);
+                if (page) page.style.display = t_ === tab ? 'block' : 'none';
+                if (btn) {
+                    const active = t_ === tab;
+                    btn.classList.toggle('active', active);
+                    btn.style.background = active ? 'var(--bg-card)' : 'var(--bg-subtle)';
+                    btn.style.color = active ? 'var(--text-primary)' : 'var(--text-secondary)';
+                }
+            });
         }
 
         async function loadSettingsStatus() {
