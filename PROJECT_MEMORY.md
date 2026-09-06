@@ -873,3 +873,28 @@ The user requested a full professional study of the entire project followed by a
 ### 4. Execution Log (updated as work proceeds)
 - [x] Phase 0 documented.
 - [ ] Phase 1 login/auth UX → [ ] Phase 2 Supabase audit → [ ] Phase 3 test users → [ ] Phase 4 Google OAuth → [ ] Phase 5 RAG/pgvector → [ ] Phase 6 App Review package → [ ] Phase 7 admin alerts → [ ] Phase 8 AI providers.
+
+---
+
+## [Entry 022] Roadmap v2 Execution: Phases 0-2, 3, 5, 7, 8 Completed + Token Re-activation
+- **Timestamp**: 2026-09-06T22:30:00+03:00
+- **Actor**: User (كريم) & AI Agent (opencode/GLM)
+- **Status**: 7 OF 8 PHASES LIVE — Google OAuth pending owner OAuth Client
+
+### 1. Completed (all verified live on production)
+- **Phase 0**: This plan recorded (Entry 021 + archive 021).
+- **Phase 1 — SendRad-style login**: split layout with animated product demo (scripted chat simulation, pulsing stats), unified text wordmark hudhud. SITE-WIDE (HH logo removed; automated scan verified), full country selector (120+ countries, flags, search by name AR/EN or dial code), real AR/EN i18n, Google button placeholder. LIVE.
+- **Phase 2 — Supabase audit**: full live audit (columns/RLS/policies/grants/FKs/indexes/triggers/extensions/counts) → 🔥 CRITICAL FIX: anon role had full DML on ALL business tables → migration 002 revoked anon on all 10 tables + schema usage (verified zero remaining). pgvector enabled. ERD (Mermaid) at PROJECT_BRAIN/Schemas/LIVE_DATABASE_AUDIT.md. 3 performance indexes added. migrations: 002.
+- **Phase 3 — Test users + permission matrix**: admin.test@hudhud.test (admin) + user.test@hudhud.test (user) created on production. Live matrix: 49/49 PASS (anonymous 9, admin 28, user 16 incl. bypass attempts). Credentials recorded in archive 022.
+- **Meta token re-activation**: owner's new token (30 scopes incl. instagram_manage_insights) → permanent exchange via token_manager → .env + Vercel + webhook resubscription. Insights FIXED: v26 metric names (page_views_total/page_follows/page_post_engagements), IG profile-fallback, upsert on_conflict=platform,metric_date → REAL metrics flowing (7 days FB + IG followers 32).
+- **Phase 5 — RAG/pgvector (LEANN rejected after full study)**: migrations 003/003b/003c → kb_documents + kb_chunks (embedding vector(3072), tsv generated, HNSW + GIN indexes) + Postgres RPC match_kb_chunks (cosine+tsvector RRF). gemini-embedding-001 (text-embedding-004 retired 404). New DBKnowledgeBase (chunking/embedding/hybrid search/fallbacks) + KnowledgeBaseManager dual-mode (DB primary, file fallback for tests). Fabricated markdown KB files REMOVED from git+disk (gitignored). Real business_profile.md seeded with embeddings (verified: chunks+embeddings+search). Tests isolated to tmp dirs. migrations: 003, 003b, 003c.
+- **Phase 7 — Admin system alerts**: src/core/admin_alerts.py (6 checks: Meta token validity incl. password-change invalidation, Threads expiry <14d, Gemini live+429 quota, webhook subscription via subscribed_apps, scheduler freshness from activity_logs, Supabase connectivity). GET /api/admin/alerts (admin-only). Colored banners panel in overview (dev-only, role-enforced). LIVE — verified 5 ok + 1 info.
+- **Phase 8 — AI Providers (opencode-style)**: migration 004 → ai_providers (official|custom, masked keys, custom_headers jsonb, status toggle) + ai_models (enabled/available/source) + users.agent_brain. AIProviderManager: registry (Google AI/Anthropic/OpenAI/OpenRouter with SVG logos), discovery per API (Google models list, OpenAI-compatible /models, Anthropic x-api-key), availability gating (unavailable hidden from clients), manual models for custom, refresh-connection button. Settings UI: add-provider form (official/custom with +Add model/+Add header rows), provider cards with logos, models management window. LIVE PROOF: Google AI connected with owner's key → 33 models discovered instantly, client /api/ai/brains returns them, anon blocked. 2 real bugs found & fixed during tests (enabled default; discovery-failure availability). migrations: 004.
+
+### 2. Test Suite
+77/77 PASSED (7 new provider tests + fixed semantic integration test). Production deployed multiple times.
+
+### 3. Pending
+- **Phase 4 (Google OAuth)**: blocked on owner creating Google Cloud OAuth Client (steps handed over) — then configure Supabase Auth Google provider + backend session sync.
+- **Phase 6 (App Review package)**: comprehensive guide authored at PROJECT_BRAIN/Roadmap/META_APP_REVIEW_GUIDE.md (business verification steps, ready-to-paste permission justifications AR/EN, video spec, Tester workaround). Owner action: submit reviews.
+- **Gemini Vision tab**: instagram_manage_insights added by owner; IG insights API still returns #10 (scope propagation may take time) — profile fallback active meanwhile.
