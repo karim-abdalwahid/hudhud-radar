@@ -59,6 +59,9 @@ ADMIN_EXACT_PATHS = frozenset({
     "/api/meta/sync-posts",
     "/api/onboarding/save-all",
     "/api/content/scheduler/trigger",
+    "/api/threads/oauth/authorize",
+    "/api/threads/oauth/refresh",
+    "/api/threads/disconnect",
 })
 
 # Admin-only dashboard pages (server-side enforcement of Developer Console)

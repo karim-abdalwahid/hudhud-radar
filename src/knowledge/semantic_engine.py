@@ -90,7 +90,11 @@ class LightweightSemanticEngine:
         if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY.startswith("your-"):
             return None
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={settings.GEMINI_API_KEY}"
+        url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
+        headers = {
+            "Content-Type": "application/json",
+            "X-goog-api-key": settings.GEMINI_API_KEY,
+        }
         payload = {
             "model": "models/text-embedding-004",
             "content": {
@@ -100,7 +104,7 @@ class LightweightSemanticEngine:
 
         try:
             async with httpx.AsyncClient(timeout=8.0) as client:
-                res = await client.post(url, json=payload)
+                res = await client.post(url, headers=headers, json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     return data.get("embedding", {}).get("values")

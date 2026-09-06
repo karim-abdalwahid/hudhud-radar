@@ -37,7 +37,16 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = Field(default="gemini", description="LLM provider: gemini (OpenAI reserved for future SaaS phase)")
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key")
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key (unused — reserved for future)")
-    LLM_MODEL: str = Field(default="gemini-2.5-flash", description="LLM model name")
+    LLM_MODEL: str = Field(default="gemini-flash-latest", description="LLM model name")
+
+    # Threads App (separate from the main Meta app — Threads uses its own OAuth)
+    THREADS_APP_ID: Optional[str] = Field(default=None, description="Threads App ID")
+    THREADS_APP_SECRET: Optional[str] = Field(default=None, description="Threads App Secret")
+    THREADS_REDIRECT_URI: str = Field(
+        default="https://hudhud-radar-steel.vercel.app/api/threads/oauth/callback",
+        description="Threads OAuth redirect URI",
+    )
+    THREADS_BASE_URL: str = Field(default="https://graph.threads.net/v1.0", description="Threads Graph API base URL")
 
     # Rate Limiting & Safety Governance
     MAX_MESSAGES_PER_MINUTE: int = Field(default=20, description="Maximum outbound messages per minute")

@@ -217,6 +217,37 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Threads OAuth Connection -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">🧵 Threads OAuth Connection (App: 2373862910115515)</h3>
+                            <div class="panel-desc" data-i18n="set.threads_desc">Connect your Threads account with the official 60-day token to enable thread publishing and replies reading.</div>
+                        </div>
+                        <span id="threads-status-badge" class="badge" style="padding: 4px 10px; font-size: 12px;">—</span>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
+                            <div style="color: var(--text-secondary); margin-bottom: 6px;">Threads Callback URL (أضفه في تطبيق Threads):</div>
+                            <code class="mono" style="color: var(--accent-blue); word-break: break-all;" id="threads-callback-display">https://hudhud-radar-steel.vercel.app/api/threads/oauth/callback</code>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" id="btn-threads-connect" class="btn-primary" style="padding: 10px 20px; font-size: 13.5px;" onclick="connectThreads()">
+                                🧵 <span data-i18n="set.threads_connect">ربط حساب Threads</span>
+                            </button>
+                            <button type="button" class="btn-secondary" style="padding: 10px 16px; font-size: 13px; display: none;" id="btn-threads-refresh" onclick="refreshThreadsToken()">
+                                🔄 Refresh Token
+                            </button>
+                            <button type="button" class="btn-secondary" style="padding: 10px 16px; font-size: 13px; display: none; border-color: #dc2626; color: #dc2626;" id="btn-threads-disconnect" onclick="disconnectThreads()">
+                                ⏏ فصل الحساب
+                            </button>
+                        </div>
+                        <div id="threads-status-msg" style="font-size: 12.5px; color: var(--text-secondary);"></div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -515,9 +546,104 @@
             loadSettingsStatus();
         });
 
+        // ==================== Threads OAuth ====================
+        async function loadThreadsStatus() {
+            const badge = document.getElementById('threads-status-badge');
+            const msg = document.getElementById('threads-status-msg');
+            const btnConnect = document.getElementById('btn-threads-connect');
+            const btnRefresh = document.getElementById('btn-threads-refresh');
+            const btnDisc = document.getElementById('btn-threads-disconnect');
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            try {
+                const res = await fetch('/api/threads/status');
+                const s = await res.json();
+                if (!s.configured) {
+                    badge.textContent = isAr ? 'التطبيق غير مضبوط' : 'App not configured';
+                    badge.style.color = 'var(--badge-amber-text)';
+                    btnConnect.disabled = true;
+                    return;
+                }
+                if (s.connected) {
+                    badge.textContent = `✓ @${s.username || 'Connected'} (${s.expires_in_days}d)`;
+                    badge.style.color = 'var(--badge-green-text)';
+                    btnConnect.style.display = 'none';
+                    btnRefresh.style.display = 'inline-block';
+                    btnDisc.style.display = 'inline-block';
+                    msg.textContent = isAr
+                        ? `مربوط بحساب @${s.username} — ينتهي التوكن بعد ${s.expires_in_days} يوم (قابل للتجديد)`
+                        : `Connected as @${s.username} — token expires in ${s.expires_in_days} days (refreshable)`;
+                } else {
+                    badge.textContent = isAr ? 'غير مربوط' : 'Not connected';
+                    badge.style.color = 'var(--text-muted)';
+                    btnConnect.style.display = 'inline-flex';
+                    btnRefresh.style.display = 'none';
+                    btnDisc.style.display = 'none';
+                }
+            } catch (e) {
+                badge.textContent = '—';
+            }
+        }
+
+        async function connectThreads() {
+            const msg = document.getElementById('threads-status-msg');
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            try {
+                const res = await fetch('/api/threads/oauth/authorize');
+                const data = await res.json();
+                if (res.ok && data.authorize_url) {
+                    window.location.href = data.authorize_url;
+                } else {
+                    msg.textContent = '❌ ' + (data.detail || 'Failed to start Threads OAuth');
+                }
+            } catch (e) {
+                msg.textContent = '❌ Connection error';
+            }
+        }
+
+        async function refreshThreadsToken() {
+            const msg = document.getElementById('threads-status-msg');
+            try {
+                const res = await fetch('/api/threads/oauth/refresh', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.textContent = '✅ Token refreshed — ' + data.expires_in_days + ' days';
+                    await loadThreadsStatus();
+                } else {
+                    msg.textContent = '❌ ' + (data.detail || 'Refresh failed');
+                }
+            } catch (e) {
+                msg.textContent = '❌ Connection error';
+            }
+        }
+
+        async function disconnectThreads() {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            if (!confirm(isAr ? 'هل تريد فصل حساب Threads؟' : 'Disconnect Threads account?')) return;
+            await fetch('/api/threads/disconnect', { method: 'POST' });
+            await loadThreadsStatus();
+        }
+
+        // Handle OAuth callback result flags (?threads=connected|error)
+        function handleThreadsCallbackFlags() {
+            const params = new URLSearchParams(window.location.search);
+            const flag = params.get('threads');
+            const msg = document.getElementById('threads-status-msg');
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            if (flag === 'connected') {
+                const username = params.get('username') || '';
+                msg.textContent = isAr ? `✅ تم ربط Threads بنجاح: @${username}` : `✅ Threads connected: @${username}`;
+                history.replaceState(null, '', '/settings');
+            } else if (flag === 'error') {
+                msg.textContent = isAr ? '❌ فشل ربط Threads — حاول مرة أخرى' : '❌ Threads connection failed — try again';
+                history.replaceState(null, '', '/settings');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadSettingsStatus();
             checkUrlHashForToken();
+            loadThreadsStatus();
+            handleThreadsCallbackFlags();
         });
     </script>
 </body>

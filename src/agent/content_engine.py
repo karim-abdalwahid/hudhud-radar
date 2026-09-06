@@ -42,7 +42,11 @@ class ContentEngine:
 
     async def _generate_with_gemini(self, req: ContentGenerationRequest) -> Optional[ContentGenerationResponse]:
         """Calls Google Gemini API to generate structured marketing copy."""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent"
+        headers = {
+            "Content-Type": "application/json",
+            "X-goog-api-key": settings.GEMINI_API_KEY,
+        }
 
         prompt = self._build_gemini_prompt(req)
         payload = {
@@ -51,18 +55,26 @@ class ContentEngine:
             ],
             "generationConfig": {
                 "temperature": 0.7,
-                "maxOutputTokens": 1500,
+                "maxOutputTokens": 2500,
+                # flash-latest models spend thinking tokens from the output
+                # budget — disable thinking for short creative copy.
+                "thinkingConfig": {"thinkingBudget": 0},
             }
         }
 
         async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, headers=headers, json=payload)
             if resp.status_code == 200:
                 data = resp.json()
-                raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                candidates = data.get("candidates") or []
+                parts = (candidates[0].get("content") or {}).get("parts") if candidates else None
+                raw_text = "".join(p.get("text", "") for p in (parts or []) if isinstance(p, dict)).strip()
+                if not raw_text:
+                    logger.warning(f"Gemini returned empty text (finishReason={candidates[0].get('finishReason') if candidates else 'none'})")
+                    return None
                 return self._parse_gemini_response(raw_text, req)
             else:
-                logger.warning(f"Gemini API returned code {resp.status_code}: {resp.text}")
+                logger.warning(f"Gemini API returned code {resp.status_code}: {resp.text[:300]}")
                 return None
 
     def _build_gemini_prompt(self, req: ContentGenerationRequest) -> str:

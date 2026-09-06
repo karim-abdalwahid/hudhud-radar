@@ -821,6 +821,23 @@ The user requested a full professional study of the entire project followed by a
 - Migration runner preserved at `scripts/apply_migration_001.py` (idempotent, reusable for future fresh databases; requires token argument).
 - **Security note for owner**: Supabase access token was shared in chat — recommended to revoke/regenerate it at supabase.com/dashboard/account/tokens after this session if desired.
 
+### 9. Gemini Activated Live + Threads OAuth App (2026-09-06, continued)
+- **Gemini LIVE on production**: owner supplied a new-format API key (`AQ.Ab8...`). All three Gemini call sites migrated from URL `?key=` to the `X-goog-api-key` header (required for new keys): conversation_engine, content_engine, semantic_engine.
+- **Model discovery**: `gemini-2.5-flash` is RETIRED for new users (404) as is `gemini-2.0-flash` — the working model is **`gemini-flash-latest`**. Default updated in config + `.env` + Vercel.
+- **Root-cause bug fixed**: a stale `GEMINI_API_KEY` (AIzaSy...) existed in the **Windows User-scope environment variables**, which pydantic-settings prioritizes over `.env` — the app silently used the exhausted old key (429 quota). Fixed by overwriting the User-scope variable with the new key. Lesson: on this machine, User-scope env vars shadow `.env` values.
+- **thinkingConfig fix**: flash-latest models spend "thinking" tokens from the output budget → `thinkingBudget: 0` set in content + conversation engines, maxOutputTokens raised (2500/800), and multi-part text joining added (thinking parts have no text field).
+- **Diagnostic endpoint**: `GET /api/debug/llm-status` (admin, authenticated) performs a tiny live Gemini call and returns provider/model/key_prefix/http_status/sample — used to verify production: `{"ok":true,"key_prefix":"AQ.Ab8RN","http_status":200}`.
+- **Live production proof**: `POST /api/content/generate` now returns `model_used: "Gemini (gemini-flash-latest)"` with real generated Arabic hook + 8 hashtags.
+- **Threads OAuth implemented** (owner's dedicated Threads app 2373862910115515): new `src/meta_api/threads_oauth.py` — authorize URL builder with single-use CSRF state (10-min TTL), code→short token→60-day token exchange via graph.threads.net, token refresh (th_refresh_token), status/disconnect, persistence in Supabase `app_settings['threads_credentials']` with expiry tracking.
+- **ThreadsPublisher rewired**: uses `get_active_threads_token()` (from app_settings, expiry-checked) instead of the Facebook Page token — publishing works only after OAuth connection.
+- **New endpoints**: `/api/threads/status`, `/api/threads/oauth/authorize` (admin), `/api/threads/oauth/callback` (public redirect target, validates state), `/api/threads/oauth/refresh` (admin), `/api/threads/disconnect` (admin).
+- **Settings page**: new Threads panel — connection status badge, callback URL display, Connect/Refresh/Disconnect buttons, OAuth callback flag handling (`?threads=connected|error`).
+- **Config**: `THREADS_APP_ID`, `THREADS_APP_SECRET`, `THREADS_REDIRECT_URI`, `THREADS_BASE_URL` (default https://graph.threads.net/v1.0) added; secrets live in `.env` + Vercel only (never committed).
+- **Test suite**: 8 new Threads tests (authorize URL/state CSRF, exchange flow mocked, publish skip/flow, token expiry, status/disconnect) → **70/70 PASSED**. Also cleaned ~1000 test rows leaked earlier into live `processed_events` (now class-level isolation prevents recurrence).
+- **Owner's recorded decision**: META_APP_SECRET stays as-is for now (private repo); rotation deferred.
+- **Owner manual step required (1 min)**: In the Threads app dashboard → Settings → add Redirect URI `https://hudhud-radar-steel.vercel.app/api/threads/oauth/callback`, then click "ربط حساب Threads" in /settings to authorize. After connecting, thread publishing goes live.
+- **Security note**: all three keys shared in chat — recommend regenerating them after session if desired (repo is private, risk low).
+
 ### 6. Standing Instructions Learned (Permanent)
 - ALL responses to the owner MUST be in Arabic.
 - Every plan/feature/fix MUST be recorded in PROJECT_MEMORY + PROJECT_ARCHIVE (sequential numbering) + PROJECT_BRAIN before/while implementation.

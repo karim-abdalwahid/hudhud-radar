@@ -133,21 +133,28 @@ class MetaInsightsSync:
 
 
 class ThreadsPublisher:
-    """Basic Meta Threads API integration (publish + read replies)."""
+    """Basic Meta Threads API integration (publish + read replies).
+
+    Uses the dedicated Threads OAuth token (threads_oauth.get_active_threads_token),
+    NOT the Facebook Page token — Threads requires its own app authorization.
+    """
 
     async def publish_thread(self, text: str, link: Optional[str] = None) -> Dict[str, Any]:
-        creds = _resolve_credentials()
-        token = creds["token"]
-        ig_id = creds["ig_id"]  # Threads uses the linked IG user id
-        if not token or not ig_id:
-            return {"status": "skipped", "reason": "Threads requires IG-linked token"}
+        from src.meta_api.threads_oauth import get_active_threads_token
+
+        token = get_active_threads_token()
+        if not token:
+            return {
+                "status": "skipped",
+                "reason": "Threads غير مربوط — اربط حسابك من صفحة الإعدادات (Threads OAuth)",
+            }
 
         full_text = f"{text}\n{link}" if link else text
         async with httpx.AsyncClient(timeout=15.0) as client:
             # 1. Create container
             create = await client.post(
-                f"{settings.META_GRAPH_API_BASE_URL}/{ig_id}/threads",
-                data={"media_type": "TEXT", "text": full_text, "access_token": token},
+                f"{settings.THREADS_BASE_URL}/{self._threads_user_id(token)}/threads",
+                data={"media_type": "TEXT", "text": full_text[:500], "access_token": token},
             )
             if create.status_code != 200:
                 return {"status": "error", "detail": create.text[:300]}
@@ -155,7 +162,7 @@ class ThreadsPublisher:
 
             # 2. Publish container
             publish = await client.post(
-                f"{settings.META_GRAPH_API_BASE_URL}/{ig_id}/threads_publish",
+                f"{settings.THREADS_BASE_URL}/{self._threads_user_id(token)}/threads_publish",
                 data={"creation_id": container_id, "access_token": token},
             )
             if publish.status_code != 200:
@@ -171,14 +178,25 @@ class ThreadsPublisher:
             })
             return {"status": "success", "thread_id": thread_id}
 
+    def _threads_user_id(self, token: str) -> str:
+        """Resolves the connected Threads user id (stored or via /me)."""
+        try:
+            creds = supabase_db.get_setting("threads_credentials") or {}
+            if creds.get("threads_user_id"):
+                return creds["threads_user_id"]
+        except Exception:
+            pass
+        return "me"
+
     async def get_thread_replies(self, thread_id: str, limit: int = 20) -> Dict[str, Any]:
-        creds = _resolve_credentials()
-        token = creds["token"]
+        from src.meta_api.threads_oauth import get_active_threads_token
+
+        token = get_active_threads_token()
         if not token:
-            return {"status": "skipped", "reason": "token missing"}
+            return {"status": "skipped", "reason": "Threads غير مربوط"}
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(
-                f"{settings.META_GRAPH_API_BASE_URL}/{thread_id}/replies",
+                f"{settings.THREADS_BASE_URL}/{thread_id}/replies",
                 params={"fields": "id,text,timestamp,username", "limit": limit, "access_token": token},
             )
             if resp.status_code != 200:

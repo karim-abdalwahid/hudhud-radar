@@ -104,7 +104,11 @@ class ConversationEngine:
 
     async def _call_gemini_api(self, lead_data: Dict[str, Any], message: str, history: list) -> Optional[str]:
         """Calls Google Gemini API with multi-turn conversation memory + RAG context."""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent"
+        headers = {
+            "Content-Type": "application/json",
+            "X-goog-api-key": settings.GEMINI_API_KEY,
+        }
 
         # Dynamic RAG context
         rag_context = self.kb.search_relevant_chunks(message, top_k=3)
@@ -135,13 +139,23 @@ class ConversationEngine:
         payload = {
             "system_instruction": {"parts": [{"text": system_prompt}]},
             "contents": contents,
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 600}
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 800,
+                # Thinking tokens consume the output budget on flash-latest models.
+                "thinkingConfig": {"thinkingBudget": 0},
+            }
         }
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, headers=headers, json=payload)
             if resp.status_code == 200:
                 data = resp.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+                candidates = data.get("candidates") or []
+                parts = (candidates[0].get("content") or {}).get("parts") if candidates else None
+                text = "".join(p.get("text", "") for p in (parts or []) if isinstance(p, dict)).strip()
+                return text or None
+            else:
+                logger.warning(f"Gemini API returned code {resp.status_code}: {resp.text[:200]}")
         return None
 
 

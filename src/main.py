@@ -55,6 +55,7 @@ from src.meta_api.extended_api import (
     threads_publisher,
     marketing_leads_sync,
 )
+from src.meta_api.threads_oauth import threads_oauth as threads_oauth_manager
 from src.meta_api.compliance_pages import register_compliance_routes
 
 from src.content_studio.models import (
@@ -830,6 +831,50 @@ async def cron_insights_sync(request: Request):
     return await meta_insights_sync.sync_recent_metrics(days=7)
 
 
+@app.get("/api/debug/llm-status", tags=["System"])
+async def debug_llm_status():
+    """
+    Admin diagnostic: performs a tiny live Gemini call and reports the exact
+    result (model, key prefix, error) so LLM issues can be diagnosed remotely.
+    """
+    import httpx as _httpx
+    key = settings.GEMINI_API_KEY
+    info: Dict[str, Any] = {
+        "provider": settings.LLM_PROVIDER,
+        "model": settings.LLM_MODEL,
+        "key_set": bool(key),
+        "key_prefix": (key or "")[:8],
+    }
+    if not key:
+        info["ok"] = False
+        info["error"] = "GEMINI_API_KEY not set in environment"
+        return info
+    try:
+        async with _httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent",
+                headers={"Content-Type": "application/json", "X-goog-api-key": key},
+                json={"contents": [{"parts": [{"text": "Reply with exactly: OK"}]}],
+                      "generationConfig": {"maxOutputTokens": 10, "thinkingConfig": {"thinkingBudget": 0}}},
+            )
+        info["http_status"] = resp.status_code
+        if resp.status_code == 200:
+            info["ok"] = True
+            try:
+                cands = resp.json().get("candidates") or []
+                parts = (cands[0].get("content") or {}).get("parts") if cands else None
+                info["sample_text"] = "".join(p.get("text", "") for p in (parts or []))[:40]
+            except Exception as pe:
+                info["parse_error"] = str(pe)
+        else:
+            info["ok"] = False
+            info["error"] = resp.text[:400]
+    except Exception as e:
+        info["ok"] = False
+        info["error"] = f"{type(e).__name__}: {str(e)[:200]}"
+    return info
+
+
 # --------------------------------------------------------------------
 # Extended Meta APIs: Threads & Marketing (spec v2.1 scopes)
 # --------------------------------------------------------------------
@@ -838,9 +883,53 @@ class ThreadsPublishPayload(BaseModel):
     link: Optional[str] = None
 
 
+@app.get("/api/threads/status", tags=["Threads"])
+async def threads_connection_status():
+    """Returns Threads OAuth connection status (app configured + token state)."""
+    return threads_oauth_manager.get_status()
+
+
+@app.get("/api/threads/oauth/authorize", tags=["Threads"])
+async def threads_oauth_authorize():
+    """Builds the Threads OAuth authorization URL (admin clicks it to connect)."""
+    result = threads_oauth_manager.build_authorize_url()
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result["detail"])
+    return result
+
+
+@app.get("/api/threads/oauth/callback", tags=["Threads"])
+async def threads_oauth_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
+    """
+    OAuth redirect target. Validates the CSRF state, exchanges the code for a
+    60-day token, persists it, then redirects to /settings with a result flag.
+    """
+    if not code or not threads_oauth_manager.validate_state(state):
+        return RedirectResponse(url="/settings?threads=error", status_code=303)
+    result = await threads_oauth_manager.exchange_code(code)
+    if result.get("status") != "success":
+        return RedirectResponse(url="/settings?threads=error", status_code=303)
+    return RedirectResponse(url=f"/settings?threads=connected&username={result.get('username', '')}", status_code=303)
+
+
+@app.post("/api/threads/oauth/refresh", tags=["Threads"])
+async def threads_oauth_refresh():
+    """Refreshes the 60-day Threads token (safe to call periodically)."""
+    result = await threads_oauth_manager.refresh_token()
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result["detail"])
+    return result
+
+
+@app.post("/api/threads/disconnect", tags=["Threads"])
+async def threads_disconnect():
+    """Removes stored Threads credentials."""
+    return threads_oauth_manager.disconnect()
+
+
 @app.post("/api/threads/publish", tags=["Threads"])
 async def publish_threads_post(payload: ThreadsPublishPayload):
-    """Publishes a text thread via the Meta Threads API (linked IG account)."""
+    """Publishes a text thread via the official Threads API (own OAuth app)."""
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="نص الثريد فارغ")
     result = await threads_publisher.publish_thread(payload.text, payload.link)

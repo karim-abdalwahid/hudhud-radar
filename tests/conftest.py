@@ -24,7 +24,11 @@ def _isolated_user_store():
     from src.automations.service import AutomationsService
 
     auth_mod.user_store._memory_fallback = lambda: True
-    # Webhook dedup: force memory-only (no live DB round-trips in tests)
+    # Webhook dedup: force memory-only for ALL instances (class-level) — the live
+    # processed_events table now exists, so tests must never round-trip to it.
+    from src.core.event_dedup import EventDeduplicator, event_deduplicator
+    _orig_db_ready = EventDeduplicator._db_ready
+    EventDeduplicator._db_ready = lambda self: False
     event_deduplicator._db_disabled = True
     # Automations: force memory-only persistence (no Supabase, no disk writes)
     _orig_save_supabase = AutomationsService._save_supabase
@@ -35,6 +39,7 @@ def _isolated_user_store():
     AutomationsService._save = lambda self: None
     yield
     # Restore original state
+    EventDeduplicator._db_ready = _orig_db_ready
     event_deduplicator._db_disabled = False
     for name, fn in (
         ("_save_supabase", _orig_save_supabase),
