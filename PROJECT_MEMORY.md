@@ -799,6 +799,19 @@ The user requested a full professional study of the entire project followed by a
 - Admin pages (/settings, /identity, /analytics) were only cosmetically restricted client-side — now server-enforced 403.
 - EventDeduplicator could stall on repeated failing DB calls — circuit breaker added.
 
+### 7. Live Production Deployment & Automation (2026-09-06, session continued)
+- **Vercel CLI authenticated** as `karimabdalwahid1w-7747` — direct deployment capability established.
+- **19 environment variables uploaded** to Vercel production (Supabase, Meta credentials, CRON_SECRET, LLM config, APP_ENV=production). NOTE: the project previously had ZERO env vars — production had been running in degraded memory-only mode; now fully wired to Supabase Cloud.
+- **Production deployed**: https://hudhud-radar-steel.vercel.app (project hudhud-radar). Health check live: supabase_connected=true, APP_ENV=production, 8 KB docs loaded.
+- **Live verification**: /login 200 (auth.html served), /dashboard anonymous → 303 to /login (protection works in production), /privacy 200, /api/leads anonymous → 401, cron endpoint without secret → 401, with ?key=CRON_SECRET → 200.
+- **cron-job.org integration** (owner-supplied API key, stored in .env only, never committed):
+  - Job 8045365 repurposed: "Hudhud Scheduler (hudhud-radar production)" → every minute (Africa/Cairo) → /api/cron/scheduler-tick?key=CRON_SECRET. (Old job had pointed to a dead hudhud-amber deployment.)
+  - Job 8121501 repurposed: "Hudhud Insights Sync (daily 4AM)" → /api/cron/insights-sync?key=CRON_SECRET. (Old N8N job was disabled and pointed to a dead webhook.)
+  - cron-job.org API notes for future agents: GET/PATCH /jobs/{id} work, but POST /jobs (create) returns 404 on this account — new jobs must be created in the dashboard UI; existing jobs can be fully repurposed via PATCH.
+  - `_verify_cron_secret` now accepts ?key= / ?secret= query params (cron-job.org free plan cannot send custom headers).
+- **Git push working** via Windows Credential Manager (no PAT needed in remote URL). Commit e68d584 pushed to main.
+- **Supabase DDL limitation**: service_role key cannot create tables (PostgREST has no DDL). `users` and `processed_events` tables + `leads.human_takeover` column still MISSING in the live database. **Blocked on owner providing a Supabase Access Token** (supabase.com/dashboard/account/tokens) so the agent can execute migration 001 via the Management API — or the owner runs database/migrations/001_users_auth_and_security.sql manually in SQL Editor. Until then, account registration on production returns a clear error message directing to the migration.
+
 ### 6. Standing Instructions Learned (Permanent)
 - ALL responses to the owner MUST be in Arabic.
 - Every plan/feature/fix MUST be recorded in PROJECT_MEMORY + PROJECT_ARCHIVE (sequential numbering) + PROJECT_BRAIN before/while implementation.
