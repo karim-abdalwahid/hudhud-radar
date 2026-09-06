@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     THREADS_APP_ID: Optional[str] = Field(default=None, description="Threads App ID")
     THREADS_APP_SECRET: Optional[str] = Field(default=None, description="Threads App Secret")
     THREADS_REDIRECT_URI: str = Field(
-        default="https://hudhud-radar-steel.vercel.app/api/threads/oauth/callback",
+        default="https://hudhud-radar.vercel.app/api/threads/oauth/callback",
         description="Threads OAuth redirect URI",
     )
     THREADS_BASE_URL: str = Field(default="https://graph.threads.net/v1.0", description="Threads Graph API base URL")

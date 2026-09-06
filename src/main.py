@@ -255,6 +255,112 @@ async def logout_user():
     return resp
 
 
+# --------------------------------------------------------------------
+# Google OAuth via Supabase Auth
+# --------------------------------------------------------------------
+@app.get("/auth/google", tags=["Auth"])
+async def google_oauth_start(request: Request):
+    """
+    Redirects the browser to Supabase Auth's Google OAuth flow.
+    redirectTo brings the user back to our session-exchange endpoint.
+    """
+    from urllib.parse import quote
+    if not settings.SUPABASE_URL:
+        raise HTTPException(status_code=500, detail="Supabase غير مضبوط")
+    redirect_to = f"{request.base_url.scheme}://{request.base_url.netloc}/auth/google/callback" if hasattr(request.base_url, "scheme") else "/auth/google/callback"
+    url = (
+        f"{settings.SUPABASE_URL}/auth/v1/authorize?provider=google"
+        f"&redirect_to={quote(str(request.url).rsplit('/auth/google', 1)[0] + '/auth/google/callback')}"
+    )
+    return RedirectResponse(url=url, status_code=303)
+
+
+@app.get("/auth/google/callback", tags=["Auth"])
+async def google_oauth_callback(request: Request):
+    """
+    Receives the Supabase redirect with the access token in the URL fragment.
+    Since fragments never reach the server, this page runs a small script that
+    posts the tokens to /auth/google/exchange, then we set our signed session.
+    """
+    html = """<!DOCTYPE html><html><body><script>
+    const h = {};
+    location.hash.slice(1).split('&').forEach(p => { const [k,v] = p.split('='); if(k) h[k] = decodeURIComponent(v); });
+    fetch('/auth/google/exchange', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ access_token: h['access_token'], refresh_token: h['refresh_token'] })
+    }).then(r => r.json()).then(d => {
+        if (d.status === 'success') window.location.href = '/dashboard';
+        else window.location.href = '/login?google=error';
+    }).catch(() => window.location.href = '/login?google=error');
+    </script></body></html>"""
+    return HTMLResponse(content=html)
+
+
+class GoogleExchangePayload(BaseModel):
+    access_token: str
+    refresh_token: Optional[str] = None
+
+
+@app.post("/auth/google/exchange", tags=["Auth"])
+async def google_oauth_exchange(payload: GoogleExchangePayload):
+    """
+    Validates the Supabase access token with Supabase Auth (/auth/v1/user),
+    then creates-or-syncs the user in our `users` table and issues a signed
+    session cookie (same session as password login).
+    """
+    from src.core.auth import user_store as us
+    if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+        raise HTTPException(status_code=500, detail="Supabase غير مضبوط")
+    try:
+        r = httpx.get(
+            f"{settings.SUPABASE_URL}/auth/v1/user",
+            headers={"apikey": settings.SUPABASE_KEY, "Authorization": f"Bearer {payload.access_token}"},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=401, detail="رمز Google غير صالح")
+        gu = r.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"خطأ تحقق: {e}")
+
+    email = (gu.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="حساب Google بلا بريد إلكتروني")
+
+    # Create-or-sync local user
+    local = us.get_by_email(email)
+    if not local:
+        meta = gu.get("user_metadata") or {}
+        # Supabase Auth users live separately; our users table has no password for them
+        try:
+            from src.core.supabase_client import supabase_db
+            record = {
+                "email": email,
+                "full_name": meta.get("full_name") or meta.get("name"),
+                "phone": meta.get("phone") or None,
+                # No password login for OAuth-only accounts; hash set to unusable marker
+                "password_hash": "oauth_google",
+                "role": "user",
+                "is_active": True,
+            }
+            created = supabase_db.insert("users", record) or record
+            local = created if "id" in created else {**record, "id": "google-user"}
+        except Exception as e:
+            logger.error(f"Google user sync failed: {e}")
+            raise HTTPException(status_code=500, detail="تعذر إنشاء الحساب")
+
+    token = create_session_token(local["id"], local.get("role", "user"), local["email"])
+    resp = JSONResponse({"status": "success", "role": local.get("role", "user")})
+    resp.set_cookie(
+        SESSION_COOKIE_NAME, token,
+        max_age=SESSION_TTL_SECONDS, httponly=True, samesite="lax",
+        secure=(settings.APP_ENV.lower() == "production"),
+    )
+    return resp
+
+
 @app.get("/auth/me", tags=["Auth"])
 async def whoami(request: Request):
     """Returns the current session user info (reads cookie directly: /auth is public)."""

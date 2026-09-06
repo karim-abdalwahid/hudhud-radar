@@ -15,8 +15,8 @@
 | المدة؟ | مراجعة الصلاحيات عادة 1-7 أيام لكل دفعة |
 
 ## 2. ما أنجزناه بالفعل (متطلبات جاهزة)
-✅ Privacy Policy حية: `https://hudhud-radar-steel.vercel.app/privacy`
-✅ Data Deletion: صفحة `https://hudhud-radar-steel.vercel.app/data-deletion` + callback API
+✅ Privacy Policy حية: `https://hudhud-radar.vercel.app/privacy`
+✅ Data Deletion: صفحة `https://hudhud-radar.vercel.app/data-deletion` + callback API
 ✅ استبيانات البيانات ستجيب عنها بنفس المعلومات أدناه
 
 ## 3. خطوات التوثيق التجاري (Business Verification) — 15 دقيقة

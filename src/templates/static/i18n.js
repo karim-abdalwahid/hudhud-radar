@@ -181,6 +181,9 @@ const HUDHUD_TRANSLATIONS = {
 
         // Overview / Dashboard
         "dash.title": "Executive Overview Dashboard",
+        "dash.alerts_title": "System Alerts",
+        "dash.alerts_desc": "Automatic monitoring of tokens, quotas and connectivity — anything expiring or breaking shows up here instantly",
+        "dash.alerts_refresh": "Re-run checks",
         "dash.kpi_leads": "Total Captured Leads",
         "dash.kpi_leads_sub": "Captured from DMs and comments",
         "dash.kpi_converted": "Qualified & Converted",
@@ -819,6 +822,9 @@ const HUDHUD_TRANSLATIONS = {
 
         // Overview / Dashboard
         "dash.title": "لوحة النظرة العامة التشغيلية",
+        "dash.alerts_title": "تنبيهات النظام",
+        "dash.alerts_desc": "مراقبة تلقائية للتوكنات والحصص والاتصال — كل ما ينتهي أو يتعطل يظهر هنا فوراً",
+        "dash.alerts_refresh": "تحديث الفحص",
         "dash.kpi_leads": "إجمالي العملاء الملتقطين",
         "dash.kpi_leads_sub": "ملتقطين من التعليقات والرسائل",
         "dash.kpi_converted": "العملاء المؤهلون",

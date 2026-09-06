@@ -50,7 +50,7 @@ const hudhudRoleManager = {
                 const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
                 header.innerHTML = `
                     <a href="/dashboard" class="brand-logo-link">
-                        <span class="brand-logo-text">hudhud</span><span class="brand-dot">.</span>
+                        <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
                     </a>
                     <div class="brand-sub" data-i18n="brand.tagline">${isAr ? 'وكيل المبيعات الذكي والتواصل التلقائي' : 'Autonomous AI Social Sales Agent'}</div>
                 `;
