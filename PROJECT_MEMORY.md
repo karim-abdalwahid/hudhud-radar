@@ -812,6 +812,15 @@ The user requested a full professional study of the entire project followed by a
 - **Git push working** via Windows Credential Manager (no PAT needed in remote URL). Commit e68d584 pushed to main.
 - **Supabase DDL limitation**: service_role key cannot create tables (PostgREST has no DDL). `users` and `processed_events` tables + `leads.human_takeover` column still MISSING in the live database. **Blocked on owner providing a Supabase Access Token** (supabase.com/dashboard/account/tokens) so the agent can execute migration 001 via the Management API — or the owner runs database/migrations/001_users_auth_and_security.sql manually in SQL Editor. Until then, account registration on production returns a clear error message directing to the migration.
 
+### 8. Supabase Migration Applied Live + CRITICAL Security Fix (2026-09-06, continued)
+- **Owner provided Supabase Access Token** — Management API used to apply migration 001 (11/11 statements OK): `user_role_enum`, `users` table, `processed_events` table + indexes, `app_settings`, RLS policies, `leads.human_takeover` column, `updated_at` trigger, comments.
+- 🔥 **CRITICAL DISCOVERY — mislabeled keys**: Both `SUPABASE_KEY` AND `SUPABASE_SERVICE_ROLE_KEY` in `.env` (and on Vercel) were **anon** keys (decoded JWT role claim = `anon`). The entire app had been running as anon since creation. The real `service_role` key was fetched via Management API (`GET /v1/projects/{ref}/api-keys`), verified (role claim = `service_role`), and written to local `.env` + Vercel production env.
+- **RLS policy pattern fix**: `auth.role() = 'service_role'` policies return NULL role outside of a Supabase Auth JWT context — the proven working pattern in this project is `USING (true) WITH CHECK (true)` + `REVOKE ALL FROM anon` + `GRANT ALL TO service_role`. All four tables (users, processed_events, app_settings, content_posts) aligned to this pattern. Raw-SQL-created tables do NOT receive Supabase's default grants — explicit `GRANT ALL ... TO service_role` was required.
+- **Owner's real admin account created on production**: `karim@ebdamarketing.com` (role=admin, user_id 0d0a7043-...). Live verification: register 200 → login 200 → /auth/me authenticated+admin → /dashboard 200 → /settings 200 (admin) → /api/leads 200. Anonymous /settings → 303 redirect. Cron endpoint with key → 200.
+- **Full 10-table verification**: users, processed_events, app_settings, leads, messages, content_posts, activity_logs, identity_verification_queue, page_performance_metrics, campaigns — ALL EXIST + human_takeover column EXISTS.
+- Migration runner preserved at `scripts/apply_migration_001.py` (idempotent, reusable for future fresh databases; requires token argument).
+- **Security note for owner**: Supabase access token was shared in chat — recommended to revoke/regenerate it at supabase.com/dashboard/account/tokens after this session if desired.
+
 ### 6. Standing Instructions Learned (Permanent)
 - ALL responses to the owner MUST be in Arabic.
 - Every plan/feature/fix MUST be recorded in PROJECT_MEMORY + PROJECT_ARCHIVE (sequential numbering) + PROJECT_BRAIN before/while implementation.
