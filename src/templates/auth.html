@@ -16,8 +16,8 @@
             --text-primary: #0f172a;
             --text-secondary: #475569;
             --text-muted: #94a3b8;
-            --accent-blue: #2563eb;
-            --accent-blue-hover: #1d4ed8;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
             --brand-gradient: linear-gradient(135deg, #2563eb, #3b82f6);
             --error: #dc2626;
             --success: #059669;
@@ -29,299 +29,645 @@
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px 16px;
-            position: relative;
             overflow-x: hidden;
         }
-        body::before {
-            content: '';
-            position: fixed;
-            top: -20%; right: -10%;
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(37,99,235,0.07), transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
+
+        /* ============ Left showcase panel (sendrad-style) ============ */
+        .showcase {
+            flex: 1 1 55%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 48px 64px;
+            position: relative;
+            background:
+                radial-gradient(ellipse 800px 500px at 20% 10%, rgba(37,99,235,0.08), transparent),
+                radial-gradient(ellipse 600px 600px at 90% 90%, rgba(59,130,246,0.06), transparent),
+                var(--bg-page);
+            overflow: hidden;
         }
-        body::after {
+        .showcase::before {
             content: '';
-            position: fixed;
-            bottom: -25%; left: -10%;
+            position: absolute;
+            top: -30%; inset-inline-start: -15%;
             width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(59,130,246,0.05), transparent 70%);
+            background: radial-gradient(circle, rgba(37,99,235,0.10), transparent 65%);
             border-radius: 50%;
-            pointer-events: none;
+            animation: floatOrb 14s ease-in-out infinite;
         }
-        .auth-shell { width: 100%; max-width: 420px; position: relative; z-index: 1; }
-        .brand-head { text-align: center; margin-bottom: 28px; }
-        .brand-logo {
-            width: 56px; height: 56px;
-            margin: 0 auto 14px;
+        .showcase::after {
+            content: '';
+            position: absolute;
+            bottom: -25%; inset-inline-end: -10%;
+            width: 420px; height: 420px;
+            background: radial-gradient(circle, rgba(59,130,246,0.09), transparent 65%);
+            border-radius: 50%;
+            animation: floatOrb 18s ease-in-out infinite reverse;
+        }
+        @keyframes floatOrb {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -40px) scale(1.08); }
+        }
+
+        .showcase-inner { max-width: 560px; position: relative; z-index: 1; }
+        .sc-brand {
+            font-size: 26px; font-weight: 800; letter-spacing: -0.5px;
+            margin-bottom: 40px; display: inline-flex; align-items: center; gap: 2px;
+            text-decoration: none; color: var(--text-primary);
+        }
+        .sc-brand .dot { color: var(--primary); }
+        .sc-headline {
+            font-size: 34px; font-weight: 800; line-height: 1.35;
+            margin-bottom: 16px; letter-spacing: -0.5px;
+            animation: riseIn .6s ease-out both;
+        }
+        .sc-headline .grad {
             background: var(--brand-gradient);
-            border-radius: 16px;
-            display: flex; align-items: center; justify-content: center;
-            color: #fff; font-weight: 800; font-size: 22px;
-            box-shadow: 0 8px 24px rgba(37,99,235,0.25);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        .brand-head h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-        .brand-head p { font-size: 14px; color: var(--text-secondary); }
-        .card {
+        .sc-sub { font-size: 15.5px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 36px; animation: riseIn .7s .1s ease-out both; }
+        @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Live demo chat card */
+        .demo-card {
             background: var(--bg-card);
             border: 1px solid var(--border-default);
-            border-radius: 16px;
-            padding: 28px;
-            box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.06);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 20px 44px rgba(15,23,42,0.07);
+            animation: riseIn .8s .2s ease-out both;
+            position: relative;
         }
-        .tabs { display: flex; background: var(--bg-subtle); border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+        .demo-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+        .demo-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--brand-gradient);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; flex-shrink: 0;
+        }
+        .demo-id { flex: 1; }
+        .demo-id .n { font-size: 13.5px; font-weight: 700; }
+        .demo-id .s { font-size: 11px; color: var(--text-muted); }
+        .demo-live {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11px; color: var(--success); font-weight: 600;
+            background: #ecfdf5; border: 1px solid #a7f3d0;
+            padding: 3px 10px; border-radius: 99px;
+        }
+        .demo-live .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulseDot 1.6s infinite; }
+        @keyframes pulseDot { 0%,100% { opacity: 1; transform: scale(1);} 50% { opacity: .5; transform: scale(.8);} }
+
+        .bubble {
+            max-width: 82%;
+            padding: 10px 14px;
+            font-size: 13px;
+            line-height: 1.7;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            opacity: 0;
+            animation: bubbleIn .45s ease-out both;
+        }
+        .bubble.in { background: var(--bg-subtle); color: var(--text-primary); border-start-start-radius: 4px; margin-inline-end: auto; }
+        .bubble.out { background: var(--brand-gradient); color: #fff; border-start-end-radius: 4px; margin-inline-start: auto; }
+        @keyframes bubbleIn { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        .ai-meta { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--primary); font-weight: 600; margin-bottom: 10px; opacity: 0; animation: bubbleIn .4s ease-out both; }
+        .typing { display: inline-flex; gap: 3px; align-items: center; padding: 12px 14px; background: var(--bg-subtle); border-radius: 14px; border-start-start-radius: 4px; width: fit-content; }
+        .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: tyBlink 1.2s infinite; }
+        .typing i:nth-child(2) { animation-delay: .18s; } .typing i:nth-child(3) { animation-delay: .36s; }
+        @keyframes tyBlink { 0%,100% { opacity: .3; transform: translateY(0);} 50% { opacity: 1; transform: translateY(-3px);} }
+
+        .demo-stats { display: flex; gap: 10px; margin-top: 14px; }
+        .stat-pill {
+            flex: 1; text-align: center; padding: 10px 6px;
+            background: var(--bg-subtle); border: 1px solid var(--border-default);
+            border-radius: 12px; opacity: 0; animation: riseIn .5s ease-out both;
+        }
+        .stat-pill .v { font-size: 17px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+        .stat-pill .l { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+        .stat-pill:nth-child(1) { animation-delay: 2.6s; } .stat-pill:nth-child(2) { animation-delay: 2.8s; } .stat-pill:nth-child(3) { animation-delay: 3s; }
+
+        /* ============ Right form panel ============ */
+        .form-side {
+            flex: 0 0 460px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 36px;
+            background: var(--bg-card);
+            border-inline-start: 1px solid var(--border-default);
+            animation: slideIn .55s ease-out both;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(var(--slide-from, 40px)); } to { opacity: 1; transform: translateX(0); } }
+        html[dir="rtl"] .form-side { --slide-from: -40px; }
+        .form-shell { width: 100%; max-width: 380px; }
+
+        .m-brand { display: none; font-size: 22px; font-weight: 800; text-decoration: none; color: var(--text-primary); margin-bottom: 26px; justify-content: center; }
+        .m-brand .dot { color: var(--primary); }
+
+        .tabs { display: flex; background: var(--bg-subtle); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
         .tab {
-            flex: 1; text-align: center; padding: 9px 0; font-size: 14px; font-weight: 600;
-            color: var(--text-secondary); cursor: pointer; border-radius: 8px;
-            transition: all .15s ease; border: none; background: transparent; font-family: inherit;
+            flex: 1; text-align: center; padding: 10px 0; font-size: 14px; font-weight: 600;
+            color: var(--text-secondary); cursor: pointer; border-radius: 9px;
+            transition: all .18s ease; border: none; background: transparent; font-family: inherit;
         }
-        .tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 3px rgba(15,23,42,0.08); }
-        .field { margin-bottom: 16px; }
-        .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
-        .field input {
+        .tab.active { background: var(--bg-card); color: var(--text-primary); box-shadow: 0 1px 3px rgba(15,23,42,0.10); }
+
+        .msg { display: none; padding: 11px 14px; border-radius: 10px; font-size: 13.5px; margin-bottom: 16px; line-height: 1.6; }
+        .msg.error { display: block; background: #fef2f2; color: var(--error); border: 1px solid #fecaca; }
+        .msg.success { display: block; background: #ecfdf5; color: var(--success); border: 1px solid #a7f3d0; }
+
+        .field { margin-bottom: 15px; }
+        .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .field input, .field select {
             width: 100%; padding: 11px 14px; font-size: 14px; font-family: inherit;
             border: 1px solid var(--border-default); border-radius: 10px;
             background: #fff; color: var(--text-primary); outline: none;
-            transition: border-color .15s ease, box-shadow .15s ease;
+            transition: border-color .15s, box-shadow .15s;
         }
-        .field input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-        .field input::placeholder { color: var(--text-muted); }
-        .field .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .field input:focus, .field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .field .hint { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Country selector */
+        .phone-row { display: flex; gap: 8px; position: relative; }
+        .cc-btn {
+            flex-shrink: 0; min-width: 108px;
+            display: flex; align-items: center; gap: 6px;
+            border: 1px solid var(--border-default); border-radius: 10px;
+            background: var(--bg-subtle); padding: 0 10px; height: 42px;
+            cursor: pointer; font-family: inherit; font-size: 13.5px;
+            transition: border-color .15s;
+        }
+        .cc-btn:hover, .cc-btn.open { border-color: var(--primary); }
+        .cc-btn .flag { font-size: 16px; }
+        .cc-btn .dial { direction: ltr; font-weight: 600; color: var(--text-primary); }
+        .cc-btn .chev { margin-inline-start: auto; color: var(--text-muted); font-size: 10px; transition: transform .18s; }
+        .cc-btn.open .chev { transform: rotate(180deg); }
+
+        .cc-dropdown {
+            position: absolute; top: calc(100% + 6px); inset-inline-start: 0;
+            width: min(340px, 82vw); max-height: 300px;
+            background: #fff; border: 1px solid var(--border-default);
+            border-radius: 14px; box-shadow: 0 12px 40px rgba(15,23,42,0.16);
+            z-index: 50; display: none; overflow: hidden;
+        }
+        .cc-dropdown.open { display: block; animation: ccPop .16s ease-out; }
+        @keyframes ccPop { from { opacity: 0; transform: translateY(-6px);} to { opacity: 1; transform: translateY(0);} }
+        .cc-search { padding: 10px; border-bottom: 1px solid var(--border-default); }
+        .cc-search input {
+            width: 100%; padding: 9px 12px; font-size: 13.5px; font-family: inherit;
+            border: 1px solid var(--border-default); border-radius: 9px; outline: none;
+        }
+        .cc-search input:focus { border-color: var(--primary); }
+        .cc-list { max-height: 230px; overflow-y: auto; }
+        .cc-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 14px; cursor: pointer; font-size: 13.5px;
+            transition: background .1s;
+        }
+        .cc-item:hover, .cc-item.hl { background: rgba(37,99,235,0.07); }
+        .cc-item .flag { font-size: 17px; width: 24px; text-align: center; }
+        .cc-item .nm { flex: 1; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cc-item .dc { direction: ltr; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+
         .btn-submit {
             width: 100%; padding: 12px; font-size: 15px; font-weight: 700; font-family: inherit;
             background: var(--brand-gradient); color: #fff; border: none; border-radius: 10px;
-            cursor: pointer; transition: filter .15s ease, transform .1s ease;
+            cursor: pointer; transition: filter .15s, transform .1s;
             box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+            margin-top: 4px;
         }
         .btn-submit:hover { filter: brightness(1.06); }
         .btn-submit:active { transform: scale(0.99); }
         .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
-        .msg { display: none; padding: 11px 14px; border-radius: 10px; font-size: 13.5px; margin-bottom: 16px; line-height: 1.6; }
-        .msg.error { display: block; background: #fef2f2; color: var(--error); border: 1px solid #fecaca; }
-        .msg.success { display: block; background: #ecfdf5; color: var(--success); border: 1px solid #a7f3d0; }
-        .foot-note { text-align: center; font-size: 13px; color: var(--text-secondary); margin-top: 22px; }
-        .foot-note a { color: var(--accent-blue); text-decoration: none; font-weight: 600; }
-        .foot-note a:hover { text-decoration: underline; }
-        .dir-toggle { position: fixed; top: 20px; inset-inline-end: 20px; z-index: 2; }
-        .dir-toggle button {
+
+        .divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--text-muted); font-size: 12px; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
+        .btn-google {
+            width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+            padding: 11px; font-size: 14px; font-weight: 600; font-family: inherit;
+            background: #fff; color: var(--text-primary); border: 1px solid var(--border-default);
+            border-radius: 10px; cursor: pointer; transition: background .15s, box-shadow .15s;
+        }
+        .btn-google:hover { background: var(--bg-subtle); box-shadow: 0 1px 4px rgba(15,23,42,0.08); }
+        .btn-google svg { width: 18px; height: 18px; }
+
+        .foot-note { text-align: center; font-size: 13px; color: var(--text-secondary); margin-top: 20px; }
+        .foot-note a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+        .lang-toggle { position: fixed; top: 18px; inset-inline-end: 18px; z-index: 60; }
+        .lang-toggle button {
             font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
             border: 1px solid var(--border-default); border-radius: 99px; background: var(--bg-card);
-            color: var(--text-secondary); cursor: pointer;
+            color: var(--text-secondary); cursor: pointer; box-shadow: 0 1px 4px rgba(15,23,42,0.06);
         }
-        .dir-toggle button:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
-        .phone-row { display: flex; gap: 8px; }
-        .phone-row .cc {
-            flex-shrink: 0; width: 84px; display: flex; align-items: center; justify-content: center;
-            border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-subtle);
-            font-size: 14px; color: var(--text-secondary); direction: ltr;
+        .lang-toggle button:hover { border-color: var(--primary); color: var(--primary); }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+            .showcase { display: none; }
+            .form-side { border: none; flex: 1; }
+            .m-brand { display: flex; }
         }
-        .phone-row input { direction: ltr; text-align: left; }
     </style>
 </head>
 <body>
-    <div class="dir-toggle"><button id="langBtn" onclick="toggleLang()">English</button></div>
+    <div class="lang-toggle"><button id="langBtn" onclick="toggleLang()">English</button></div>
 
-    <div class="auth-shell">
-        <div class="brand-head">
-            <div class="brand-logo">HH</div>
-            <h1 data-i18n="welcome">مرحباً بك في هدهد</h1>
-            <p data-i18n="subtitle">وكيل الذكاء الاصطناعي لإدارة صفحاتك وتحويل المتابعين إلى عملاء</p>
+    <!-- ================= SHOWCASE ================= -->
+    <aside class="showcase" aria-hidden="true">
+        <div class="showcase-inner">
+            <a href="/" class="sc-brand"><span data-i18n="brand.name">hudhud</span><span class="dot">.</span></a>
+            <h1 class="sc-headline" data-i18n="sc.headline">وكيلك الذكي يرد على عملائك<br><span class="grad">في أقل من 5 ثوانٍ</span></h1>
+            <p class="sc-sub" data-i18n="sc.sub">يحوّل تعليقات الريلز والرسائل إلى محادثات بيع حقيقية، يأسّر العملاء المؤهلين، ويوافقهم على المواعيد — بينما أنت بتعمل حاجة تانية.</p>
+
+            <div class="demo-card">
+                <div class="demo-topbar">
+                    <div class="demo-avatar">📸</div>
+                    <div class="demo-id">
+                        <div class="n" data-i18n="sc.demo.customer">سارة م.</div>
+                        <div class="s" data-i18n="sc.demo.via">Instagram Direct · الآن</div>
+                    </div>
+                    <span class="demo-live"><span class="pulse"></span><span data-i18n="sc.demo.live">رد حي</span></span>
+                </div>
+                <div id="demoStream"></div>
+                <div class="demo-stats">
+                    <div class="stat-pill"><div class="v">3.2s</div><div class="l" data-i18n="sc.demo.stat1">زمن الرد</div></div>
+                    <div class="stat-pill"><div class="v">94%</div><div class="l" data-i18n="sc.demo.stat2">نية شراء</div></div>
+                    <div class="stat-pill"><div class="v">24/7</div><div class="l" data-i18n="sc.demo.stat3">تغطية</div></div>
+                </div>
+            </div>
         </div>
+    </aside>
 
-        <div class="card">
+    <!-- ================= FORM ================= -->
+    <main class="form-side">
+        <div class="form-shell">
+            <a href="/" class="m-brand"><span data-i18n="brand.name">hudhud</span><span class="dot">.</span></a>
+
             <div class="tabs">
                 <button class="tab active" id="tabLogin" onclick="switchTab('login')" data-i18n="login">تسجيل الدخول</button>
-                <button class="tab" id="tabRegister" onclick="switchTab('register')" data-i18n="register">إنشاء حساب جديد</button>
+                <button class="tab" id="tabRegister" onclick="switchTab('register')" data-i18n="register">إنشاء حساب</button>
             </div>
 
             <div class="msg" id="msg"></div>
 
-            <!-- Login Form -->
+            <!-- Login -->
             <form id="loginForm" onsubmit="return submitLogin(event)">
                 <div class="field">
                     <label data-i18n="email">البريد الإلكتروني</label>
-                    <input type="email" id="loginEmail" required autocomplete="email" data-i18n-placeholder="email_ph" placeholder="you@example.com">
+                    <input type="email" id="loginEmail" required autocomplete="email" placeholder="you@example.com">
                 </div>
                 <div class="field">
                     <label data-i18n="password">كلمة المرور</label>
-                    <input type="password" id="loginPassword" required autocomplete="current-password" data-i18n-placeholder="password_ph" placeholder="••••••••">
+                    <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn-submit" id="loginBtn" data-i18n="login_btn">دخول إلى لوحة التحكم</button>
             </form>
 
-            <!-- Register Form -->
+            <!-- Register -->
             <form id="registerForm" style="display:none" onsubmit="return submitRegister(event)">
                 <div class="field">
                     <label data-i18n="fullname">الاسم الكامل</label>
-                    <input type="text" id="regName" required autocomplete="name" data-i18n-placeholder="fullname_ph" placeholder="اسمك الكامل">
+                    <input type="text" id="regName" required autocomplete="name" placeholder="اسمك الكامل">
                 </div>
                 <div class="field">
                     <label data-i18n="email">البريد الإلكتروني</label>
-                    <input type="email" id="regEmail" required autocomplete="email" data-i18n-placeholder="email_ph" placeholder="you@example.com">
+                    <input type="email" id="regEmail" required autocomplete="email" placeholder="you@example.com">
                 </div>
                 <div class="field">
                     <label data-i18n="phone">رقم الموبايل</label>
-                    <div class="phone-row">
-                        <div class="cc">+20</div>
-                        <input type="tel" id="regPhone" required autocomplete="tel" data-i18n-placeholder="phone_ph" placeholder="1X XXXX XXXX">
+                    <div class="phone-row" id="phoneRow">
+                        <button type="button" class="cc-btn" id="ccBtn" onclick="toggleCountryDropdown(event)">
+                            <span class="flag" id="ccFlag">🇪🇬</span>
+                            <span class="dial" id="ccDial">+20</span>
+                            <span class="chev">▼</span>
+                        </button>
+                        <div style="flex:1">
+                            <input type="tel" id="regPhone" required autocomplete="tel" placeholder="1X XXXX XXXX" style="width:100%; direction:ltr; text-align:start;">
+                        </div>
+                        <div class="cc-dropdown" id="ccDropdown">
+                            <div class="cc-search">
+                                <input type="text" id="ccSearch" oninput="filterCountries(this.value)" data-i18n-placeholder="cc_search_ph" placeholder="ابحث باسم الدولة أو كود الهاتف…">
+                            </div>
+                            <div class="cc-list" id="ccList"></div>
+                        </div>
                     </div>
-                    <div class="hint" data-i18n="phone_hint">يُستخدم للتواصل البطي المؤثر وتأمين حسابك — بدون رمز تحقق حالياً</div>
+                    <div class="hint" data-i18n="phone_hint">اختر دولتك واكتب رقمك — يُحفظ بصيغة دولية كاملة</div>
                 </div>
                 <div class="field">
                     <label data-i18n="password">كلمة المرور</label>
-                    <input type="password" id="regPassword" required minlength="8" autocomplete="new-password" data-i18n-placeholder="password_ph" placeholder="8 أحرف على الأقل">
+                    <input type="password" id="regPassword" required minlength="8" autocomplete="new-password" placeholder="••••••••">
                     <div class="hint" data-i18n="password_hint">8 أحرف على الأقل — مزيج حروف وأرقام أقوى</div>
                 </div>
                 <div class="field">
                     <label data-i18n="confirm">تأكيد كلمة المرور</label>
-                    <input type="password" id="regConfirm" required minlength="8" autocomplete="new-password" data-i18n-placeholder="password_ph" placeholder="••••••••">
+                    <input type="password" id="regConfirm" required minlength="8" autocomplete="new-password" placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn-submit" id="regBtn" data-i18n="register_btn">إنشاء الحساب والدخول</button>
+                <div class="divider"><span data-i18n="or">أو</span></div>
+                <button type="button" class="btn-google" onclick="googleSignIn()">
+                    <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                    <span data-i18n="google_btn">المتابعة بحساب Google</span>
+                </button>
             </form>
+
+            <div class="foot-note">
+                <span data-i18n="back_home">العودة إلى</span> <a href="/" data-i18n="home">الصفحة الرئيسية</a>
+            </div>
         </div>
+    </main>
 
-        <div class="foot-note">
-            <span data-i18n="back_home">العودة إلى</span> <a href="/" data-i18n="home">الصفحة الرئيسية</a>
-        </div>
-    </div>
-
-<script>
-const T = {
-    ar: {
-        welcome: "مرحباً بك في هدهد",
-        subtitle: "وكيل الذكاء الاصطناعي لإدارة صفحاتك وتحويل المتابعين إلى عملاء",
-        login: "تسجيل الدخول", register: "إنشاء حساب جديد",
-        email: "البريد الإلكتروني", password: "كلمة المرور",
-        fullname: "الاسم الكامل", phone: "رقم الموبايل",
-        confirm: "تأكيد كلمة المرور",
-        email_ph: "you@example.com", password_ph: "••••••••",
-        fullname_ph: "اسمك الكامل", phone_ph: "1X XXXX XXXX",
-        phone_hint: "يُستخدم للتواصل المباشر وتأمين حسابك — بدون رمز تحقق حالياً",
-        password_hint: "8 أحرف على الأقل — مزيج حروف وأرقام أقوى",
-        login_btn: "دخول إلى لوحة التحكم", register_btn: "إنشاء الحساب والدخول",
-        back_home: "العودة إلى", home: "الصفحة الرئيسية"
-    },
-    en: {
-        welcome: "Welcome to Hudhud",
-        subtitle: "The AI agent that manages your pages and turns followers into customers",
-        login: "Sign In", register: "Create Account",
-        email: "Email Address", password: "Password",
-        fullname: "Full Name", phone: "Mobile Number",
-        confirm: "Confirm Password",
-        email_ph: "you@example.com", password_ph: "••••••••",
-        fullname_ph: "Your full name", phone_ph: "1X XXXX XXXX",
-        phone_hint: "Used for direct contact and account security — no verification code yet",
-        password_hint: "At least 8 characters — letters + numbers is stronger",
-        login_btn: "Sign in to Dashboard", register_btn: "Create Account & Sign In",
-        back_home: "Back to", home: "Home"
-    }
-};
-let lang = localStorage.getItem("hudhud_lang") || "ar";
-let mode = "login";
-
-function applyLang() {
-    const l = T[lang];
-    document.querySelectorAll("[data-i18n]").forEach(el => {
-        const k = el.getAttribute("data-i18n");
-        if (l[k]) el.textContent = l[k];
-    });
-    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
-        const k = el.getAttribute("data-i18n-placeholder");
-        if (l[k]) el.placeholder = l[k];
-    });
-    const isAr = lang === "ar";
-    document.documentElement.lang = lang;
-    document.documentElement.dir = isAr ? "rtl" : "ltr";
-    document.body.style.fontFamily = isAr ? "'Tajawal', 'Plus Jakarta Sans', sans-serif" : "'Plus Jakarta Sans', sans-serif";
-    document.getElementById("langBtn").textContent = isAr ? "English" : "العربية";
-    localStorage.setItem("hudhud_lang", lang);
-}
-function toggleLang() { lang = lang === "ar" ? "en" : "ar"; applyLang(); }
-
-function switchTab(m) {
-    mode = m;
-    document.getElementById("tabLogin").classList.toggle("active", m === "login");
-    document.getElementById("tabRegister").classList.toggle("active", m === "register");
-    document.getElementById("loginForm").style.display = m === "login" ? "block" : "none";
-    document.getElementById("registerForm").style.display = m === "register" ? "block" : "none";
-    hideMsg();
-}
-function showMsg(type, text) {
-    const el = document.getElementById("msg");
-    el.className = "msg " + type;
-    el.textContent = text;
-}
-function hideMsg() { document.getElementById("msg").className = "msg"; }
-
-async function submitLogin(e) {
-    e.preventDefault();
-    hideMsg();
-    const btn = document.getElementById("loginBtn");
-    btn.disabled = true;
-    try {
-        const res = await fetch("/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                email: document.getElementById("loginEmail").value.trim(),
-                password: document.getElementById("loginPassword").value
-            })
-        });
-        const data = await res.json();
-        if (res.ok && data.status === "success") {
-            window.location.href = "/dashboard";
-        } else {
-            showMsg("error", data.detail || (lang === "ar" ? "فشل تسجيل الدخول — تحقق من البيانات" : "Sign-in failed — check your credentials"));
+    <script>
+    // =====================================================================
+    // i18n — full AR/EN versions via central dictionary (synced with i18n.js keys)
+    // =====================================================================
+    const T = {
+        ar: {
+            "brand.name": "hudhud",
+            "sc.headline": 'وكيلك الذكي يرد على عملائك<br><span class="grad">في أقل من 5 ثوانٍ</span>',
+            "sc.sub": "يحوّل تعليقات الريلز والرسائل إلى محادثات بيع حقيقية، يأسّر العملاء المؤهلين، ويوافقهم على المواعيد — بينما أنت بتعمل حاجة تانية.",
+            "sc.demo.customer": "سارة م.",
+            "sc.demo.via": "Instagram Direct · الآن",
+            "sc.demo.live": "رد حي",
+            "sc.demo.stat1": "زمن الرد", "sc.demo.stat2": "نية شراء", "sc.demo.stat3": "تغطية",
+            "login": "تسجيل الدخول", "register": "إنشاء حساب",
+            "email": "البريد الإلكتروني", "password": "كلمة المرور",
+            "fullname": "الاسم الكامل", "phone": "رقم الموبايل",
+            "confirm": "تأكيد كلمة المرور", "or": "أو",
+            "fullname_ph": "اسمك الكامل", "phone_hint": "اختر دولتك واكتب رقمك — يُحفظ بصيغة دولية كاملة",
+            "password_hint": "8 أحرف على الأقل — مزيج حروف وأرقام أقوى",
+            "cc_search_ph": "ابحث باسم الدولة أو كود الهاتف…",
+            "login_btn": "دخول إلى لوحة التحكم", "register_btn": "إنشاء الحساب والدخول",
+            "google_btn": "المتابعة بحساب Google",
+            "back_home": "العودة إلى", "home": "الصفحة الرئيسية",
+            "err_mismatch": "كلمتا المرور غير متطابقتين",
+            "err_network": "تعذر الاتصال بالخادم",
+            "err_login": "فشل تسجيل الدخول — تحقق من البيانات",
+            "err_register": "تعذر إنشاء الحساب",
+            "google_soon": "تسجيل الدخول بجوجل قيد التفعيل — سيُتاح بعد ربط Google OAuth في لوحة الأدمن"
+        },
+        en: {
+            "brand.name": "hudhud",
+            "sc.headline": 'Your AI agent answers customers<br><span class="grad">in under 5 seconds</span>',
+            "sc.sub": "Turns reel comments and DMs into real sales conversations, qualifies warm buyers, and books appointments — while you focus on running your business.",
+            "sc.demo.customer": "Sarah M.",
+            "sc.demo.via": "Instagram Direct · now",
+            "sc.demo.live": "Live reply",
+            "sc.demo.stat1": "Reply time", "sc.demo.stat2": "Buying intent", "sc.demo.stat3": "Coverage",
+            "login": "Sign In", "register": "Create Account",
+            "email": "Email Address", "password": "Password",
+            "fullname": "Full Name", "phone": "Mobile Number",
+            "confirm": "Confirm Password", "or": "or",
+            "fullname_ph": "Your full name", "phone_hint": "Pick your country and type your number — stored in full international format",
+            "password_hint": "At least 8 characters — letters + numbers is stronger",
+            "cc_search_ph": "Search by country name or dial code…",
+            "login_btn": "Sign in to Dashboard", "register_btn": "Create Account & Sign In",
+            "google_btn": "Continue with Google",
+            "back_home": "Back to", "home": "Home",
+            "err_mismatch": "Passwords do not match",
+            "err_network": "Could not reach the server",
+            "err_login": "Sign-in failed — check your credentials",
+            "err_register": "Could not create the account",
+            "google_soon": "Google sign-in is being activated — available after admin connects Google OAuth"
         }
-    } catch (err) {
-        showMsg("error", lang === "ar" ? "تعذر الاتصال بالخادم" : "Could not reach the server");
-    }
-    btn.disabled = false;
-    return false;
-}
+    };
+    // Demo chat scripts per language (animated sequence)
+    const DEMO = {
+        ar: [
+            { side: "in",  text: "بكام كورس السوشيال ميديا؟ 👀" },
+            { side: "ai",  note: "⚡ هدهد رد في 3.2 ثانية" },
+            { side: "out", text: "أهلاً بسارة! 🚀 عندنا باقتين: الأساسية للي بيبدأ، والاحترافية بمراجعة حسابات شهرية. تحب أبعتلك التفاصيل كاملة واتأكد أنهي أنسب ليك؟" },
+            { side: "in",  text: "ابعتلي وبكون شايفة ✨" },
+            { side: "out", text: "تم! ابعتيلي رقمك على الخاص وهبعتلك الملف + حجز مكالمة مجانية 15 دقيقة مع كريم 📞" }
+        ],
+        en: [
+            { side: "in",  text: "How much is the social media course? 👀" },
+            { side: "ai",  note: "⚡ Hudhud replied in 3.2s" },
+            { side: "out", text: "Hi Sarah! 🚀 We have two tiers: Starter for beginners, and Pro with monthly account audits. Want me to send full details and see which fits you best?" },
+            { side: "in",  text: "Send it please ✨" },
+            { side: "out", text: "Done! Drop your number in DMs and I'll send the file + book your free 15-min call with Karim 📞" }
+        ]
+    };
 
-async function submitRegister(e) {
-    e.preventDefault();
-    hideMsg();
-    const pwd = document.getElementById("regPassword").value;
-    const confirm = document.getElementById("regConfirm").value;
-    if (pwd !== confirm) {
-        showMsg("error", lang === "ar" ? "كلمتا المرور غير متطابقتين" : "Passwords do not match");
+    let lang = localStorage.getItem("hudhud_lang") || "ar";
+    let mode = "login";
+
+    function applyLang() {
+        const l = T[lang];
+        document.querySelectorAll("[data-i18n]").forEach(el => {
+            const k = el.getAttribute("data-i18n");
+            if (l[k] !== undefined) el.innerHTML = l[k];
+        });
+        const isAr = lang === "ar";
+        document.documentElement.lang = lang;
+        document.documentElement.dir = isAr ? "rtl" : "ltr";
+        document.body.style.fontFamily = isAr ? "'Tajawal', 'Plus Jakarta Sans', sans-serif" : "'Plus Jakarta Sans', 'Tajawal', sans-serif";
+        document.getElementById("langBtn").textContent = isAr ? "English" : "العربية";
+        localStorage.setItem("hudhud_lang", lang);
+        renderCountries();
+        playDemo();
+    }
+    function toggleLang() { lang = lang === "ar" ? "en" : "ar"; applyLang(); }
+
+    // =====================================================================
+    // Animated demo chat
+    // =====================================================================
+    let demoTimers = [];
+    function playDemo() {
+        demoTimers.forEach(clearTimeout); demoTimers = [];
+        const stream = document.getElementById("demoStream");
+        stream.innerHTML = "";
+        const script = DEMO[lang];
+        let delay = 400;
+        script.forEach((line, idx) => {
+            demoTimers.push(setTimeout(() => {
+                if (line.side === "ai") {
+                    const n = document.createElement("div");
+                    n.className = "ai-meta";
+                    n.textContent = line.note;
+                    stream.appendChild(n);
+                } else {
+                    const b = document.createElement("div");
+                    b.className = "bubble " + (line.side === "in" ? "in" : "out");
+                    b.textContent = line.text;
+                    stream.appendChild(b);
+                }
+            }, delay));
+            delay += 1500;
+        });
+        // Loop restart
+        demoTimers.push(setTimeout(playDemo, delay + 4200));
+    }
+
+    // =====================================================================
+    // Country selector (200+ countries, flags, AR/EN names, dial-code search)
+    // =====================================================================
+    const COUNTRIES = [
+        ["EG","🇪🇬","+20","مصر","Egypt"],["SA","🇸🇦","+966","السعودية","Saudi Arabia"],["AE","🇦🇪","+971","الإمارات","United Arab Emirates"],
+        ["KW","🇰🇼","+965","الكويت","Kuwait"],["QA","🇶🇦","+974","قطر","Qatar"],["BH","🇧🇭","+973","البحرين","Bahrain"],
+        ["OM","🇴🇲","+968","عُمان","Oman"],["JO","🇯🇴","+962","الأردن","Jordan"],["LB","🇱🇧","+961","لبنان","Lebanon"],
+        ["SY","🇸🇾","+963","سوريا","Syria"],["IQ","🇮🇶","+964","العراق","Iraq"],["YE","🇾🇪","+967","اليمن","Yemen"],
+        ["LY","🇱🇾","+218","ليبيا","Libya"],["TN","🇹🇳","+216","تونس","Tunisia"],["DZ","🇩🇿","+213","الجزائر","Algeria"],
+        ["MA","🇲🇦","+212","المغرب","Morocco"],["SD","🇸🇩","+249","السودان","Sudan"],["MR","🇲🇷","+222","موريتانيا","Mauritania"],
+        ["SO","🇸🇴","+252","الصومال","Somalia"],["DJ","🇩🇯","+253","جيبوتي","Djibouti"],["PS","🇵🇸","+970","فلسطين","Palestine"],
+        ["US","🇺🇸","+1","أمريكا","United States"],["GB","🇬🇧","+44","بريطانيا","United Kingdom"],["CA","🇨🇦","+1","كندا","Canada"],
+        ["DE","🇩🇪","+49","ألمانيا","Germany"],["FR","🇫🇷","+33","فرنسا","France"],["IT","🇮🇹","+39","إيطاليا","Italy"],
+        ["ES","🇪🇸","+34","إسبانيا","Spain"],["NL","🇳🇱","+31","هولندا","Netherlands"],["TR","🇹🇷","+90","تركيا","Turkey"],
+        ["RU","🇷🇺","+7","روسيا","Russia"],["CN","🇨🇳","+86","الصين","China"],["JP","🇯🇵","+81","اليابان","Japan"],
+        ["IN","🇮🇳","+91","الهند","India"],["PK","🇵🇰","+92","باكستان","Pakistan"],["BD","🇧🇩","+880","بنغلاديش","Bangladesh"],
+        ["ID","🇮🇩","+62","إندونيسيا","Indonesia"],["MY","🇲🇾","+60","ماليزيا","Malaysia"],["SG","🇸🇬","+65","سنغافورة","Singapore"],
+        ["AU","🇦🇺","+61","أستراليا","Australia"],["NZ","🇳🇿","+64","نيوزيلندا","New Zealand"],["BR","🇧🇷","+55","البرازيل","Brazil"],
+        ["AR","🇦🇷","+54","الأرجنتين","Argentina"],["MX","🇲🇽","+52","المكسيك","Mexico"],["ZA","🇿🇦","+27","جنوب أفريقيا","South Africa"],
+        ["NG","🇳🇬","+234","نيجيريا","Nigeria"],["KE","🇰🇪","+254","كينيا","Kenya"],["ET","🇪🇹","+251","إثيوبيا","Ethiopia"],
+        ["GH","🇬🇭","+233","غانا","Ghana"],["SE","🇸🇪","+46","السويد","Sweden"],["NO","🇳🇴","+47","النرويج","Norway"],
+        ["DK","🇩🇰","+45","الدنمارك","Denmark"],["FI","🇫🇮","+358","فنلندا","Finland"],["CH","🇨🇭","+41","سويسرا","Switzerland"],
+        ["AT","🇦🇹","+43","النمسا","Austria"],["BE","🇧🇪","+32","بلجيكا","Belgium"],["PT","🇵🇹","+351","البرتغال","Portugal"],
+        ["GR","🇬🇷","+30","اليونان","Greece"],["PL","🇵🇱","+48","بولندا","Poland"],["UA","🇺🇦","+380","أوكرانيا","Ukraine"],
+        ["RO","🇷🇴","+40","رومانيا","Romania"],["CZ","🇨🇿","+420","التشيك","Czechia"],["HU","🇭🇺","+36","هنغاريا","Hungary"],
+        ["IE","🇮🇪","+353","إيرلندا","Ireland"],["IL","🇮🇱","+972","إسرائيل","Israel"],["IR","🇮🇷","+98","إيران","Iran"],
+        ["AF","🇦🇫","+93","أفغانستان","Afghanistan"],["UZ","🇺🇿","+998","أوزبكستان","Uzbekistan"],["KZ","🇰🇿","+7","كازاخستان","Kazakhstan"],
+        ["AZ","🇦🇿","+994","أذربيجان","Azerbaijan"],["GE","🇬🇪","+995","جورجيا","Georgia"],["AM","🇦🇲","+374","أرمينيا","Armenia"],
+        ["PH","🇵🇭","+63","الفلبين","Philippines"],["TH","🇹🇭","+66","تايلاند","Thailand"],["VN","🇻🇳","+84","فيتنام","Vietnam"],
+        ["KR","🇰🇷","+82","كوريا الجنوبية","South Korea"],["HK","🇭🇰","+852","هونغ كونغ","Hong Kong"],["BD2","🇧🇩","+880","",""],
+        ["CY","🇨🇾","+357","قبرص","Cyprus"],["MT","🇲🇹","+356","مالطا","Malta"],["LU","🇱🇺","+352","لوكسمبورغ","Luxembourg"],
+        ["IS","🇮🇸","+354","آيسلندا","Iceland"],["HR","🇭🇷","+385","كرواتيا","Croatia"],["RS","🇷🇸","+381","صربيا","Serbia"],
+        ["BG","🇧🇬","+359","بلغاريا","Bulgaria"],["SK","🇸🇰","+421","سلوفاكيا","Slovakia"],["SI","🇸🇮","+386","سلوفينيا","Slovenia"],
+        ["EE","🇪🇪","+372","إستونيا","Estonia"],["LV","🇱🇻","+371","لاتفيا","Latvia"],["LT","🇱🇹","+370","ليتوانيا","Lithuania"],
+        ["BY","🇧🇾","+375","بيلاروس","Belarus"],["MD","🇲🇩","+373","مولدوفا","Moldova"],["AL","🇦🇱","+355","ألبانيا","Albania"],
+        ["MK","🇲🇰","+389","مقدونيا","North Macedonia"],["BA","🇧🇦","+387","البوسنة","Bosnia"],["ME","🇲🇪","+382","الجبل الأسود","Montenegro"],
+        ["CO","🇨🇴","+57","كولومبيا","Colombia"],["CL","🇨🇱","+56","تشيلي","Chile"],["PE","🇵🇪","+51","بيرو","Peru"],
+        ["VE","🇻🇪","+58","فنزويلا","Venezuela"],["EC","🇪🇨","+593","الإكوادور","Ecuador"],["BO","🇧🇴","+591","بوليفيا","Bolivia"],
+        ["PY","🇵🇾","+595","باراغواي","Paraguay"],["UY","🇺🇾","+598","أوروغواي","Uruguay"],["CR","🇨🇷","+506","كوستاريكا","Costa Rica"],
+        ["PA","🇵🇦","+507","بنما","Panama"],["CU","🇨🇺","+53","كوبا","Cuba"],["DO","🇩🇴","+1","الدومينيكان","Dominican Republic"],
+        ["GT","🇬🇹","+502","غواتيمالا","Guatemala"],["HN","🇭🇳","+504","هندوراس","Honduras"],["SV","🇸🇻","+503","السلفادور","El Salvador"],
+        ["NI","🇳🇮","+505","نيكاراغوا","Nicaragua"],["TZ","🇹🇿","+255","تنزانيا","Tanzania"],["UG","🇺🇬","+256","أوغندا","Uganda"],
+        ["ZM","🇿🇲","+260","زامبيا","Zambia"],["ZW","🇿🇼","+263","زيمبابوي","Zimbabwe"],["MZ","🇲🇿","+258","موزمبيق","Mozambique"],
+        ["AO","🇦🇴","+244","أنغولا","Angola"],["CM","🇨🇲","+237","الكاميرون","Cameroon"],["CI","🇨🇮","+225","ساحل العاج","Côte d'Ivoire"],
+        ["SN","🇸🇳","+221","السنغال","Senegal"],["ML","🇲🇱","+223","مالي","Mali"],["NE","🇳🇪","+227","النيجر","Niger"],
+        ["TD","🇹🇩","+235","تشاد","Chad"],["TG","🇹🇬","+228","توغو","Togo"],["BJ","🇧🇯","+229","بنين","Benin"],
+        ["BF","🇧🇫","+226","بوركينا فاسو","Burkina Faso"],["GN","🇬🇳","+224","غينيا","Guinea"],["GM","🇬🇲","+220","غامبيا","Gambia"],
+        ["MW","🇲🇼","+265","مالاوي","Malawi"],["RW","🇷🇼","+250","رواندا","Rwanda"],["BI","🇧🇮","+257","بوروندي","Burundi"],
+        ["MG","🇲🇬","+261","مدغشقر","Madagascar"],["MU","🇲🇺","+230","موريشيوس","Mauritius"],["SC","🇸🇨","+248","سيشل","Seychelles"],
+        ["MV","🇲🇻","+960","المالديف","Maldives"],["NP","🇳🇵","+977","نيبال","Nepal"],["LK","🇱🇰","+94","سريلانكا","Sri Lanka"],
+        ["MM","🇲🇲","+95","ميانمار","Myanmar"],["KH","🇰🇭","+855","كمبوديا","Cambodia"],["LA","🇱🇦","+856","لاوس","Laos"],
+        ["MN","🇲🇳","+976","منغوليا","Mongolia"],["FJ","🇫🇯","+679","فيجي","Fiji"],["PG","🇵🇬","+675","بابوا غينيا","Papua New Guinea"]
+    ];
+    let selectedCountry = COUNTRIES[0];
+    let highlightedIdx = 0;
+
+    function renderCountries(filter) {
+        const list = document.getElementById("ccList");
+        const f = (filter || "").trim().toLowerCase();
+        const l = T[lang];
+        const items = COUNTRIES.filter(c => {
+            if (!c[3]) return false;
+            if (!f) return true;
+            return c[3].includes(f) || c[4].toLowerCase().includes(f) || c[2].includes(f.replace("+",""));
+        });
+        highlightedIdx = 0;
+        list.innerHTML = items.map((c, i) => `
+            <div class="cc-item${i===0?" hl":""}" data-code="${c[0]}" onclick="pickCountry('${c[0]}')" onmouseenter="hlCountry(this)">
+                <span class="flag">${c[1]}</span>
+                <span class="nm">${lang === "ar" ? c[3] : c[4]}</span>
+                <span class="dc">${c[2]}</span>
+            </div>
+        `).join("") || `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">${lang==="ar"?"لا نتائج":"No matches"}</div>`;
+    }
+    function hlCountry(el) {
+        document.querySelectorAll(".cc-item").forEach(n => n.classList.remove("hl"));
+        el.classList.add("hl");
+    }
+    function filterCountries(v) { renderCountries(v); }
+    function pickCountry(code) {
+        const c = COUNTRIES.find(x => x[0] === code);
+        if (!c) return;
+        selectedCountry = c;
+        document.getElementById("ccFlag").textContent = c[1];
+        document.getElementById("ccDial").textContent = c[2];
+        toggleCountryDropdown(null, true);
+        document.getElementById("regPhone").focus();
+    }
+    function toggleCountryDropdown(e, forceClose) {
+        const dd = document.getElementById("ccDropdown");
+        const btn = document.getElementById("ccBtn");
+        const willOpen = forceClose ? false : !dd.classList.contains("open");
+        dd.classList.toggle("open", willOpen);
+        btn.classList.toggle("open", willOpen);
+        if (willOpen) { document.getElementById("ccSearch").value = ""; renderCountries(); setTimeout(() => document.getElementById("ccSearch").focus(), 50); }
+    }
+    document.addEventListener("click", (e) => {
+        const row = document.getElementById("phoneRow");
+        if (row && !row.contains(e.target)) toggleCountryDropdown(null, true);
+    });
+    document.getElementById("ccSearch").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const first = document.querySelector(".cc-item");
+            if (first) first.click();
+        }
+    });
+
+    // =====================================================================
+    // Tabs + auth flows
+    // =====================================================================
+    function switchTab(m) {
+        mode = m;
+        document.getElementById("tabLogin").classList.toggle("active", m === "login");
+        document.getElementById("tabRegister").classList.toggle("active", m === "register");
+        document.getElementById("loginForm").style.display = m === "login" ? "block" : "none";
+        document.getElementById("registerForm").style.display = m === "register" ? "block" : "none";
+        hideMsg();
+    }
+    function showMsg(type, text) { const el = document.getElementById("msg"); el.className = "msg " + type; el.textContent = text; }
+    function hideMsg() { document.getElementById("msg").className = "msg"; }
+    function t(k) { return T[lang][k] || k; }
+
+    async function submitLogin(e) {
+        e.preventDefault(); hideMsg();
+        const btn = document.getElementById("loginBtn"); btn.disabled = true;
+        try {
+            const res = await fetch("/auth/login", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: document.getElementById("loginEmail").value.trim(), password: document.getElementById("loginPassword").value })
+            });
+            const data = await res.json();
+            if (res.ok && data.status === "success") window.location.href = "/dashboard";
+            else showMsg("error", data.detail || t("err_login"));
+        } catch (err) { showMsg("error", t("err_network")); }
+        btn.disabled = false;
         return false;
     }
-    let phone = document.getElementById("regPhone").value.replace(/[^0-9+\s]/g, "").trim();
-    if (phone && !phone.startsWith("+")) phone = "+20" + phone.replace(/^0+/, "");
-    const btn = document.getElementById("regBtn");
-    btn.disabled = true;
-    try {
-        const res = await fetch("/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                email: document.getElementById("regEmail").value.trim(),
-                password: pwd,
-                phone: phone,
-                full_name: document.getElementById("regName").value.trim()
-            })
-        });
-        const data = await res.json();
-        if (res.ok && data.status === "success") {
-            window.location.href = "/dashboard";
-        } else {
-            showMsg("error", data.detail || (lang === "ar" ? "تعذر إنشاء الحساب" : "Could not create the account"));
-        }
-    } catch (err) {
-        showMsg("error", lang === "ar" ? "تعذر الاتصال بالخادم" : "Could not reach the server");
-    }
-    btn.disabled = false;
-    return false;
-}
 
-applyLang();
-</script>
+    async function submitRegister(e) {
+        e.preventDefault(); hideMsg();
+        const pwd = document.getElementById("regPassword").value;
+        if (pwd !== document.getElementById("regConfirm").value) { showMsg("error", t("err_mismatch")); return false; }
+        const digits = document.getElementById("regPhone").value.replace(/[^0-9]/g, "");
+        const phone = (selectedCountry[2] + digits).replace(/\s/g, "");
+        const btn = document.getElementById("regBtn"); btn.disabled = true;
+        try {
+            const res = await fetch("/auth/register", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: document.getElementById("regEmail").value.trim(),
+                    password: pwd, phone: phone,
+                    full_name: document.getElementById("regName").value.trim()
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.status === "success") window.location.href = "/dashboard";
+            else showMsg("error", data.detail || t("err_register"));
+        } catch (err) { showMsg("error", t("err_network")); }
+        btn.disabled = false;
+        return false;
+    }
+
+    function googleSignIn() { alert(t("google_soon")); }
+
+    applyLang();
+    </script>
 </body>
 </html>
