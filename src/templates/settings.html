@@ -248,6 +248,51 @@
                         <div id="threads-status-msg" style="font-size: 12.5px; color: var(--text-secondary);"></div>
                     </div>
                 </div>
+
+                <!-- AI Providers & Models (opencode-style) -->
+                <div class="panel-section">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">🧠 AI Providers & Models — عقول الذكاء الاصطناعي</h3>
+                            <div class="panel-desc">اربط مزودين رسميين (Google AI / Anthropic / OpenAI / OpenRouter) أو مزوداً مخصصاً OpenAI-compatible. يكتشف النظام الموديلات المتاحة لصلاحياتك تلقائياً — وغير المتاح لا يظهر للعملاء أبداً.</div>
+                        </div>
+                        <button type="button" class="btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="toggleAddProviderForm()">＋ إضافة مزود</button>
+                    </div>
+
+                    <div id="add-provider-form" style="display:none; background: var(--bg-input); padding: 16px; border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 14px;">
+                        <div style="display:flex; gap:10px; margin-bottom:12px;">
+                            <select id="np-kind" onchange="renderProviderFormFields()" style="flex:0 0 160px; padding:9px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px;">
+                                <option value="official">مزود رسمي</option>
+                                <option value="custom">مزود مخصص (Custom)</option>
+                            </select>
+                            <select id="np-official-key" onchange="renderProviderFormFields()" style="flex:1; padding:9px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px;">
+                                <option value="google">Google AI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="openrouter">OpenRouter</option>
+                            </select>
+                            <input type="text" id="np-custom-name" placeholder="اسم المزود" style="display:none; flex:1; padding:9px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px;">
+                        </div>
+                        <div id="np-custom-fields" style="display:none; margin-bottom:12px;">
+                            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                                <input type="text" id="np-base-url" placeholder="Base URL (https://api.myprovider.com/v1)" style="flex:1; padding:9px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; direction:ltr;">
+                            </div>
+                            <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Models (اختياري — يُضاف يدوياً):</div>
+                            <div id="np-models-rows"></div>
+                            <button type="button" class="btn-secondary" style="font-size:11.5px; padding:4px 10px; margin-top:4px;" onclick="addNpModelRow()">＋ Add model</button>
+                            <div style="font-size:12px; color:var(--text-muted); margin:10px 0 6px;">Headers (اختياري):</div>
+                            <div id="np-headers-rows"></div>
+                            <button type="button" class="btn-secondary" style="font-size:11.5px; padding:4px 10px; margin-top:4px;" onclick="addNpHeaderRow()">＋ Add header</button>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <input type="password" id="np-api-key" placeholder="API Key (اختياري للمخصص إن كانت المصادقة بالـ headers)" style="flex:1; padding:9px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; direction:ltr;">
+                            <button type="button" class="btn-primary" style="padding:9px 20px; font-size:13px;" onclick="submitNewProvider()">حفظ واكتشاف تلقائي</button>
+                        </div>
+                        <div id="np-status" style="font-size:12.5px; margin-top:8px; color:var(--text-secondary);"></div>
+                    </div>
+
+                    <div id="providers-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
             </div>
         </main>
     </div>
@@ -639,11 +684,170 @@
             }
         }
 
+        // ==================== AI Providers (opencode-style) ====================
+        const PROVIDER_LOGOS = {
+            google: '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>',
+            anthropic: '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#D97757" d="M13.83 5h-3.1L5.5 19h3.06l1.12-3.1h5.09L15.9 19h3.06L13.83 5zm-3.34 8.44L12.32 8l1.83 5.44h-3.66z"/></svg>',
+            openai: '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#10A37F" d="M22.28 9.82a5.98 5.98 0 0 0-.52-4.91 6.05 6.05 0 0 0-6.51-2.9A6.07 6.07 0 0 0 4.98 4.18a5.98 5.98 0 0 0-4 2.9 6.05 6.05 0 0 0 .74 7.1 5.98 5.98 0 0 0 .51 4.91 6.05 6.05 0 0 0 6.51 2.9A5.98 5.98 0 0 0 13.26 24a6.06 6.06 0 0 0 5.77-4.21 5.99 5.99 0 0 0 4-2.9 6.06 6.06 0 0 0-.75-7.07zM13.26 22.43a4.48 4.48 0 0 1-2.88-1.04l.14-.08 4.78-2.76a.79.79 0 0 0 .39-.68v-6.74l2.02 1.17a.07.07 0 0 1 .04.05v5.58a4.5 4.5 0 0 1-4.49 4.5zM3.6 18.3a4.47 4.47 0 0 1-.53-3.01l.14.09 4.78 2.76a.77.77 0 0 0 .78 0l5.84-3.37v2.33a.08.08 0 0 1-.03.06l-4.83 2.79a4.5 4.5 0 0 1-6.15-1.65zM2.34 7.9a4.49 4.49 0 0 1 2.37-1.97v5.68a.77.77 0 0 0 .39.68l5.83 3.37-2.02 1.17a.08.08 0 0 1-.07 0l-4.83-2.79A4.5 4.5 0 0 1 2.34 7.9zm16.6 3.86-5.83-3.38L15.12 7.2a.08.08 0 0 1 .07 0l4.83 2.79a4.49 4.49 0 0 1-.68 8.1v-5.68a.79.79 0 0 0-.4-.65zm2.01-3.02-.14-.09-4.77-2.78a.78.78 0 0 0-.79 0L9.42 9.23V6.9a.07.07 0 0 1 .03-.06l4.83-2.78a4.5 4.5 0 0 1 6.68 4.66zM8.32 12.86l-2.02-1.17a.08.08 0 0 1-.04-.05V6.07a4.5 4.5 0 0 1 7.38-3.45l-.14.08-4.78 2.76a.79.79 0 0 0-.39.68zm1.1-2.36 2.6-1.5 2.6 1.5v3l-2.6 1.5-2.6-1.5z"/></svg>',
+            openrouter: '<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="5" cy="12" r="3" fill="#818cf8"/><circle cx="19" cy="5" r="3" fill="#34d399"/><circle cx="19" cy="19" r="3" fill="#f472b6"/><path stroke="#64748b" stroke-width="1.5" d="M7.5 10.5 16.5 6M7.5 13.5l9 4.5"/></svg>',
+            custom: '⚡'
+        };
+
+        function toggleAddProviderForm() {
+            const f = document.getElementById('add-provider-form');
+            f.style.display = f.style.display === 'none' ? 'block' : 'none';
+            renderProviderFormFields();
+        }
+
+        function renderProviderFormFields() {
+            const kind = document.getElementById('np-kind').value;
+            const isCustom = kind === 'custom';
+            document.getElementById('np-official-key').style.display = isCustom ? 'none' : 'block';
+            document.getElementById('np-custom-name').style.display = isCustom ? 'block' : 'none';
+            document.getElementById('np-custom-fields').style.display = isCustom ? 'block' : 'none';
+            const apiPh = document.getElementById('np-api-key');
+            const oKey = document.getElementById('np-official-key').value;
+            apiPh.placeholder = isCustom ? 'API Key (اختياري)' : (oKey === 'google' ? 'Google AI API Key (X-goog-api-key)' : `API Key للمزود ${oKey}`);
+        }
+
+        function addNpModelRow(mid, name) {
+            const div = document.createElement('div');
+            div.style.cssText = 'display:flex; gap:8px; margin-bottom:6px;';
+            div.innerHTML = `<input type="text" class="np-model-id" placeholder="model-id" value="${mid||''}" style="flex:1; padding:7px 10px; border:1px solid var(--border-default); border-radius:8px; font-family:inherit; font-size:12.5px; direction:ltr;">
+                             <input type="text" class="np-model-name" placeholder="Display Name" value="${name||''}" style="flex:1; padding:7px 10px; border:1px solid var(--border-default); border-radius:8px; font-family:inherit; font-size:12.5px;">
+                             <button type="button" onclick="this.parentElement.remove()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:14px;">✕</button>`;
+            document.getElementById('np-models-rows').appendChild(div);
+        }
+
+        function addNpHeaderRow(h, v) {
+            const div = document.createElement('div');
+            div.style.cssText = 'display:flex; gap:8px; margin-bottom:6px;';
+            div.innerHTML = `<input type="text" class="np-h-name" placeholder="Header-Name" value="${h||''}" style="flex:1; padding:7px 10px; border:1px solid var(--border-default); border-radius:8px; font-family:inherit; font-size:12.5px; direction:ltr;">
+                             <input type="text" class="np-h-value" placeholder="value" value="${v||''}" style="flex:1; padding:7px 10px; border:1px solid var(--border-default); border-radius:8px; font-family:inherit; font-size:12.5px; direction:ltr;">
+                             <button type="button" onclick="this.parentElement.remove()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:14px;">✕</button>`;
+            document.getElementById('np-headers-rows').appendChild(div);
+        }
+
+        async function loadProviders() {
+            const list = document.getElementById('providers-list');
+            try {
+                const res = await fetch('/api/ai/providers');
+                const data = await res.json();
+                const provs = data.providers || [];
+                if (provs.length === 0) {
+                    list.innerHTML = '<div style="padding:14px; text-align:center; color:var(--text-muted); font-size:13px; border:1px dashed var(--border-default); border-radius:10px;">لا يوجد مزودون بعد — أضف مزودك الأول ليكتشف النظام الموديلات تلقائياً</div>';
+                    return;
+                }
+                list.innerHTML = provs.map(p => `
+                    <div style="display:flex; align-items:center; gap:12px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:12px; padding:12px 14px;">
+                        <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--border-default); border-radius:9px; flex-shrink:0;">${PROVIDER_LOGOS[p.logo_key] || '⚡'}</div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-size:14px; font-weight:700;">${p.display_name} <span style="font-size:10px; color:var(--text-muted); font-weight:500; margin-inline-start:6px;">${p.kind}</span> ${p.status==='disabled' ? '<span class="badge badge-muted" style="font-size:10px;">معطّل</span>' : ''}</div>
+                            <div style="font-size:11.5px; color:var(--text-muted); direction:ltr; text-align:start;">${p.api_key_masked || 'no key'} · ${p.enabled_models}/${p.models_count} models enabled · ${p.last_synced_at ? 'synced ' + p.last_synced_at.slice(0,16) : 'never synced'}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; flex-shrink:0;">
+                            <button type="button" class="btn-secondary" style="font-size:11.5px; padding:5px 10px;" onclick="syncProvider('${p.id}')">🔄 تحديث الاتصال</button>
+                            <button type="button" class="btn-secondary" style="font-size:11.5px; padding:5px 10px;" onclick="viewProviderModels('${p.id}', '${p.display_name}')">الموديلات</button>
+                            <button type="button" class="btn-secondary" style="font-size:11.5px; padding:5px 10px; border-color:#dc2626; color:#dc2626;" onclick="deleteProvider('${p.id}', '${p.display_name}')">✕</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<div style="color:#dc2626; font-size:12.5px;">تعذر تحميل المزودين</div>';
+            }
+        }
+
+        async function submitNewProvider() {
+            const kind = document.getElementById('np-kind').value;
+            const statusEl = document.getElementById('np-status');
+            const payload = { kind, api_key: document.getElementById('np-api-key').value.trim() };
+            if (kind === 'official') {
+                payload.provider_key = document.getElementById('np-official-key').value;
+            } else {
+                payload.provider_key = 'custom';
+                payload.display_name = document.getElementById('np-custom-name').value.trim();
+                payload.base_url = document.getElementById('np-base-url').value.trim();
+                payload.custom_headers = Array.from(document.querySelectorAll('#np-headers-rows > div')).map(r => ({
+                    header: r.querySelector('.np-h-name').value.trim(),
+                    value: r.querySelector('.np-h-value').value.trim()
+                })).filter(h => h.header);
+            }
+            statusEl.textContent = '⏳ جاري الحفظ والاكتشاف التلقائي...';
+            try {
+                const res = await fetch('/api/ai/providers', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    statusEl.textContent = `✅ تم! اكتُشف ${data.sync?.available ?? 0} موديل متاح من ${data.sync?.discovered ?? 0}`;
+                    // For custom: add manual models if provided
+                    if (kind === 'custom') {
+                        const rows = Array.from(document.querySelectorAll('#np-models-rows > div'));
+                        for (const r of rows) {
+                            const mid = r.querySelector('.np-model-id').value.trim();
+                            if (mid) await fetch(`/api/ai/providers/${data.provider_id}/models`, {
+                                method: 'POST', headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ model_id: mid, display_name: r.querySelector('.np-model-name').value.trim() || undefined })
+                            });
+                        }
+                    }
+                    document.getElementById('add-provider-form').style.display = 'none';
+                    await loadProviders();
+                } else {
+                    statusEl.textContent = '❌ ' + (data.detail || 'فشل الحفظ');
+                }
+            } catch (e) { statusEl.textContent = '❌ خطأ اتصال'; }
+        }
+
+        async function syncProvider(pid) {
+            try {
+                const res = await fetch(`/api/ai/providers/${pid}/sync`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) alert(`✅ اكتُشف ${data.discovered} موديل — المتاح: ${data.available}`);
+                else alert('❌ ' + (data.detail || 'فشل التحديث'));
+                await loadProviders();
+            } catch (e) { alert('❌ خطأ اتصال'); }
+        }
+
+        async function viewProviderModels(pid, name) {
+            try {
+                const res = await fetch(`/api/ai/models?provider_id=${pid}`);
+                const data = await res.json();
+                const models = data.models || [];
+                const html = models.map(m => `
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 12px; border-bottom:1px solid var(--border-default);">
+                        <div>
+                            <div style="font-size:13px; font-weight:600; direction:ltr; text-align:start;">${m.model_id}</div>
+                            <div style="font-size:10.5px; color:var(--text-muted);">${m.available ? 'متاح ✓' : 'غير متاح ✕'} · ${m.source}</div>
+                        </div>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                            <input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModel('${m.id}', this.checked)"> ظاهر للعملاء
+                        </label>
+                    </div>
+                `).join('') || '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:12.5px;">لا موديلات — اضغط تحديث الاتصال</div>';
+                const win = window.open('', '_blank', 'width=520,height=600');
+                win.document.write(`<html dir="rtl"><head><title>${name} — الموديلات</title><style>body{font-family:system-ui;padding:20px;background:#f8fafc;}h3{font-size:16px;}</style></head><body><h3>${name} — إدارة الموديلات</h3>${html}</body></html>`);
+            } catch (e) { alert('❌ خطأ'); }
+        }
+
+        async function toggleModel(mid, enabled) {
+            await fetch(`/api/ai/models/${mid}/toggle`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ enabled })
+            });
+        }
+
+        async function deleteProvider(pid, name) {
+            if (!confirm(`حذف مزود "${name}" وكل موديلاته؟`)) return;
+            await fetch(`/api/ai/providers/${pid}`, { method: 'DELETE' });
+            await loadProviders();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadSettingsStatus();
             checkUrlHashForToken();
             loadThreadsStatus();
             handleThreadsCallbackFlags();
+            loadProviders();
         });
     </script>
 </body>

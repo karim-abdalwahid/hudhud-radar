@@ -74,6 +74,8 @@ ADMIN_PAGE_PATHS = frozenset({
 # Admin-only API path prefixes (any method)
 ADMIN_PATH_PREFIXES = (
     "/api/identity",
+    "/api/ai/providers",
+    "/api/ai/models",
 )
 
 # Admin-only mutations on these prefixes (GET allowed for logged-in users)

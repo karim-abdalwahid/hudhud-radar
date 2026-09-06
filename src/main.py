@@ -24,6 +24,7 @@ from contextlib import asynccontextmanager
 from src.config import settings
 from src.core.logger import logger
 from src.core.supabase_client import supabase_db
+from src.core.admin_alerts import collect_alerts
 from src.core.auth import (
     create_session_token,
     verify_session_token,
@@ -57,6 +58,7 @@ from src.meta_api.extended_api import (
 )
 from src.meta_api.threads_oauth import threads_oauth as threads_oauth_manager
 from src.meta_api.compliance_pages import register_compliance_routes
+from src.ai.provider_manager import ai_provider_manager
 
 from src.content_studio.models import (
     ContentPostCreate,
@@ -829,6 +831,114 @@ async def cron_insights_sync(request: Request):
     """Cron trigger for daily Meta Insights sync (Facebook + Instagram metrics)."""
     _verify_cron_secret(request)
     return await meta_insights_sync.sync_recent_metrics(days=7)
+
+
+@app.get("/api/admin/alerts", tags=["System"])
+async def admin_system_alerts(request: Request, force: bool = False):
+    """
+    Admin-only system health alerts: Meta token validity, Threads expiry,
+    Gemini quota, webhook subscription, scheduler freshness, Supabase.
+    Returns items sorted by severity (critical → ok).
+    """
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") if request.cookies.get(SESSION_COOKIE_NAME) else None
+    if not session or session.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحيات المدير")
+    return {"status": "success", "alerts": collect_alerts(force=force)}
+
+
+# --------------------------------------------------------------------
+# AI Providers & Models (Phase 8 — opencode-style, admin-managed)
+# --------------------------------------------------------------------
+class ProviderCreatePayload(BaseModel):
+    kind: str = "official"                       # official | custom
+    provider_key: str                            # google|anthropic|openai|openrouter|custom-*
+    display_name: Optional[str] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    custom_headers: Optional[List[Dict[str, str]]] = None
+
+
+class ProviderUpdatePayload(BaseModel):
+    display_name: Optional[str] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    custom_headers: Optional[List[Dict[str, str]]] = None
+    status: Optional[str] = None                 # active | disabled
+
+
+class ModelTogglePayload(BaseModel):
+    enabled: bool
+
+
+class ModelAddPayload(BaseModel):
+    model_id: str
+    display_name: Optional[str] = None
+
+
+@app.get("/api/ai/providers", tags=["AI Providers"])
+async def list_ai_providers(request: Request):
+    """Admin: lists all providers (keys masked) with model counts."""
+    return {"status": "success", "providers": ai_provider_manager.list_providers()}
+
+
+@app.post("/api/ai/providers", tags=["AI Providers"])
+async def create_ai_provider(payload: ProviderCreatePayload):
+    """Admin: connects a provider (official registry key or custom OpenAI-compatible)."""
+    try:
+        res = ai_provider_manager.create_provider(payload.model_dump())
+        # Auto-discover immediately
+        sync = ai_provider_manager.sync_provider_models(res["provider_id"])
+        return {"status": "success", **res, "sync": {k: v for k, v in sync.items() if k != "models"}}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.put("/api/ai/providers/{provider_id}", tags=["AI Providers"])
+async def update_ai_provider(provider_id: str, payload: ProviderUpdatePayload):
+    ai_provider_manager.update_provider(provider_id, payload.model_dump(exclude_none=True))
+    return {"status": "success"}
+
+
+@app.delete("/api/ai/providers/{provider_id}", tags=["AI Providers"])
+async def delete_ai_provider(provider_id: str):
+    if not ai_provider_manager.delete_provider(provider_id):
+        raise HTTPException(status_code=404, detail="Provider not found")
+    return {"status": "success"}
+
+
+@app.post("/api/ai/providers/{provider_id}/sync", tags=["AI Providers"])
+async def sync_ai_provider_models(provider_id: str):
+    """Admin: refresh connection — re-discovers models with current credentials."""
+    result = ai_provider_manager.sync_provider_models(provider_id)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=404, detail=result["detail"])
+    return result
+
+
+@app.get("/api/ai/models", tags=["AI Providers"])
+async def list_ai_models(provider_id: Optional[str] = None):
+    """Admin: all models with toggles; Client usage: pass ?enabled_only=true."""
+    models = ai_provider_manager.list_models(provider_id)
+    return {"status": "success", "models": models}
+
+
+@app.get("/api/ai/brains", tags=["AI Providers"])
+async def list_client_brains():
+    """Client-facing: enabled+available models for the Brain selector."""
+    return {"status": "success", "brains": ai_provider_manager.enabled_brain_options()}
+
+
+@app.post("/api/ai/models/{model_id}/toggle", tags=["AI Providers"])
+async def toggle_ai_model(model_id: str, payload: ModelTogglePayload):
+    return ai_provider_manager.set_model_toggle(model_id, payload.enabled)
+
+
+@app.post("/api/ai/providers/{provider_id}/models", tags=["AI Providers"])
+async def add_manual_ai_model(provider_id: str, payload: ModelAddPayload):
+    try:
+        return ai_provider_manager.add_manual_model(provider_id, payload.model_id, payload.display_name)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/debug/llm-status", tags=["System"])
