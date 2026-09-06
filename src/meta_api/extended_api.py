@@ -47,16 +47,15 @@ class MetaInsightsSync:
         results: Dict[str, Any] = {"facebook": None, "instagram": None}
 
         async with httpx.AsyncClient(timeout=15.0) as client:
-            # Facebook Page Insights
+            # Facebook Page Insights (v26 metric names — page_impressions deprecated)
             if creds["page_id"]:
                 try:
                     resp = await client.get(
                         f"{settings.META_GRAPH_API_BASE_URL}/{creds['page_id']}/insights",
                         params={
-                            "metric": "page_impressions,page_post_engagements,page_follows",
+                            "metric": "page_views_total,page_post_engagements,page_follows",
                             "period": "day",
-                            "since": since,
-                            "until": until,
+                            "date_preset": "last_7d",
                             "access_token": token,
                         },
                     )
@@ -67,27 +66,54 @@ class MetaInsightsSync:
                 except Exception as e:
                     logger.warning(f"FB insights sync error: {e}")
 
-            # Instagram Business Insights
+            # Instagram Business Insights (requires instagram_manage_insights scope;
+            # falls back to profile-level follower count when scope missing)
             if creds["ig_id"]:
                 try:
                     resp = await client.get(
                         f"{settings.META_GRAPH_API_BASE_URL}/{creds['ig_id']}/insights",
                         params={
-                            "metric": "impressions,reach,follower_count",
+                            "metric": "reach,views,follower_count",
                             "period": "day",
-                            "since": since,
-                            "until": until,
+                            "date_preset": "last_7d",
                             "access_token": token,
                         },
                     )
                     if resp.status_code == 200:
                         results["instagram"] = self._store_metric_rows("instagram", resp.json())
                     else:
-                        logger.warning(f"IG insights sync failed: {resp.status_code} {resp.text[:200]}")
+                        logger.warning(f"IG insights sync failed ({resp.status_code}) — falling back to profile stats")
+                        results["instagram"] = self._store_profile_fallback("instagram", creds["ig_id"], token)
                 except Exception as e:
                     logger.warning(f"IG insights sync error: {e}")
 
         return {"status": "success", "synced": results}
+
+    def _store_profile_fallback(self, platform: str, ig_id: str, token: str) -> int:
+        """When insights scope is missing, still record today's follower count."""
+        try:
+            r = httpx.get(
+                f"{settings.META_GRAPH_API_BASE_URL}/{ig_id}",
+                params={"fields": "followers_count,media_count", "access_token": token},
+                timeout=10.0,
+            )
+            if r.status_code == 200:
+                d = r.json()
+                today = date.today().isoformat()
+                supabase_db.upsert("page_performance_metrics", {
+                    "platform": platform,
+                    "metric_date": today,
+                    "reach": 0,
+                    "impressions": 0,
+                    "engagement_rate": 0.0,
+                    "followers_count": d.get("followers_count", 0),
+                    "leads_captured": 0,
+                    "metadata": {"source": "profile_fallback", "media_count": d.get("media_count", 0)},
+                }, on_conflict="platform,metric_date")
+                return 1
+        except Exception as e:
+            logger.debug(f"Profile fallback failed: {e}")
+        return 0
 
     def _store_metric_rows(self, platform: str, payload: Dict[str, Any]) -> int:
         """Upserts daily metric rows; returns count of stored days."""
@@ -102,11 +128,11 @@ class MetaInsightsSync:
                     continue
                 row = daily.setdefault(end_time, {"reach": 0, "impressions": 0, "followers": 0, "engagement": 0.0})
                 value = point.get("value") or 0
-                if name in ("page_impressions", "impressions"):
+                if name in ("page_views", "impressions", "views"):
                     row["impressions"] += value if isinstance(value, int) else 0
-                elif name in ("reach", "post_impressions_unique"):
+                elif name in ("reach", "page_views_total"):
                     row["reach"] += value if isinstance(value, int) else 0
-                elif name in ("follower_count", "page_follows"):
+                elif name in ("follower_count", "page_follows", "page_daily_follows"):
                     row["followers"] += value if isinstance(value, int) else 0
                 elif name in ("page_post_engagements",):
                     row["engagement"] += value if isinstance(value, (int, float)) else 0.0
@@ -114,7 +140,7 @@ class MetaInsightsSync:
         for metric_date, row in daily.items():
             engagement_rate = round((row["engagement"] / row["reach"]), 3) if row["reach"] else 0.0
             try:
-                supabase_db.insert("page_performance_metrics", {
+                supabase_db.upsert("page_performance_metrics", {
                     "platform": platform,
                     "metric_date": metric_date,
                     "reach": row["reach"],
@@ -123,11 +149,10 @@ class MetaInsightsSync:
                     "followers_count": row["followers"],
                     "leads_captured": 0,
                     "metadata": {"source": "insights_sync", "synced_at": datetime.now(timezone.utc).isoformat()},
-                })
+                }, on_conflict="platform,metric_date")
                 stored += 1
             except Exception as e:
-                # Likely unique_platform_date conflict for the same day — update instead
-                logger.debug(f"Metric row for {platform}/{metric_date} not inserted: {e}")
+                logger.debug(f"Metric upsert failed for {platform}/{metric_date}: {e}")
 
         return stored
 

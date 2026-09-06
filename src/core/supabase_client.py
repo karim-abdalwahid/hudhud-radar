@@ -110,6 +110,23 @@ class SupabaseManager:
                 raise DatabaseConnectionError(f"Insert failed on table {table}: {e}")
         return self.memory_db.insert(table, data)
 
+    def upsert(self, table: str, data: Dict[str, Any], on_conflict: str) -> Dict[str, Any]:
+        """Upsert a row keyed on one or more conflict columns (comma-separated)."""
+        if self.is_connected and self.client:
+            try:
+                res = (
+                    self.client.table(table)
+                    .upsert(data, on_conflict=on_conflict)
+                    .execute()
+                )
+                if res.data and len(res.data) > 0:
+                    return res.data[0]
+                return data
+            except Exception as e:
+                logger.error(f"Error upserting into Supabase table {table}: {e}")
+                raise DatabaseConnectionError(f"Upsert failed on table {table}: {e}")
+        return self.memory_db.insert(table, data)
+
     def select(self, table: str, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """Query rows from the specified table with equality filters."""
         if self.is_connected and self.client:
