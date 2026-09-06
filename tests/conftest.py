@@ -7,6 +7,7 @@ Shared pytest fixtures for HudhudRadar test suite.
   the AuthMiddleware for all dashboard/API tests.
 """
 import uuid
+from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
@@ -24,6 +25,14 @@ def _isolated_user_store():
     from src.automations.service import AutomationsService
 
     auth_mod.user_store._memory_fallback = lambda: True
+    # Knowledge Base: force FILE mode in a tmp dir so tests never read/write
+    # the live Supabase kb_documents/kb_chunks tables.
+    import tempfile
+    from src.agent import knowledge_base as kb_mod
+    _tmp_kb_dir = tempfile.mkdtemp(prefix="hudhud_test_kb_")
+    kb_mod.knowledge_base._mode = "file"
+    kb_mod.knowledge_base.kb_dir = Path(_tmp_kb_dir)
+    kb_mod.knowledge_base.reload()
     # Webhook dedup: force memory-only for ALL instances (class-level) — the live
     # processed_events table now exists, so tests must never round-trip to it.
     from src.core.event_dedup import EventDeduplicator, event_deduplicator

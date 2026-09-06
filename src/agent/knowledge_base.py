@@ -1,7 +1,12 @@
 """
 Knowledge Base Ingestion, Management, and RAG Context Provider.
-Loads brand tone, FAQs, business rules, sales scripts, and dynamically indexed documents.
-Supports live hot-reload, file CRUD, and semantic retrieval for the AI Agent.
+
+Two modes:
+- **DB mode (default)**: kb_documents + kb_chunks with pgvector hybrid RAG
+  (Gemini embeddings + full-text + RRF) via `DBKnowledgeBase`. Survives
+  Vercel's read-only filesystem — approved in Roadmap v2 Phase 5.
+- **File mode**: legacy markdown directory storage, used when an explicit
+  kb_dir is passed (tests) or when Supabase is disconnected (local dev).
 """
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -13,7 +18,7 @@ from src.knowledge.utils import sanitize_safe_filename
 
 
 class KnowledgeBaseManager:
-    """Reads, manages, and structures markdown knowledge files for AI context & RAG."""
+    """Reads, manages, and structures knowledge documents for AI context & RAG."""
 
     def __init__(self, kb_dir: Optional[str] = None):
         if kb_dir:
@@ -25,11 +30,35 @@ class KnowledgeBaseManager:
         except OSError:
             pass
         self.knowledge_cache: Dict[str, str] = {}
+        # Mode resolution: explicit dir = file mode; otherwise DB when connected
+        self._mode = "file"
+        if kb_dir is None:
+            try:
+                from src.core.supabase_client import supabase_db
+                if supabase_db.is_connected:
+                    self._mode = "db"
+            except Exception:
+                self._mode = "file"
         self.reload()
 
+    # ------------------------------------------------------------------
+    # Reload / listing
+    # ------------------------------------------------------------------
     def reload(self):
-        """Reloads all markdown files from the knowledge base directory into memory."""
+        """Reloads all knowledge documents into memory cache (DB or files)."""
         self.knowledge_cache.clear()
+
+        if self._mode == "db":
+            try:
+                from src.core.supabase_client import supabase_db
+                rows = supabase_db.select("kb_documents") or []
+                for row in rows:
+                    self.knowledge_cache[row["filename"]] = row.get("content", "")
+                logger.info(f"Loaded {len(self.knowledge_cache)} knowledge documents from database.")
+                return
+            except Exception as e:
+                logger.warning(f"DB knowledge load failed, falling back to files: {e}")
+
         if not self.kb_dir.exists():
             logger.warning(f"Knowledge Base directory '{self.kb_dir}' not found.")
             return
@@ -43,7 +72,27 @@ class KnowledgeBaseManager:
                 logger.error(f"Error loading {md_file}: {e}")
 
     def list_documents(self) -> List[Dict[str, Any]]:
-        """Returns metadata of all knowledge base files for UI explorer."""
+        """Returns metadata of all knowledge base documents for UI explorer."""
+        if self._mode == "db":
+            try:
+                from src.knowledge.db_knowledge_base import db_knowledge_base
+                docs = []
+                for d in db_knowledge_base.list_documents():
+                    content = d  # light rows only; fetch preview lazily below
+                    docs.append({
+                        "name": d["filename"].removesuffix(".md"),
+                        "filename": d["filename"],
+                        "size_bytes": len(self.knowledge_cache.get(d["filename"], "")),
+                        "words_count": d.get("word_count", 0),
+                        "updated_at": d.get("updated_at"),
+                        "is_core": d.get("is_core", False),
+                        "source": d.get("source", "upload"),
+                        "preview": (self.knowledge_cache.get(d["filename"], "") or "")[:150] + "...",
+                    })
+                return docs
+            except Exception as e:
+                logger.warning(f"DB list_documents failed, file fallback: {e}")
+
         self.reload()
         docs = []
         for md_file in sorted(self.kb_dir.glob("*.md")):
@@ -72,8 +121,18 @@ class KnowledgeBaseManager:
                 logger.error(f"Error stat-ing file {md_file}: {e}")
         return docs
 
+    # ------------------------------------------------------------------
+    # Document CRUD
+    # ------------------------------------------------------------------
     def get_document(self, filename: str) -> Optional[str]:
         """Returns raw content of a specific knowledge base document."""
+        if self._mode == "db":
+            try:
+                from src.knowledge.db_knowledge_base import db_knowledge_base
+                return db_knowledge_base.get_document_content(filename)
+            except Exception as e:
+                logger.warning(f"DB get_document failed, file fallback: {e}")
+
         clean_name = sanitize_safe_filename(filename)
         target = (self.kb_dir / clean_name).resolve()
         # Ensure path does not escape knowledge base directory
@@ -86,7 +145,17 @@ class KnowledgeBaseManager:
         return None
 
     def save_document(self, filename: str, content: str) -> Dict[str, Any]:
-        """Saves or edits a document in the knowledge base and hot-reloads memory."""
+        """Saves or edits a document (DB mode chunks+embeds; file mode writes)."""
+        if self._mode == "db":
+            try:
+                from src.knowledge.db_knowledge_base import db_knowledge_base
+                res = db_knowledge_base.save_document(filename, content)
+                self.knowledge_cache[res["filename"]] = content
+                res["message"] = f"تم حفظ المستند '{res['filename']}' وفهرسته للبحث الذكي بنجاح."
+                return res
+            except Exception as e:
+                logger.warning(f"DB save failed, file fallback: {e}")
+
         clean_name = sanitize_safe_filename(filename)
         target = (self.kb_dir / clean_name).resolve()
         if not str(target).startswith(str(self.kb_dir.resolve())):
@@ -103,7 +172,17 @@ class KnowledgeBaseManager:
         }
 
     def delete_document(self, filename: str) -> bool:
-        """Deletes a document from the knowledge base and reloads memory."""
+        """Deletes a document and reloads memory."""
+        if self._mode == "db":
+            try:
+                from src.knowledge.db_knowledge_base import db_knowledge_base
+                ok = db_knowledge_base.delete_document(filename)
+                if ok:
+                    self.knowledge_cache.pop(sanitize_safe_filename(filename), None)
+                return ok
+            except Exception as e:
+                logger.warning(f"DB delete failed, file fallback: {e}")
+
         clean_name = sanitize_safe_filename(filename)
         target = (self.kb_dir / clean_name).resolve()
         if not str(target).startswith(str(self.kb_dir.resolve())):
@@ -117,6 +196,9 @@ class KnowledgeBaseManager:
             return True
         return False
 
+    # ------------------------------------------------------------------
+    # Context + RAG
+    # ------------------------------------------------------------------
     def get_combined_context(self) -> str:
         """Returns all knowledge base content formatted for LLM system prompting."""
         if not self.knowledge_cache:
@@ -129,10 +211,20 @@ class KnowledgeBaseManager:
 
     def search_relevant_chunks(self, query: str, top_k: int = 3) -> str:
         """
-        RAG Hybrid Semantic Retrieval (LEANN-Inspired):
-        Finds the most relevant knowledge sections based on on-demand vector cosine similarity
-        and keyword Reciprocal Rank Fusion (RRF).
+        RAG Hybrid Retrieval:
+        - DB mode: pgvector cosine + full-text tsvector + RRF (Postgres RPC).
+        - File mode: in-memory deterministic hybrid (legacy LEANN-inspired).
         """
+        if self._mode == "db":
+            try:
+                from src.knowledge.db_knowledge_base import db_knowledge_base
+                context = db_knowledge_base.search_context(query, top_k=top_k)
+                if context:
+                    return context
+                return self.get_combined_context()[:2500]
+            except Exception as e:
+                logger.warning(f"DB RAG search failed, in-memory fallback: {e}")
+
         if not self.knowledge_cache:
             self.reload()
 
