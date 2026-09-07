@@ -47,6 +47,8 @@ PUBLIC_PATH_PREFIXES = (
     "/api/webhook",
     "/auth",        # auth API endpoints (login/register/logout)
     "/api/cron",    # cron endpoints (protected by their own CRON_SECRET check)
+    "/api/data-deletion",    # Meta data-deletion callback (HMAC-verified, sessionless by design)
+    "/api/threads/uninstall",  # Threads uninstall callback (HMAC-verified, sessionless by design)
     "/favicon",
 )
 
