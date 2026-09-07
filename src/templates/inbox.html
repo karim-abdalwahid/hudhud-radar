@@ -292,10 +292,10 @@
                         <!-- Chat Header -->
                         <div class="chat-top">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="conv-avatar" id="active-chat-avatar" style="width: 36px; height: 36px; font-size: 14px;">A</div>
+                                <div class="conv-avatar" id="active-chat-avatar" style="width: 36px; height: 36px; font-size: 14px;">·</div>
                                 <div>
-                                    <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);" id="active-chat-name">Alex Johnson</div>
-                                    <div style="font-size: 12px; color: var(--text-muted);" id="active-chat-channel">📸 Instagram Direct · 2m ago</div>
+                                    <div style="font-size: 14px; font-weight: 700; color: var(--text-primary);" id="active-chat-name"></div>
+                                    <div style="font-size: 12px; color: var(--text-muted);" id="active-chat-channel"></div>
                                 </div>
                             </div>
 
@@ -331,10 +331,10 @@
                             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;" data-i18n="inbox.dossier_title">Customer Dossier & Deal</div>
                             <div style="text-align: center; padding: 16px; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-default);">
                                 <div style="font-size: 32px; margin-bottom: 6px;">👤</div>
-                                <div style="font-weight: 700; font-size: 15px; color: var(--text-primary);" id="lead-panel-name">Alex Johnson</div>
-                                <div style="font-size: 12px; color: var(--text-muted);" id="lead-panel-handle">@alex_agency</div>
+                                <div style="font-weight: 700; font-size: 15px; color: var(--text-primary);" id="lead-panel-name"></div>
+                                <div style="font-size: 12px; color: var(--text-muted);" id="lead-panel-handle"></div>
                                 <div style="margin-top: 10px;">
-                                    <span class="badge badge-success" id="lead-panel-badge">🔥 Hot Lead (94% Intent)</span>
+                                    <span class="badge badge-success" id="lead-panel-badge" style="display: none;"></span>
                                 </div>
                             </div>
                         </div>
@@ -342,7 +342,7 @@
                         <div>
                             <div style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;" data-i18n="inbox.dossier_interest">Detected Buying Need:</div>
                             <div style="font-size: 13px; line-height: 1.6; background: #ffffff; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); color: var(--text-primary);" id="lead-panel-need">
-                                Inquiring about annual agency growth tier, asked about pricing and 4-month payment plans.
+                                —
                             </div>
                         </div>
 
@@ -504,6 +504,9 @@
 
             document.getElementById('lead-panel-name').textContent = conv.name;
             document.getElementById('lead-panel-handle').textContent = conv.handle;
+            // Honest dossier: no "buying need" source exists yet — show placeholder, never invent
+            const needEl = document.getElementById('lead-panel-need');
+            if (needEl) needEl.textContent = '—';
             // Real captured contact info (Zero-Fabrication)
             document.getElementById('lead-panel-badge').textContent = conv.contactCaptured
                 ? (isAr ? '✅ تم التقاط بيانات التواصل' : '✅ Contact Captured')
@@ -538,13 +541,11 @@
                 const row = document.createElement('div');
                 row.className = `bubble-row ${m.sender === 'customer' ? 'incoming' : 'outgoing'}`;
 
-                const badgeText = isAr ? `⚡ تم الرد بالذكاء الاصطناعي (${m.responseTime || '3.2s'})` : `⚡ AI Replied in ${m.responseTime || '3.2s'}`;
-
                 row.innerHTML = `
                     <div class="bubble">
                         ${m.text}
                     </div>
-                    ${m.sender === 'ai' ? `<span class="ai-badge-pill">${badgeText}</span>` : ''}
+                    ${m.sender === 'agent' ? `<span class="ai-badge-pill">${isAr ? '🤖 رد الوكيل الذكي' : '🤖 AI Agent'}</span>` : ''}
                     <div style="font-size: 10px; color: var(--text-muted); margin-top: 3px; align-self: ${m.sender === 'customer' ? 'flex-start' : 'flex-end'};">
                         ${m.time}
                     </div>
@@ -653,6 +654,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Show the honest empty state immediately — real data replaces it when loaded
+            renderEmptyChat();
             fetchLiveConversations();
         });
 
