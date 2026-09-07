@@ -113,6 +113,26 @@ check("user GET threads/authorize → 403", r.status_code == 403, f"got {r.statu
 r = user.post(f"{BASE}/api/content/scheduler/trigger", timeout=30)
 check("user POST scheduler/trigger → 403", r.status_code == 403, f"got {r.status_code}")
 
+# September 2026 hardening checks (Phase B/C)
+r = user.get(f"{BASE}/api/debug/llm-status", timeout=30)
+check("user GET debug/llm-status → 403 (was public!)", r.status_code == 403, f"got {r.status_code}")
+r = user.get(f"{BASE}/api/debug/secrets-check", timeout=30)
+check("user GET debug/secrets-check → 403", r.status_code == 403, f"got {r.status_code}")
+r = user.get(f"{BASE}/api/admin/alerts", timeout=30)
+check("user GET admin/alerts → 403", r.status_code == 403, f"got {r.status_code}")
+r = user.post(f"{BASE}/api/threads/publish", json={"text": "x"}, timeout=30)
+check("user POST threads/publish → 403 (paid action)", r.status_code == 403, f"got {r.status_code}")
+r = user.post(f"{BASE}/api/marketing/sync-leads", timeout=30)
+check("user POST marketing/sync-leads → 403", r.status_code == 403, f"got {r.status_code}")
+r = user.post(f"{BASE}/api/inbox/conversations/fake-lead/send-message", json={"text": "x"}, timeout=30)
+check("user POST inbox send-message → 403 (real DMs)", r.status_code == 403, f"got {r.status_code}")
+r = anon.post(f"{BASE}/api/data-deletion", json={"email": "victim@example.com"}, timeout=30)
+check("anon JSON data-deletion → 400/403 (was CRITICAL: unverified deletion)", r.status_code in (400, 403), f"got {r.status_code}")
+r = anon.get(f"{BASE}/api/cron/insights-sync", timeout=30)
+check("anon cron/insights-sync → 401 (CRON_SECRET enforced)", r.status_code in (401, 503), f"got {r.status_code}")
+r = user.get(f"{BASE}/api/meta/status", timeout=30)
+check("user meta/status has NO supabase_url", "supabase_url" not in r.json() if r.status_code == 200 else True)
+
 # Cleanup test workflow
 if test_wf_id:
     admin.delete(f"{BASE}/api/automations/{test_wf_id}", timeout=30)

@@ -1008,3 +1008,59 @@ scratch/vercel-env-hudhud2.txt generated with the 6 missing/updated values (THRE
 ### 5. Owner Note
 - POST /api/knowledge/sync-meta (older endpoint) still has NO admin guard — same exposure class. Recommend applying the same admin-session filter (pending owner approval).
 - Usage: from Studio/dashboard or: POST /api/knowledge/analyze-meta?limit=10 with admin session.
+
+---
+
+## [Entry 026] Security & Zero-Fabrication Hardening + Domain Unification — Full Pass Executed
+- **Timestamp**: 2026-09-07T20:30:00+03:00
+- **Actor**: User & AI Agent (opencode/GLM)
+- **Status**: LIVE ON PRODUCTION — 113/113 unit tests + 58/58 live permission matrix PASS
+
+### 1. Study Phase (3 parallel audits, verified manually)
+- Domain inventory: NO single source of truth; ~25 scattered hardcodes; .env pointed Threads redirect at STEEL while code said canonical; cron-job.org still on steel.
+- Security audit: 1 CRITICAL (unauthenticated data-deletion JSON branch), HIGH (llm-status key-prefix + free paid calls; cron fail-open + timing-unsafe + secret in query logs), MED (webhook default verify token + raw token logging + dev fail-open HMAC; exception leaks x12; supabase_url to any user; paid endpoints for any user).
+- Zero-fabrication audit: CRITICAL fakes (crawler sample posts labeled real; client.py mid.simulated receipts + success logs; token_manager short-lived stamped 60-day never-expires), HIGH (automations ignore HTTP status; fabricated active defaults HUDHUD20 + fake calendar link), MED (memory-DB silent writes; Threads OAuth in-memory CSRF; page_views_total stored as reach; DEBUG-level upsert failures; feed_sync fake success).
+
+### 2. Phase A — Domain Unification (commit 38639b0)
+- NEW settings.APP_BASE_URL (env-driven, default canonical) = single source of truth.
+- EFFECTIVE_THREADS_REDIRECT_URI derives from APP_BASE_URL (THREADS_REDIRECT_URI now optional override).
+- compliance_pages data-deletion url ← APP_BASE_URL. settings.html: 7 hardcodes → data-base-url attrs filled from window.HUDHUD_BASE_URL (injected by render_page_template). FB dialog v21→v26.
+- .env: THREADS_REDIRECT_URI removed (steel) → APP_BASE_URL added. .env.example documented.
+- 9 ops scripts read APP_BASE_URL env (canonical fallback).
+- PROJECT_BRAIN/Roadmap/DOMAIN_SWAP_RUNBOOK.md — future domain swap = env change + dashboard allowlists (full checklist inside).
+- Lesson recorded: raw PowerShell -replace corrupted settings.html UTF-8 once → reverted via git checkout; Edit tool used instead.
+
+### 3. Phase B — Security (commit f42ee85) — owner-approved decisions applied
+- data-deletion: signed_request ONLY (JSON branch that allowed internet-wide account deletion REMOVED); 400/403 for unsigned.
+- cron: FAIL-CLOSED 503 in production without CRON_SECRET; hmac.compare_digest; rejection logged.
+- webhooks: HMAC fail-closed in ALL envs (no dev bypass); no default verify token (env required); constant-time token compare; raw token never logged.
+- Admin gates via middleware: /api/admin/*, /api/debug/*, threads/publish, marketing/sync-* (exact), inbox/conversations mutations (real DMs) — owner decision: admin-only until multi-tenant phase.
+- debug/llm-status: admin-only + NO key_prefix (was first 8 chars of GEMINI key).
+- _safe_error() scrubbing: exceptions logged server-side, clients get generic message (ValueError passes — intentional validation). supabase_url removed from meta/status.
+- +19 regression tests (tests/test_security_hardening.py).
+
+### 4. Phase C — Zero Fabrication (commit 3bd11a5)
+- meta_crawler: fabricated sample posts DELETED; empty returns + honest skip; synthesize returns status=skipped when nothing real scraped.
+- meta_client: mid.simulated receipts DELETED → honest MetaAPIError; NOW reads Supabase meta_credentials (unified with _resolve_credentials; fixes dashboard-says-connected-but-simulated).
+- token_manager: fake 60-day fallback REMOVED → raises on exchange failure.
+- automations: every Graph response checked; steps dict with real status; executions_count ONLY on real success; result status executed|failed. Defaults: all PAUSED; HUDHUD20 + fake calendar purged from code AND runtime store (_sanitize_legacy_fabrications on load).
+- supabase_client: production without Supabase REJECTS writes (fail-loud, no silent evaporation).
+- threads_oauth: CSRF state persisted to Supabase app_settings (fixes random cross-instance OAuth failures).
+- insights: page_views_total → impressions (honest semantics); upsert failures WARNING; marketing syncs reject your- placeholders.
+- feed_sync: returns no_results (honest) when zero posts fetched.
+- db_knowledge_base: embedded=true only when ALL chunks have vectors + embedded_chunks count + warning on partial.
+- +12 regression tests (tests/test_zero_fabrication.py).
+
+### 5. Verification
+- Unit: 113/113 PASSED. Live permission matrix on https://hudhud-radar.vercel.app: 58/58 PASSED (anonymous 9, admin 26, user 23 incl. all new hardening bypass attempts).
+- Deployed via GitHub auto-deploy (R7): commits 38639b0, f42ee85, 3bd11a5.
+
+### 6. Owner To-Do (dashboard actions only agent cannot do)
+1. hudhud2 scope env: add APP_BASE_URL=https://hudhud-radar.vercel.app (and remove THREADS_REDIRECT_URI if set) — scratch instructions same flow as Entry 024.
+2. cron-job.org job 8045365: switch URL to canonical domain (keep ?key=CRON_SECRET) — works with new fail-closed guard.
+3. Verify Threads app dashboard redirect allowlist shows https://hudhud-radar.vercel.app/api/threads/oauth/callback (it auto-matches the derived URI now).
+4. ROADMAP: Phase 9 = multi-tenant accounts (per-user OAuth + per-user credentials + RLS scoping) — recorded as approved future direction.
+
+### 7. Rules Reinforced
+- R9: No hardcoded domains anywhere — APP_BASE_URL is the only origin source (backend settings / window.HUDHUD_BASE_URL frontend / env for scripts).
+- R10: ZERO-FABRICATION is absolute: no mock receipts, no fake fallbacks, no mislabeled tokens, no invented defaults; failures surface honestly (status skipped/failed + reason).
