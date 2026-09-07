@@ -1047,6 +1047,33 @@ async def add_manual_ai_model(provider_id: str, payload: ModelAddPayload):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/debug/secrets-check", tags=["System"])
+async def debug_secrets_check(request: Request):
+    """
+    Admin-only diagnostic: reports whether each secret is set + its length +
+    last 4 chars (safe for display — never returns the secret itself).
+    Used to verify deployed environment values match the source of truth.
+    """
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") if request.cookies.get(SESSION_COOKIE_NAME) else None
+    if not session or session.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحيات المدير")
+
+    def _info(v: Optional[str]):
+        if not v:
+            return {"set": False, "length": 0}
+        return {"set": True, "length": len(v), "last4": v[-4:]}
+
+    return {
+        "status": "success",
+        "THREADS_APP_SECRET": _info(settings.THREADS_APP_SECRET),
+        "META_APP_SECRET": _info(settings.META_APP_SECRET),
+        "GEMINI_API_KEY": _info(settings.GEMINI_API_KEY),
+        "CRON_SECRET": _info(settings.CRON_SECRET),
+        "META_PAGE_ACCESS_TOKEN": _info(settings.META_PAGE_ACCESS_TOKEN),
+        "SUPABASE_URL": _info(settings.SUPABASE_URL),
+    }
+
+
 @app.get("/api/debug/llm-status", tags=["System"])
 async def debug_llm_status():
     """
