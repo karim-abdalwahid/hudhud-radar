@@ -1214,6 +1214,21 @@ class CreateDocumentRequest(BaseModel):
     content: str
 
 
+@app.post("/api/knowledge/analyze-meta", tags=["Knowledge Base & RAG"])
+async def analyze_meta_posts(limit: int = Query(10, ge=1, le=40)):
+    """
+    Admin: runs the approved structural analyzer (Entry 021 Phase 5):
+    fetches recent posts + their real comments, classifies every comment
+    (CTA-response vs real-question vs complaint/spam), and saves REAL
+    knowledge documents with mandatory citations. Zero guessing.
+    """
+    from src.knowledge.meta_analyzer import meta_posts_analyzer
+    result = await meta_posts_analyzer.analyze_recent(limit=limit)
+    if result.get("status") == "skipped":
+        raise HTTPException(status_code=400, detail=result.get("reason", "skipped"))
+    return result
+
+
 @app.post("/api/knowledge/sync-meta", tags=["Knowledge Base & RAG"])
 async def sync_knowledge_from_meta():
     """Scrapes historical Facebook/Instagram posts, reels, and comments and synthesizes business knowledge."""
