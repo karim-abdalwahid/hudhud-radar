@@ -585,23 +585,18 @@
                 <div class="metrics-strip">
                     <div class="metric-card">
                         <div class="metric-label" data-i18n="auto.workflows_list">Configured Workflows</div>
-                        <div class="metric-val num" id="kpi-total-wf">3</div>
+                        <div class="metric-val num" id="kpi-total-wf">0</div>
                         <div class="metric-sub">Ready & fully automated</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label" data-i18n="auto.active_count">Active Automations</div>
-                        <div class="metric-val num" style="color:var(--accent-green);" id="kpi-active-wf">3</div>
+                        <div class="metric-val num" style="color:var(--accent-green);" id="kpi-active-wf">0</div>
                         <div class="metric-sub">Listening 24/7 on Meta Webhooks</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label" data-i18n="auto.total_executions">Total Executions</div>
-                        <div class="metric-val num" id="kpi-total-exec">265</div>
+                        <div class="metric-val num" id="kpi-total-exec">0</div>
                         <div class="metric-sub">Reels DMs, comments & leads closed</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label" data-i18n="auto.time_saved_label">Time Saved</div>
-                        <div class="metric-val num" style="font-size:20px; color:var(--accent-blue);" id="kpi-time-saved">~18.5 hrs</div>
-                        <div class="metric-sub" data-i18n="auto.time_saved_sub">Automated response hours</div>
                     </div>
                 </div>
 
@@ -1535,7 +1530,7 @@
             document.getElementById('rule-reply-details').style.display = 'block';
             document.getElementById('rule-toggle-dm').checked = true;
             document.getElementById('rule-dm-text').value = "أهلاً بحضرتك! إليك تفاصيل العرض والخصم الخاص لليوم:";
-            document.getElementById('rule-dm-link').value = "https://hudhud.ai/offer";
+            document.getElementById('rule-dm-link').value = "";
             document.getElementById('rule-dm-image').value = "";
             document.getElementById('rule-dm-details').style.display = 'block';
 
@@ -1743,7 +1738,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Website / Calendar Link / الرابط</label>
-                        <input type="text" id="insp-link" class="form-input" value="${escapeHtml(link)}" placeholder="https://hudhud.ai/booking">
+                        <input type="text" id="insp-link" class="form-input" value="${escapeHtml(link)}" placeholder="https://your-real-booking-link.example">
                     </div>
                 `;
             } else if (node.type === 'fb_public_reply' || node.type === 'ai_reply_action') {

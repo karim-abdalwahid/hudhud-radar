@@ -71,13 +71,13 @@
                     </div>
                     <div class="metric-card">
                         <div class="metric-label" data-i18n="id.kpi_policy">Zero-Guessing Policy</div>
-                        <div class="metric-val" style="font-size: 16px; color: var(--badge-green-text);" data-i18n="id.kpi_policy_val">Active & Strict</div>
+                        <div class="metric-val" style="font-size: 16px; color: var(--badge-green-text);" id="stat-policy-val">—</div>
                         <div class="metric-sub" data-i18n="id.kpi_policy_sub">Auto-linking requires 100% verified phone/email</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-label" data-i18n="id.kpi_threshold">Queue Entry Threshold</div>
-                        <div class="metric-val num" style="font-size: 18px; color: var(--badge-blue-text);" data-i18n="id.kpi_threshold_val">≥ 70% Confidence</div>
-                        <div class="metric-sub" data-i18n="id.kpi_threshold_sub">Matches below 70% remain standalone accounts</div>
+                        <div class="metric-val num" style="font-size: 18px; color: var(--badge-blue-text);" id="stat-threshold-val">—</div>
+                        <div class="metric-sub" id="stat-threshold-sub" data-i18n="id.kpi_threshold_sub">Matches below this score remain standalone accounts</div>
                     </div>
                 </div>
 
@@ -137,6 +137,21 @@
                 currentQueue = data.pending_reviews || [];
 
                 document.getElementById('stat-pending-count').textContent = currentQueue.length;
+
+                // Real policy values from backend settings (never hardcoded numbers)
+                const policy = data.policy || {};
+                const policyEl = document.getElementById('stat-policy-val');
+                const thrEl = document.getElementById('stat-threshold-val');
+                if (policyEl && policy.manual_confirmation_required !== undefined) {
+                    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                    policyEl.textContent = policy.manual_confirmation_required
+                        ? (isAr ? 'مفعّل وصارم' : 'Active & Strict')
+                        : (isAr ? 'غير مفعّل' : 'Disabled');
+                    policyEl.style.color = policy.manual_confirmation_required ? 'var(--badge-green-text)' : 'var(--badge-amber-text)';
+                }
+                if (thrEl && policy.queue_review_threshold_percent !== undefined) {
+                    thrEl.textContent = `≥ ${policy.queue_review_threshold_percent}% Confidence`;
+                }
                 renderQueueTable();
             } catch (e) {
                 console.error("Error fetching identity queue:", e);

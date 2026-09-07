@@ -498,8 +498,17 @@ async def get_lead(lead_id: str):
 # --------------------------------------------------------------------
 @app.get("/api/identity/queue", tags=["Identity Resolution"])
 async def get_verification_queue():
-    """Lists pending ambiguous matches awaiting human supervisor decision."""
-    return {"pending_reviews": identity_review_queue.get_pending_reviews()}
+    """Lists pending ambiguous matches awaiting human supervisor decision.
+    Also returns the REAL configured thresholds so the UI never displays
+    hardcoded policy numbers that drift from actual settings."""
+    return {
+        "pending_reviews": identity_review_queue.get_pending_reviews(),
+        "policy": {
+            "manual_confirmation_required": settings.REQUIRE_MANUAL_IDENTITY_CONFIRMATION,
+            "auto_link_threshold_percent": round(settings.CONFIDENCE_THRESHOLD_AUTO_LINK * 100),
+            "queue_review_threshold_percent": round(settings.CONFIDENCE_THRESHOLD_QUEUE_REVIEW * 100),
+        },
+    }
 
 
 @app.post("/api/identity/queue/{queue_id}/approve", tags=["Identity Resolution"])

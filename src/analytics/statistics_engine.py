@@ -32,6 +32,18 @@ class StatisticsEngine:
         successes = [l for l in logs if l.get("status") == "success"]
         failures = [l for l in logs if l.get("status") == "failed"]
 
+        # Honest agent + compliance metrics from real logs (frontend used to
+        # fabricate 100% here — now computed or reported as unavailable).
+        outbound = [l for l in logs if l.get("action_type") in ("send_message", "reply_comment", "send_dm", "private_reply")]
+        window_failures = sum(
+            1 for f in failures
+            if "24h window" in (f.get("error_reason") or "").lower()
+        )
+        agent_reply_count = sum(1 for l in logs if l.get("action_type") == "ai_reply_sent")
+        ai_reply_rate = round((agent_reply_count / max(len(outbound), 1)) * 100.0, 1) if outbound else None
+        # Compliance = share of outbound attempts that did NOT violate the window
+        window_compliance = round(((len(outbound) - window_failures) / len(outbound)) * 100.0, 1) if outbound else None
+
         # Granular root cause grouping
         failure_reasons = Counter()
         for f in failures:
@@ -63,6 +75,8 @@ class StatisticsEngine:
             "success_count": len(successes),
             "failure_count": len(failures),
             "success_rate_percent": round(success_rate, 2),
+            "ai_agent_reply_rate_percent": ai_reply_rate,
+            "window_compliance_percent": window_compliance,
             "failure_reasons_breakdown": dict(failure_reasons),
             "insights": insights
         }

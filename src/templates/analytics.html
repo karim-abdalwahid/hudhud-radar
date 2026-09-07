@@ -81,7 +81,7 @@
                     </div>
                     <div class="metric-card">
                         <div class="metric-label" data-i18n="an.kpi_compliance">24h Messaging Window Compliance</div>
-                        <div id="stat-compliance" class="metric-val" style="color:var(--badge-blue-text);">100%</div>
+                        <div id="stat-compliance" class="metric-val" style="color:var(--badge-blue-text);">—</div>
                         <div id="stat-compliance-sub" class="metric-sub" data-i18n="an.kpi_compliance_sub">Zero Meta policy violations</div>
                     </div>
                 </div>
@@ -216,11 +216,14 @@
                 document.getElementById('stat-total-ops').textContent = totalOps.toLocaleString();
                 if (totalOps > 0) {
                     document.getElementById('stat-success-rate').textContent = (ops.success_rate_percent || 0) + '%';
-                    document.getElementById('stat-agent-rate').textContent = '100%';
+                    document.getElementById('stat-agent-rate').textContent = (ops.ai_agent_reply_rate_percent !== undefined ? ops.ai_agent_reply_rate_percent + '%' : '—');
                 } else {
                     document.getElementById('stat-success-rate').textContent = '—';
                     document.getElementById('stat-agent-rate').textContent = '—';
                 }
+                // Honest compliance stat: derived from real logs, not assumed
+                document.getElementById('stat-compliance').textContent =
+                    (ops.window_compliance_percent !== undefined ? ops.window_compliance_percent + '%' : '—');
 
                 const totalLeads = leads.total_leads || 0;
                 const phoneLeads = leads.phone_leads || 0;

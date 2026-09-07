@@ -82,7 +82,7 @@
                     </div>
                     <div class="metric-card">
                         <div class="metric-label" data-i18n="dash.kpi_channels">Connected Channels</div>
-                        <div id="kpi-channels" class="metric-val" style="font-size:15px; color:var(--badge-green-text);">Active</div>
+                        <div id="kpi-channels" class="metric-val" style="font-size:15px; color:var(--text-muted);">—</div>
                         <div class="metric-sub" data-i18n="dash.kpi_channels_sub">Instagram & Messenger live</div>
                     </div>
                     <div class="metric-card dev-only">
@@ -246,8 +246,14 @@
                     const metaData = await metaRes.json();
                     const chanEl = document.getElementById('kpi-channels');
                     if (chanEl) {
-                        if (metaData.token_valid) {
-                            chanEl.textContent = isAr ? '2 قنوات متصلة' : '2 Channels Live';
+                        // Count REAL connected channels from live status — never a fixed number
+                        const liveCount =
+                            (metaData.page_id ? 1 : 0) +
+                            (metaData.instagram_account_id ? 1 : 0);
+                        if (metaData.token_valid && liveCount > 0) {
+                            chanEl.textContent = isAr
+                                ? `${liveCount} قنوات متصلة`
+                                : `${liveCount} Channel${liveCount > 1 ? 's' : ''} Live`;
                             chanEl.style.color = 'var(--badge-green-text)';
                         } else if (metaData.configured) {
                             chanEl.textContent = isAr ? 'بحاجة لتحديث التوكن' : 'Needs Token Refresh';
