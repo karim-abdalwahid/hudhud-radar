@@ -15,24 +15,24 @@ class WebhookHandler:
 
     @staticmethod
     def verify_subscription(mode: str, token: str, challenge: str) -> Optional[str]:
-        """Validates GET webhook challenge from Meta App dashboard."""
+        """Validates GET webhook challenge from Meta App dashboard.
+        Constant-time comparison; the submitted token is never logged raw."""
         valid_tokens = {settings.META_WEBHOOK_VERIFY_TOKEN, settings.EFFECTIVE_WEBHOOK_VERIFY_TOKEN}
-        if mode == "subscribe" and token in valid_tokens:
-            logger.info("Meta Webhook challenge successfully verified.")
-            return challenge
-        logger.warning(f"Meta Webhook challenge rejected. Token mismatch: received '{token}'")
+        if mode == "subscribe" and token:
+            for vt in valid_tokens:
+                if vt and hmac.compare_digest(token.encode("utf-8"), vt.encode("utf-8")):
+                    logger.info("Meta Webhook challenge successfully verified.")
+                    return challenge
+        logger.warning("Meta Webhook challenge rejected (token mismatch).")
         return None
 
     @staticmethod
     def verify_signature(payload_bytes: bytes, signature_header: Optional[str]) -> bool:
-        """Verifies HMAC SHA-256 signature against META_APP_SECRET."""
+        """Verifies HMAC SHA-256 signature against META_APP_SECRET.
+        Fail-closed: without a secret, webhooks are ALWAYS rejected (any env)."""
         if not settings.META_APP_SECRET:
-            if settings.APP_ENV.lower() == "production":
-                logger.error("Security violation: META_APP_SECRET is required in production. Webhook rejected.")
-                return False
-            # If no secret configured in dev mode, log and allow
-            logger.warning("META_APP_SECRET not configured. Skipping HMAC signature check (DEV MODE).")
-            return True
+            logger.error("META_APP_SECRET not configured — webhook rejected (fail-closed).")
+            return False
 
         if not signature_header:
             logger.error("Missing X-Hub-Signature-256 header.")

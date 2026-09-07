@@ -107,3 +107,38 @@ def anon_client():
     from src.main import app
 
     return TestClient(app)
+
+
+@pytest.fixture(scope="session")
+def _regular_user_creds(admin_creds):
+    """Registers one regular (non-admin) user after the admin exists."""
+    from src.main import app
+
+    email = f"user_{uuid.uuid4().hex[:8]}@hudhud.test"
+    bootstrap = TestClient(app)
+    res = bootstrap.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "password": ADMIN_PASSWORD,
+            "phone": "+201000000001",
+            "full_name": "Hudhud Test User",
+        },
+    )
+    assert res.status_code == 200, f"User registration failed: {res.text}"
+    assert res.json()["role"] == "user"
+    return {"email": email, "password": ADMIN_PASSWORD}
+
+
+@pytest.fixture
+def client_as_user(_regular_user_creds):
+    """Authenticated REGULAR (non-admin) TestClient."""
+    from src.main import app
+
+    c = TestClient(app)
+    res = c.post(
+        "/auth/login",
+        json={"email": _regular_user_creds["email"], "password": _regular_user_creds["password"]},
+    )
+    assert res.status_code == 200, f"User login failed: {res.text}"
+    return c

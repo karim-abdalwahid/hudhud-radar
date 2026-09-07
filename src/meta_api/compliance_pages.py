@@ -135,38 +135,37 @@ def register_compliance_routes(app: FastAPI):
         user_id: Optional[str] = None
         user_email: Optional[str] = None
 
+        # SECURITY: deletion is ONLY allowed via Meta's signed_request protocol.
+        # A previous unverified application/json branch allowed anyone on the
+        # internet to delete any account by email — removed (fail-closed).
         if "application/json" in content_type:
-            try:
-                payload = await request.json()
-            except Exception:
-                return JSONResponse(status_code=400, content={"error": "invalid JSON"})
-            user_id = payload.get("user_id")
-            user_email = payload.get("email")
-        else:
-            form = await request.form()
-            signed_request = form.get("signed_request")
-            if not signed_request:
-                return JSONResponse(status_code=400, content={"error": "signed_request required"})
-            # Verify against either app secret (callback may be configured on either app)
-            try:
-                enc_sig, enc_payload = str(signed_request).split(".", 1)
-                sig = base64.urlsafe_b64decode(enc_sig + "=" * (-len(enc_sig) % 4))
-                raw = base64.urlsafe_b64decode(enc_payload + "=" * (-len(enc_payload) % 4))
-                data = json_mod.loads(raw)
-                verified = False
-                for secret in (settings.THREADS_APP_SECRET, settings.META_APP_SECRET):
-                    if not secret:
-                        continue
-                    expected = hmac_mod.new(secret.encode(), enc_payload.encode("ascii"), hashlib.sha256).digest()
-                    if hmac_mod.compare_digest(sig, expected):
-                        verified = True
-                        break
-                if not verified:
-                    return JSONResponse(status_code=403, content={"error": "invalid signed_request signature"})
-                user_id = str(data.get("user_id")) if data.get("user_id") else None
-            except Exception as e:
-                logger.error(f"Signed request parse failed: {e}")
-                return JSONResponse(status_code=400, content={"error": "malformed signed_request"})
+            return JSONResponse(status_code=400, content={
+                "error": "data deletion requires Meta signed_request (form-encoded)"
+            })
+        form = await request.form()
+        signed_request = form.get("signed_request")
+        if not signed_request:
+            return JSONResponse(status_code=400, content={"error": "signed_request required"})
+        # Verify against either app secret (callback may be configured on either app)
+        try:
+            enc_sig, enc_payload = str(signed_request).split(".", 1)
+            sig = base64.urlsafe_b64decode(enc_sig + "=" * (-len(enc_sig) % 4))
+            raw = base64.urlsafe_b64decode(enc_payload + "=" * (-len(enc_payload) % 4))
+            data = json_mod.loads(raw)
+            verified = False
+            for secret in (settings.THREADS_APP_SECRET, settings.META_APP_SECRET):
+                if not secret:
+                    continue
+                expected = hmac_mod.new(secret.encode(), enc_payload.encode("ascii"), hashlib.sha256).digest()
+                if hmac_mod.compare_digest(sig, expected):
+                    verified = True
+                    break
+            if not verified:
+                return JSONResponse(status_code=403, content={"error": "invalid signed_request signature"})
+            user_id = str(data.get("user_id")) if data.get("user_id") else None
+        except Exception as e:
+            logger.error(f"Signed request parse failed: {e}")
+            return JSONResponse(status_code=400, content={"error": "malformed signed_request"})
 
         if not user_id and not user_email:
             # Meta may send an app-scoped id we cannot map to a local user —

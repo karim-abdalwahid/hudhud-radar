@@ -64,6 +64,10 @@ ADMIN_EXACT_PATHS = frozenset({
     "/api/threads/oauth/authorize",
     "/api/threads/oauth/refresh",
     "/api/threads/disconnect",
+    # Paid external actions on the OWNER's business accounts — admin only
+    "/api/threads/publish",
+    "/api/marketing/sync-leads",
+    "/api/marketing/sync-campaigns",
 })
 
 # Admin-only dashboard pages (server-side enforcement of Developer Console)
@@ -78,6 +82,8 @@ ADMIN_PATH_PREFIXES = (
     "/api/identity",
     "/api/ai/providers",
     "/api/ai/models",
+    "/api/admin",
+    "/api/debug",
 )
 
 # Admin-only mutations on these prefixes (GET allowed for logged-in users)
@@ -85,6 +91,8 @@ ADMIN_MUTATION_PREFIXES = (
     "/api/knowledge",
     "/api/automations",
     "/api/content",
+    # Inbox actions send REAL DMs from the owner's connected accounts
+    "/api/inbox/conversations",
 )
 
 

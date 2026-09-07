@@ -11,6 +11,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 import re
+import hmac
 import httpx
 import asyncio
 from pydantic import BaseModel
@@ -122,6 +123,17 @@ app = FastAPI(
 # --------------------------------------------------------------------
 # Authentication Middleware: protects dashboard pages & APIs
 # --------------------------------------------------------------------
+def _safe_error(e: Exception, meta_detail: str = "") -> str:
+    """Client-safe error message: real exception details go to the log;
+    clients get a short generic message (no internals, no tokens, no raw
+    upstream response bodies). ValueError is intentional user-facing
+    validation feedback raised by services — passed through verbatim."""
+    logger.error(f"API error [{type(e).__name__}]: {e}{(' | ' + meta_detail) if meta_detail else ''}")
+    if isinstance(e, ValueError):
+        return str(e)
+    return f"{type(e).__name__}: عذراً، فشلت العملية — راجع سجلات الخادم للتفاصيل"
+
+
 def _is_public(path: str) -> bool:
     if path in PUBLIC_EXACT_PATHS:
         return True
@@ -213,7 +225,7 @@ async def register_user(payload: RegisterPayload, request: Request):
             full_name=payload.full_name,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
     token = create_session_token(user["id"], user.get("role", "user"), user["email"])
     resp = JSONResponse({"status": "success", "role": user.get("role", "user")})
@@ -323,7 +335,7 @@ async def google_oauth_exchange(payload: GoogleExchangePayload):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"خطأ تحقق: {e}")
+        raise HTTPException(status_code=500, detail=_safe_error(e))
 
     email = (gu.get("email") or "").strip().lower()
     if not email:
@@ -497,7 +509,7 @@ async def approve_identity_link(queue_id: str, reviewer: str = "Admin", notes: O
         updated = identity_review_queue.approve_match(queue_id, reviewer, notes)
         return {"status": "approved", "queue_item": updated}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @app.post("/api/identity/queue/{queue_id}/reject", tags=["Identity Resolution"])
@@ -507,7 +519,7 @@ async def reject_identity_link(queue_id: str, reviewer: str = "Admin", notes: Op
         updated = identity_review_queue.reject_match(queue_id, reviewer, notes)
         return {"status": "rejected", "queue_item": updated}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 # --------------------------------------------------------------------
@@ -606,7 +618,6 @@ async def get_meta_status():
         "instagram_account_id": active_ig_id or None,
         "app_id": settings.META_APP_ID or None,
         "supabase_connected": supabase_db.is_connected,
-        "supabase_url": settings.SUPABASE_URL
     }
     _meta_status_cache["ts"] = now
     _meta_status_cache["data"] = result
@@ -653,13 +664,13 @@ async def configure_meta_credentials(payload: MetaConfigPayload):
                 timeout=5.0
             )
             if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail=f"فشل التحقق من التوكن عبر Meta Graph API: {resp.text}")
+                raise HTTPException(status_code=400, detail=_safe_error(Exception("Meta Graph API rejected the request"), meta_detail=resp.text[:200]))
             data = resp.json()
             page_name = data.get("name")
             if not payload.page_id:
                 payload.page_id = data.get("id")
         except httpx.RequestError as e:
-            raise HTTPException(status_code=400, detail=f"خطأ في الاتصال بسيرفرات فيسبوك: {e}")
+            raise HTTPException(status_code=400, detail=_safe_error(e))
 
     # Update runtime settings
     if payload.page_access_token:
@@ -728,7 +739,7 @@ async def exchange_permanent_meta_token(payload: MetaExchangeTokenPayload):
         return result
     except Exception as e:
         logger.error(f"Failed to generate permanent token: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @app.post("/api/meta/user-pages", tags=["Meta Integration"])
@@ -756,7 +767,7 @@ async def get_user_meta_pages(payload: MetaUserPagesPayload):
         }
     except Exception as e:
         logger.error(f"Failed to fetch user pages: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @app.post("/api/meta/subscribe-page", tags=["Meta Integration"])
@@ -904,23 +915,28 @@ async def trigger_scheduler_tick():
 # Protected by CRON_SECRET (Vercel sends 'Authorization: Bearer $CRON_SECRET').
 # --------------------------------------------------------------------
 def _verify_cron_secret(request: Request):
-    """Validates the cron caller secret when CRON_SECRET is configured.
-
+    """Validates the cron caller secret. FAIL-CLOSED in production: if
+    CRON_SECRET is unset there, the request is rejected (never public).
     Accepts either:
     - Authorization: Bearer <secret> header (Vercel Cron), or
     - ?key=<secret> / ?secret=<secret> query param (cron-job.org free plan
       does not support custom headers).
+    Comparison is constant-time (hmac.compare_digest).
     """
     secret = settings.CRON_SECRET
     if not secret:
-        return  # Not configured (local dev) — allow
+        if settings.APP_ENV.lower() == "production":
+            logger.error("CRON_SECRET is not configured in production — cron endpoints fail CLOSED")
+            raise HTTPException(status_code=503, detail="Cron endpoints disabled: CRON_SECRET not configured")
+        return  # Local dev convenience only
     auth_header = request.headers.get("authorization") or ""
     provided = ""
     if auth_header.startswith("Bearer "):
         provided = auth_header[7:].strip()
     if not provided:
         provided = (request.query_params.get("key") or request.query_params.get("secret") or "").strip()
-    if not provided or provided != secret:
+    if not provided or not hmac.compare_digest(provided.encode("utf-8"), secret.encode("utf-8")):
+        logger.warning(f"Cron auth rejected from {request.client.host if request.client else 'unknown'}")
         raise HTTPException(status_code=401, detail="Invalid cron secret")
 
 
@@ -999,7 +1015,7 @@ async def create_ai_provider(payload: ProviderCreatePayload):
         sync = ai_provider_manager.sync_provider_models(res["provider_id"])
         return {"status": "success", **res, "sync": {k: v for k, v in sync.items() if k != "models"}}
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @app.put("/api/ai/providers/{provider_id}", tags=["AI Providers"])
@@ -1047,7 +1063,7 @@ async def add_manual_ai_model(provider_id: str, payload: ModelAddPayload):
     try:
         return ai_provider_manager.add_manual_model(provider_id, payload.model_id, payload.display_name)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=_safe_error(e))
 
 
 @app.get("/api/debug/secrets-check", tags=["System"])
@@ -1078,18 +1094,21 @@ async def debug_secrets_check(request: Request):
 
 
 @app.get("/api/debug/llm-status", tags=["System"])
-async def debug_llm_status():
+async def debug_llm_status(request: Request):
     """
-    Admin diagnostic: performs a tiny live Gemini call and reports the exact
-    result (model, key prefix, error) so LLM issues can be diagnosed remotely.
+    Admin-only diagnostic: performs a tiny live Gemini call and reports the
+    exact result (model, HTTP status, error) so LLM issues can be diagnosed
+    remotely. Never exposes any part of the API key.
     """
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") if request.cookies.get(SESSION_COOKIE_NAME) else None
+    if not session or session.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحيات المدير")
     import httpx as _httpx
     key = settings.GEMINI_API_KEY
     info: Dict[str, Any] = {
         "provider": settings.LLM_PROVIDER,
         "model": settings.LLM_MODEL,
         "key_set": bool(key),
-        "key_prefix": (key or "")[:8],
     }
     if not key:
         info["ok"] = False
