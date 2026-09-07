@@ -1092,3 +1092,34 @@ tests/test_template_fabrications.py — site-wide sweep across ALL 10 dashboard 
 ### 5. Rules Reinforced
 - R11: Dashboard UI must never ship fabricated numbers/personas/claims — every displayed metric either comes from an API or shows 0/—/honest-label until real data exists. New templates require the sweep test to pass (CI gate).
 - R12: When the owner reports an issue, first re-scan the WHOLE class of that issue everywhere (not just the reported instance) — user-visible trust is the product.
+
+---
+
+## [Entry 028] Google Sign-In Rebuilt: Direct OAuth (Consent Shows OUR Domain) + Secrets Leak Fixed
+- **Timestamp**: 2026-09-07T23:30:00+03:00
+- **Actor**: User & AI Agent (opencode/GLM)
+- **Status**: CODE LIVE — awaiting owner env vars on Vercel (GOOGLE_CLIENT_ID/SECRET)
+
+### 1. Owner Reports (both valid)
+1. Google sign-in returned Google's generic "401 malformed" error.
+2. Consent screen showed "Continue to yncxwcvxssvnjffrvxib.supabase.co" — scary/unfamiliar for end users (legit trust complaint).
+
+### 2. Root Cause
+Old flow = Supabase hosted OAuth (/auth/v1/authorize?provider=google) → consent screen shows the SUPABASE project-ref domain, and the flow depends on Supabase Auth config that drifted (401).
+
+### 3. The Fix (commit 769bd3d)
+- **Direct OAuth from our backend**: /auth/google now redirects STRAIGHT to accounts.google.com with redirect_uri = {APP_BASE_URL}/auth/google/callback → consent screen shows hudhud-radar.vercel.app (never supabase.co). Callback exchanges code with Google directly (token endpoint + OpenID userinfo), creates/finds the local user, issues the same signed session cookie as password login.
+- **Security hardening in the new flow**: single-use CSRF state (10-min TTL) persisted in Supabase app_settings (survives serverless cold starts, mirrors Entry 027 Threads fix); email_verified enforced — unverified Google emails NEVER create/link accounts; invalid/used/expired state → /login?google=error; all failures logged server-side.
+- **Legacy Supabase exchange endpoint REMOVED** (/auth/google/exchange) — dead code with the old flow.
+- **SECRETS LEAK FIXED (Pass-1 catch)**: Google Client ID/Secret AND Supabase management token were HARDCODED in 4 committed ops scripts (enable_google_oauth.py, fix_kb_documents_rls.py, fix_leads_anon.py, verify_migration_002.py) → all scrubbed to env vars (SUPABASE_MANAGEMENT_TOKEN, SUPABASE_PROJECT_REF, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET). Owner should rotate the Google secret + Supabase management token since they sat in git history.
+- config: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET settings added; .env.example documented.
+
+### 4. Verification
+- +6 tests (test_google_oauth.py): our-domain redirect_uri, no supabase in URL, 503 without creds, invalid state rejected, full happy path creates user + session, unverified email rejected, legacy flow gone. Suite: 127/127.
+- Live prod: /auth/google returns 503 (correct fail-closed) until owner adds env vars.
+
+### 5. Owner To-Do (2 minutes)
+1. Google Cloud console → OAuth client 963263901125 → Authorized redirect URIs → ADD: https://hudhud-radar.vercel.app/auth/google/callback (keep old Supabase one or remove it).
+2. Vercel (hudhud2 scope + team scope per R8) → add env: GOOGLE_CLIENT_ID=963263901125-6pgblcislp00kf47epv4dbkupdejacag.apps.googleusercontent.com + GOOGLE_CLIENT_SECRET=(the GOCSPX-… value from enable_google_oauth.py git history or owner's records).
+3. Redeploy → /auth/google must 303 to accounts.google.com with our domain on the consent screen.
+4. ROTATE: Google client secret + Supabase management token (were committed historically).
