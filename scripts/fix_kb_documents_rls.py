@@ -1,7 +1,8 @@
 """Fix kb_documents RLS (statement 9 of migration 003 was a comment-parsing casualty)."""
+import os
 import httpx
 
-TOKEN = "sbp_fc6bd018f43733b522f2326ecac2b54e8ce20e7f"
+TOKEN = os.environ.get("SUPABASE_MANAGEMENT_TOKEN", "")
 REF = "yncxwcvxssvnjffrvxib"
 H = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 

@@ -1,18 +1,27 @@
-"""Enable Google OAuth provider in Supabase Auth via Management API."""
+"""Enable Google OAuth provider in Supabase Auth via Management API.
+
+SECURITY: credentials now come from environment variables — never hardcoded.
+NOTE: this Supabase-hosted flow is LEGACY; the app now uses the direct
+backend Google OAuth (/auth/google). This script remains only for managing
+the Supabase Auth config.
+"""
 import sys
 
 import httpx
 import os
 
-TOKEN = "sbp_fc6bd018f43733b522f2326ecac2b54e8ce20e7f"
-REF = "yncxwcvxssvnjffrvxib"
+TOKEN = os.environ.get("SUPABASE_MANAGEMENT_TOKEN", "")
+REF = os.environ.get("SUPABASE_PROJECT_REF", "")
 H = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
-CLIENT_ID = "963263901125-6pgblcislp00kf47epv4dbkupdejacag.apps.googleusercontent.com"
-CLIENT_SECRET = "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"
+CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 
 
 def main():
+    if not TOKEN or not REF or not CLIENT_ID or not CLIENT_SECRET:
+        print("Set SUPABASE_MANAGEMENT_TOKEN, SUPABASE_PROJECT_REF, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET env vars first.")
+        sys.exit(1)
     body = {
         "external_google_enabled": True,
         "external_google_client_id": CLIENT_ID,

@@ -1,7 +1,8 @@
 """Verify migration 002 results: anon grants gone, pgvector enabled, indexes exist."""
+import os
 import httpx
 
-TOKEN = "sbp_fc6bd018f43733b522f2326ecac2b54e8ce20e7f"
+TOKEN = os.environ.get("SUPABASE_MANAGEMENT_TOKEN", "")
 REF = "yncxwcvxssvnjffrvxib"
 H = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 

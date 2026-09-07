@@ -12,8 +12,12 @@ if PROJECT_ROOT not in sys.path:
 
 import re
 import hmac
+import time
+import secrets
 import httpx
 import asyncio
+from datetime import datetime, timezone
+from urllib.parse import quote, urlencode
 from pydantic import BaseModel
 from fastapi import FastAPI, Request, Response, HTTPException, Query, BackgroundTasks, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -268,109 +272,167 @@ async def logout_user():
 
 
 # --------------------------------------------------------------------
-# Google OAuth via Supabase Auth
+# Google Sign-In — DIRECT OAuth from our backend (no Supabase hosted flow).
+# The Google consent screen shows APP_BASE_URL (our domain) because the
+# redirect_uri is ours — never the ugly {project_ref}.supabase.co.
 # --------------------------------------------------------------------
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+GOOGLE_OAUTH_SCOPES = "openid email profile"
+_google_oauth_states: Dict[str, float] = {}  # state -> created_at (CSRF, 10-min TTL)
+
+
+def _google_oauth_creds_ok() -> bool:
+    return bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET)
+
+
+def _persist_oauth_state(state: str, created_at: float):
+    """Store OAuth CSRF state server-side (Supabase) so the callback can hit
+    a different serverless instance. Memory dict mirrors for fast path."""
+    _google_oauth_states[state] = created_at
+    try:
+        supabase_db.set_setting("google_oauth_states", {
+            "states": {state: created_at},
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as e:
+        logger.warning(f"Could not persist OAuth state to Supabase (memory-only): {e}")
+
+
+def _consume_oauth_state(state: str) -> Optional[float]:
+    """Validate + consume a pending state (single-use, 10-min TTL)."""
+    now = time.time()
+    # Prune stale memory entries
+    for s in [s for s, t in _google_oauth_states.items() if now - t >= 600]:
+        _google_oauth_states.pop(s, None)
+    created = _google_oauth_states.pop(state, None)
+    if created is None:
+        try:
+            payload = supabase_db.get_setting("google_oauth_states") or {}
+            stored = payload.get("states", {}) if isinstance(payload, dict) else {}
+            if state in stored:
+                created = float(stored[state])
+                try:
+                    supabase_db.set_setting("google_oauth_states", {"states": {}, "updated_at": datetime.now(timezone.utc).isoformat()})
+                except Exception:
+                    pass
+        except Exception:
+            return None
+    if created is None or (now - created) >= 600:
+        return None
+    return created
+
+
 @app.get("/auth/google", tags=["Auth"])
 async def google_oauth_start(request: Request):
     """
-    Redirects the browser to Supabase Auth's Google OAuth flow.
-    redirectTo brings the user back to our session-exchange endpoint.
+    Redirects the browser STRAIGHT to Google's consent screen with OUR
+    redirect_uri (APP_BASE_URL/auth/google/callback) so the consent screen
+    shows our own domain — not Supabase's project ref.
     """
-    from urllib.parse import quote
-    if not settings.SUPABASE_URL:
-        raise HTTPException(status_code=500, detail="Supabase غير مضبوط")
-    redirect_to = f"{request.base_url.scheme}://{request.base_url.netloc}/auth/google/callback" if hasattr(request.base_url, "scheme") else "/auth/google/callback"
-    url = (
-        f"{settings.SUPABASE_URL}/auth/v1/authorize?provider=google"
-        f"&redirect_to={quote(str(request.url).rsplit('/auth/google', 1)[0] + '/auth/google/callback')}"
-    )
+    if not _google_oauth_creds_ok():
+        raise HTTPException(status_code=503, detail="تسجيل الدخول بجوجل غير مفعّل بعد — GOOGLE_CLIENT_ID/SECRET غير مضبوطين")
+    now = time.time()
+    for s in [s for s, t in _google_oauth_states.items() if now - t >= 600]:
+        _google_oauth_states.pop(s, None)
+    state = secrets.token_urlsafe(24)
+    _persist_oauth_state(state, now)
+    redirect_uri = f"{settings.APP_BASE_URL.rstrip('/')}/auth/google/callback"
+    params = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": GOOGLE_OAUTH_SCOPES,
+        "state": state,
+        "prompt": "select_account",
+    }
+    url = f"{GOOGLE_AUTH_URL}?{urlencode(params, quote_via=quote)}"
     return RedirectResponse(url=url, status_code=303)
 
 
 @app.get("/auth/google/callback", tags=["Auth"])
 async def google_oauth_callback(request: Request):
     """
-    Receives the Supabase redirect with the access token in the URL fragment.
-    Since fragments never reach the server, this page runs a small script that
-    posts the tokens to /auth/google/exchange, then we set our signed session.
+    Google redirects here with ?code&state. We validate the CSRF state,
+    exchange the code with Google directly, read the verified profile,
+    find-or-create the local user, and issue our signed session cookie.
     """
-    html = """<!DOCTYPE html><html><body><script>
-    const h = {};
-    location.hash.slice(1).split('&').forEach(p => { const [k,v] = p.split('='); if(k) h[k] = decodeURIComponent(v); });
-    fetch('/auth/google/exchange', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ access_token: h['access_token'], refresh_token: h['refresh_token'] })
-    }).then(r => r.json()).then(d => {
-        if (d.status === 'success') window.location.href = '/dashboard';
-        else window.location.href = '/login?google=error';
-    }).catch(() => window.location.href = '/login?google=error');
-    </script></body></html>"""
-    return HTMLResponse(content=html)
-
-
-class GoogleExchangePayload(BaseModel):
-    access_token: str
-    refresh_token: Optional[str] = None
-
-
-@app.post("/auth/google/exchange", tags=["Auth"])
-async def google_oauth_exchange(payload: GoogleExchangePayload):
-    """
-    Validates the Supabase access token with Supabase Auth (/auth/v1/user),
-    then creates-or-syncs the user in our `users` table and issues a signed
-    session cookie (same session as password login).
-    """
-    from src.core.auth import user_store as us
-    if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-        raise HTTPException(status_code=500, detail="Supabase غير مضبوط")
+    is_ar = False
     try:
-        r = httpx.get(
-            f"{settings.SUPABASE_URL}/auth/v1/user",
-            headers={"apikey": settings.SUPABASE_KEY, "Authorization": f"Bearer {payload.access_token}"},
-            timeout=15,
+        if not _google_oauth_creds_ok():
+            raise HTTPException(status_code=503, detail="Google sign-in not configured")
+        state = request.query_params.get("state") or ""
+        code = request.query_params.get("code") or ""
+        err = request.query_params.get("error")
+        if err or not code or _consume_oauth_state(state) is None:
+            logger.warning(f"Google OAuth callback rejected (error={err or 'none'}, state_valid={bool(state)})")
+            return RedirectResponse(url="/login?google=error", status_code=303)
+
+        redirect_uri = f"{settings.APP_BASE_URL.rstrip('/')}/auth/google/callback"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            tok_resp = await client.post(GOOGLE_TOKEN_URL, data={
+                "code": code,
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            })
+            if tok_resp.status_code != 200:
+                logger.error(f"Google token exchange failed: {tok_resp.status_code} {tok_resp.text[:200]}")
+                return RedirectResponse(url="/login?google=error", status_code=303)
+            access_token = tok_resp.json().get("access_token")
+            if not access_token:
+                return RedirectResponse(url="/login?google=error", status_code=303)
+            ui_resp = await client.get(
+                GOOGLE_USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if ui_resp.status_code != 200:
+                logger.error(f"Google userinfo failed: {ui_resp.status_code}")
+                return RedirectResponse(url="/login?google=error", status_code=303)
+        gu = ui_resp.json()
+
+        email = (gu.get("email") or "").strip().lower()
+        email_verified = bool(gu.get("email_verified", False))
+        if not email or not email_verified:
+            # SECURITY: never link or create accounts from unverified emails
+            logger.warning(f"Google OAuth rejected: email missing/unverified ({email or 'none'})")
+            return RedirectResponse(url="/login?google=error", status_code=303)
+
+        from src.core.auth import user_store as us
+        local = us.get_by_email(email)
+        if not local:
+            try:
+                from src.core.supabase_client import supabase_db
+                record = {
+                    "email": email,
+                    "full_name": gu.get("name") or None,
+                    "phone": None,
+                    # No password login for OAuth-only accounts; marker hash
+                    "password_hash": "oauth_google",
+                    "role": "user",
+                    "is_active": True,
+                }
+                created = supabase_db.insert("users", record) or record
+                local = created if "id" in created else {**record, "id": "google-user"}
+            except Exception as e:
+                logger.error(f"Google user creation failed: {e}")
+                return RedirectResponse(url="/login?google=error", status_code=303)
+
+        token = create_session_token(local["id"], local.get("role", "user"), local["email"])
+        resp = RedirectResponse(url="/dashboard", status_code=303)
+        resp.set_cookie(
+            SESSION_COOKIE_NAME, token,
+            max_age=SESSION_TTL_SECONDS, httponly=True, samesite="lax",
+            secure=(settings.APP_ENV.lower() == "production"),
         )
-        if r.status_code != 200:
-            raise HTTPException(status_code=401, detail="رمز Google غير صالح")
-        gu = r.json()
+        return resp
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=_safe_error(e))
-
-    email = (gu.get("email") or "").strip().lower()
-    if not email:
-        raise HTTPException(status_code=400, detail="حساب Google بلا بريد إلكتروني")
-
-    # Create-or-sync local user
-    local = us.get_by_email(email)
-    if not local:
-        meta = gu.get("user_metadata") or {}
-        # Supabase Auth users live separately; our users table has no password for them
-        try:
-            from src.core.supabase_client import supabase_db
-            record = {
-                "email": email,
-                "full_name": meta.get("full_name") or meta.get("name"),
-                "phone": meta.get("phone") or None,
-                # No password login for OAuth-only accounts; hash set to unusable marker
-                "password_hash": "oauth_google",
-                "role": "user",
-                "is_active": True,
-            }
-            created = supabase_db.insert("users", record) or record
-            local = created if "id" in created else {**record, "id": "google-user"}
-        except Exception as e:
-            logger.error(f"Google user sync failed: {e}")
-            raise HTTPException(status_code=500, detail="تعذر إنشاء الحساب")
-
-    token = create_session_token(local["id"], local.get("role", "user"), local["email"])
-    resp = JSONResponse({"status": "success", "role": local.get("role", "user")})
-    resp.set_cookie(
-        SESSION_COOKIE_NAME, token,
-        max_age=SESSION_TTL_SECONDS, httponly=True, samesite="lax",
-        secure=(settings.APP_ENV.lower() == "production"),
-    )
-    return resp
+        logger.error(f"Google OAuth callback error: {e}")
+        return RedirectResponse(url="/login?google=error", status_code=303)
 
 
 @app.get("/auth/me", tags=["Auth"])

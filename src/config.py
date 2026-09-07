@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = Field(default=None, description="OpenAI API key (unused — reserved for future)")
     LLM_MODEL: str = Field(default="gemini-flash-latest", description="LLM model name")
 
+    # Google Sign-In (direct OAuth from our backend — consent screen shows
+    # APP_BASE_URL, never Supabase). Owner creates the client in Google Cloud.
+    GOOGLE_CLIENT_ID: Optional[str] = Field(default=None, description="Google OAuth 2.0 Client ID")
+    GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None, description="Google OAuth 2.0 Client Secret")
+
     # Threads App (separate from the main Meta app — Threads uses its own OAuth)
     THREADS_APP_ID: Optional[str] = Field(default=None, description="Threads App ID")
     THREADS_APP_SECRET: Optional[str] = Field(default=None, description="Threads App Secret")
