@@ -977,3 +977,34 @@ scratch/vercel-env-hudhud2.txt generated with the 6 missing/updated values (THRE
 ### 5. Rules Update (extends Entry 023)
 - **R7**: GitHub pushes auto-deploy to hudhud2 scope — always push working code only.
 - **R8**: Env var changes must be applied to BOTH scopes (or owner migrates fully to hudhud2).
+
+---
+
+## [Entry 025] Structured Meta Posts Analyzer (Phase 5 Completion) — Fixed, Secured, Deployed
+- **Timestamp**: 2026-09-07T19:00:00+03:00
+- **Actor**: User & AI Agent (opencode/GLM)
+- **Status**: LIVE ON PRODUCTION (canonical domain) & TESTED 82/82
+
+### 1. What Was Completed (resumed from uncommitted working tree)
+- **src/knowledge/meta_analyzer.py** (new): per-post Gemini structural analysis using the owner-approved prompt (Entry 021 Phase 5): fetches synced posts from meta_feed_sync + REAL comments via Graph API, classifies every comment (cta_response vs real_question vs complaint/spam/compliment/other), mandatory citations [منشور:{id}]/[تعليق:{id}], aggregates into 3 REAL knowledge documents (audience_insights.md, cta_effectiveness.md, content_performance.md) with source=meta_analysis. Zero fabrication: failed posts are skipped+logged. 3-attempt 5xx retry with backoff.
+- **POST /api/knowledge/analyze-meta** (admin, limit 1-40) in src/main.py.
+- scripts/check_post_fields.py (read-only field inspector) + scripts/run_analyzer_tests.bat.
+- tests/test_meta_analyzer.py: 5 tests (strict JSON parse, non-JSON rejection, 503 retry x3 then clean fail, full pipeline saves 3 docs with honest 50/50 CTA breakdown, no_results never fabricates).
+
+### 2. Bugs Fixed During Verification (all in tests, 1 in source)
+- Tests patched nonexistent analyzer.httpx → src.knowledge.meta_analyzer.httpx.
+- conftest forces GEMINI_API_KEY=None (LLM isolation) → analyzer fixture restores fake key (all Gemini HTTP mocked).
+- Tests didn't mock _resolve_credentials → mocked to return test token.
+- Source inconsistency: no_results returned "analyzed" instead of "posts_fetched"/"posts_analyzed" → fixed for API consistency.
+
+### 3. Security Fix (second commit)
+- analyze-meta was publicly callable (paid Gemini calls + KB writes). Added the same admin-session guard used by /api/admin/alerts. Verified: anon blocked (401/403), admin passes.
+
+### 4. Verification Evidence
+- Full suite: 82/82 PASSED (77 existing + 5 new).
+- Deployed via GitHub auto-deploy (hudhud2 scope, R7) → commits f130bff + 637ea01.
+- Live on https://hudhud-radar.vercel.app: /health 200 (v2-threads-setup), openapi.json contains /api/knowledge/analyze-meta, anon POST blocked.
+
+### 5. Owner Note
+- POST /api/knowledge/sync-meta (older endpoint) still has NO admin guard — same exposure class. Recommend applying the same admin-session filter (pending owner approval).
+- Usage: from Studio/dashboard or: POST /api/knowledge/analyze-meta?limit=10 with admin session.
