@@ -415,6 +415,20 @@ class MetaLiveFeedSync:
             self._save_cache_to_disk()
             logger.info(f"Successfully synced {len(combined)} live Meta posts/reels (FB: {len(unique_fb)}, IG: {len(ig_posts)})")
 
+        # HONEST STATUS: success only if something was actually fetched.
+        # Previously returned "success" even when every platform fetch failed,
+        # masking total outages (e.g., dead token) as healthy syncs.
+        if not combined:
+            return {
+                "status": "no_results",
+                "reason": "لم يتم سحب أي منشورات — تحقق من صلاحية Meta Token والاتصال",
+                "facebook_count": len(unique_fb),
+                "instagram_count": len(ig_posts),
+                "total_synced": 0,
+                "cache_updated_at": self._cache_updated_at,
+                "posts": self._cached_posts,
+            }
+
         return {
             "status": "success",
             "facebook_count": len(unique_fb),

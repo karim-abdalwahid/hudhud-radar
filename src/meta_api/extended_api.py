@@ -128,9 +128,10 @@ class MetaInsightsSync:
                     continue
                 row = daily.setdefault(end_time, {"reach": 0, "impressions": 0, "followers": 0, "engagement": 0.0})
                 value = point.get("value") or 0
-                if name in ("page_views", "impressions", "views"):
+                if name in ("page_views", "impressions", "views", "page_views_total"):
+                    # page_views_total = profile/tab VIEWS, not reach — stored honestly as impressions
                     row["impressions"] += value if isinstance(value, int) else 0
-                elif name in ("reach", "page_views_total"):
+                elif name == "reach":
                     row["reach"] += value if isinstance(value, int) else 0
                 elif name in ("follower_count", "page_follows", "page_daily_follows"):
                     row["followers"] += value if isinstance(value, int) else 0
@@ -152,7 +153,7 @@ class MetaInsightsSync:
                 }, on_conflict="platform,metric_date")
                 stored += 1
             except Exception as e:
-                logger.debug(f"Metric upsert failed for {platform}/{metric_date}: {e}")
+                logger.warning(f"Metric upsert failed for {platform}/{metric_date}: {e}")
 
         return stored
 
@@ -236,7 +237,7 @@ class MarketingLeadsSync:
         creds = _resolve_credentials()
         token = creds["token"]
         page_id = creds["page_id"]
-        if not token or not page_id:
+        if not token or token.startswith("your-") or not page_id:
             return {"status": "skipped", "reason": "token/page missing"}
 
         async with httpx.AsyncClient(timeout=20.0) as client:
@@ -292,7 +293,7 @@ class MarketingLeadsSync:
         """Pulls ad campaign performance into the campaigns table."""
         creds = _resolve_credentials()
         token = creds["token"]
-        if not token:
+        if not token or token.startswith("your-"):
             return {"status": "skipped", "reason": "token missing"}
         act_id = getattr(settings, "META_AD_ACCOUNT_ID", None)
         if not act_id:

@@ -31,10 +31,12 @@ class MetaContentCrawler:
         self.instagram_id = instagram_id or settings.META_INSTAGRAM_ACCOUNT_ID
 
     async def fetch_facebook_feed(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Fetches historical posts, captions, and customer comments from Facebook Page."""
-        if not self.access_token or not self.page_id:
-            logger.warning("Meta Page credentials not configured. Returning mock/offline FB feed.")
-            return self._generate_fallback_facebook_posts()
+        """Fetches historical posts, captions, and customer comments from Facebook Page.
+        ZERO-FABRICATION: on missing credentials, HTTP failure, or exception this
+        returns [] — never placeholder posts (project rule: no fabricated data)."""
+        if not self.access_token or not self.page_id or str(self.access_token).startswith("your-"):
+            logger.warning("Meta Page credentials not configured — Facebook feed skipped (no fabricated data).")
+            return []
 
         rate_limiter.check_and_acquire("facebook")
         url = f"{self.BASE_URL}/{self.page_id}/feed"
@@ -51,8 +53,8 @@ class MetaContentCrawler:
                 data = resp.json()
 
                 if resp.status_code != 200 or "data" not in data:
-                    logger.error(f"Error fetching Facebook feed: {resp.text}")
-                    return self._generate_fallback_facebook_posts()
+                    logger.error(f"Error fetching Facebook feed: {resp.text[:200]} — skipped (no fabricated data)")
+                    return []
 
                 posts = []
                 for item in data.get("data", []):
@@ -72,14 +74,16 @@ class MetaContentCrawler:
                 logger.info(f"Successfully scraped {len(posts)} Facebook posts.")
                 return posts
         except Exception as e:
-            logger.error(f"Exception during Facebook feed scrape: {e}")
-            return self._generate_fallback_facebook_posts()
+            logger.error(f"Exception during Facebook feed scrape: {e} — skipped (no fabricated data)")
+            return []
 
     async def fetch_instagram_media(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Fetches historical reels, posts, and comments from Instagram Creator/Business."""
-        if not self.access_token or not self.instagram_id:
-            logger.warning("Instagram credentials not configured. Returning fallback IG media.")
-            return self._generate_fallback_instagram_media()
+        """Fetches historical reels, posts, and comments from Instagram Creator/Business.
+        ZERO-FABRICATION: on missing credentials, HTTP failure, or exception this
+        returns [] — never placeholder media."""
+        if not self.access_token or not self.instagram_id or str(self.access_token).startswith("your-"):
+            logger.warning("Instagram credentials not configured — Instagram media skipped (no fabricated data).")
+            return []
 
         rate_limiter.check_and_acquire("instagram")
         url = f"{self.BASE_URL}/{self.instagram_id}/media"
@@ -96,8 +100,8 @@ class MetaContentCrawler:
                 data = resp.json()
 
                 if resp.status_code != 200 or "data" not in data:
-                    logger.error(f"Error fetching Instagram media: {resp.text}")
-                    return self._generate_fallback_instagram_media()
+                    logger.error(f"Error fetching Instagram media: {resp.text[:200]} — skipped (no fabricated data)")
+                    return []
 
                 media_items = []
                 for item in data.get("data", []):
@@ -119,8 +123,8 @@ class MetaContentCrawler:
                 logger.info(f"Successfully scraped {len(media_items)} Instagram media items.")
                 return media_items
         except Exception as e:
-            logger.error(f"Exception during Instagram media scrape: {e}")
-            return self._generate_fallback_instagram_media()
+            logger.error(f"Exception during Instagram media scrape: {e} — skipped (no fabricated data)")
+            return []
 
     async def fetch_all_historical_content(self) -> Dict[str, Any]:
         """Collects combined Facebook & Instagram posts, captions, and comments."""
@@ -152,36 +156,14 @@ class MetaContentCrawler:
         }
 
     def _generate_fallback_facebook_posts(self) -> List[Dict[str, Any]]:
-        """Fallback data representing historical posts for testing and offline modes."""
-        return [
-            {
-                "id": "fb_post_sample_1",
-                "platform": "facebook",
-                "text": "جاهز تضاعف مبيعاتك وتدير حملاتك الإعلانية باحترافية كاملة؟ في إبدأ ماركتينج بنقدملك خطط تسويق شاملة وإدارة إعلانات ممولة على فيسبوك وإنستغرام. ابعتلنا رسالة دلوقتي لمعرفة التفاصيل!",
-                "created_time": "2026-08-20T12:00:00+0000",
-                "comments": ["كام سعر الباقة الشهرية؟", "هل بتقدموا خدمات لشركات العقارات؟", "عايز تفاصيل العرض"],
-            },
-            {
-                "id": "fb_post_sample_2",
-                "platform": "facebook",
-                "text": "الذكاء الاصطناعي بيغير قواعد اللعبة! إزاي تقدر ترد على كل عميل في نفس الثانية وتقفل المبيعات بدون ما تفوت أي فرصة. تواصل معنا لتجربة النظام الذكي الخاص بك.",
-                "created_time": "2026-08-25T15:30:00+0000",
-                "comments": ["مهتم جداً، كلموني واتساب", "كيف بيتم الربط مع إنستغرام؟"],
-            }
-        ]
+        """REMOVED (zero-fabrication rule): this used to return hardcoded fake
+        posts/comments that were synthesized into the knowledge base labeled
+        as real scraped data. Kept as an explicit guard raising — any caller
+        must handle empty results honestly instead."""
+        raise NotImplementedError("Fabricated fallback data removed by zero-fabrication rule (2026-09-07)")
 
     def _generate_fallback_instagram_media(self) -> List[Dict[str, Any]]:
-        """Fallback data representing historical reels and posts for testing."""
-        return [
-            {
-                "id": "ig_reel_sample_1",
-                "platform": "instagram",
-                "media_type": "VIDEO",
-                "text": "ليه إعلاناتك بتصرف فلوس ومابتجبش مبيعات؟ 3 أخطاء شائعة بيتجاهلها 90% من أصحاب البيزنس! 🔥 اكتب 'ابدأ' في الكومنتات وهنبعتلك خطة التدقيق التسويقي المجانية في الخاص 📥",
-                "created_time": "2026-08-28T18:00:00+0000",
-                "comments": ["ابدأ", "ابدأ", "تفاصيل لو سمحت", "سعر الاستشارة كام؟"],
-            }
-        ]
+        raise NotImplementedError("Fabricated fallback data removed by zero-fabrication rule (2026-09-07)")
 
 
 class BusinessKnowledgeSynthesizer:
@@ -202,6 +184,16 @@ class BusinessKnowledgeSynthesizer:
         """
         captions_sample = "\n---\n".join(raw_data.get("all_captions", [])[:20])
         comments_sample = "\n---\n".join(raw_data.get("all_comments", [])[:30])
+
+        # ZERO-FABRICATION: nothing was scraped (credentials missing / API failed)
+        # → do NOT synthesize anything. Return an honest skip.
+        if not raw_data.get("all_captions") and not raw_data.get("all_comments"):
+            logger.warning("Synthesize skipped: zero real posts/comments scraped (no fabricated knowledge).")
+            return {
+                "status": "skipped",
+                "message": "لم يتم سحب أي منشورات أو تعليقات حقيقية — لن يتم توليد معرفة مصطنعة. تحقق من صلاحية Meta Token وأعد المحاولة.",
+                "files_updated": [],
+            }
 
         ai_synthesized = False
         if settings.GEMINI_API_KEY and not settings.GEMINI_API_KEY.startswith("your-"):
@@ -333,7 +325,8 @@ class BusinessKnowledgeSynthesizer:
 
         # 4. audience_insights.md
         sample_comments = raw_data.get("all_comments", [])
-        comments_preview = "\n".join([f"- {c}" for c in sample_comments[:15]]) if sample_comments else "- كام أسعار الباقات؟\n- كيف يتم الربط مع الحسابات؟\n- هل بتقدموا استشارات مجانية؟"
+        # ZERO-FABRICATION: no invented comments — show only what was really scraped
+        comments_preview = "\n".join([f"- {c}" for c in sample_comments[:15]]) if sample_comments else "- (لم يتم سحب تعليقات حقيقية في هذه المزامنة)"
         ai_content = f"""# تحليلات الجمهور واستفسارات المتابعين (Audience Insights)
 ### أهم اهتمامات الجمهور من واقع التعليقات والمراسلات:
 1. السؤال المتكرر عن أسعار وتكلفة إدارة الحملات التسويقية.

@@ -128,6 +128,7 @@ class DBKnowledgeBase:
         # Re-chunk + embed
         self._delete_chunks(doc_id)
         chunks = self._chunk_text(content)
+        embedded_count = 0
         for idx, chunk in enumerate(chunks):
             vec = self._embed(chunk)
             payload: Dict[str, Any] = {
@@ -137,14 +138,19 @@ class DBKnowledgeBase:
             }
             if vec:
                 payload["embedding"] = vec
+                embedded_count += 1
             try:
                 supabase_db.insert("kb_chunks", payload)
             except Exception as e:
                 logger.warning(f"Chunk insert failed (doc={filename} idx={idx}): {e}")
 
-        logger.info(f"KB document saved: {filename} ({len(chunks)} chunks, embedded={bool(chunks and vec)})")
+        # HONEST embedded flag: true only when EVERY chunk has a real vector
+        fully_embedded = bool(chunks) and embedded_count == len(chunks)
+        if chunks and not fully_embedded:
+            logger.warning(f"KB document {filename}: partial embedding ({embedded_count}/{len(chunks)} chunks) — hybrid search will degrade to keyword for missing vectors")
+        logger.info(f"KB document saved: {filename} ({len(chunks)} chunks, embedded={embedded_count}/{len(chunks)})")
         return {"status": "success", "filename": filename, "chunks": len(chunks),
-                "embedded": all(self._embed(c) is not None for c in chunks[:1])}
+                "embedded": fully_embedded, "embedded_chunks": embedded_count}
 
     def get_document(self, filename: str) -> Optional[Dict[str, Any]]:
         try:

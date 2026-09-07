@@ -25,13 +25,33 @@ class MetaGraphClient:
 
     def __init__(
         self,
-        access_token: Optional[str] = settings.META_PAGE_ACCESS_TOKEN,
-        page_id: Optional[str] = settings.META_PAGE_ID,
-        instagram_id: Optional[str] = settings.META_INSTAGRAM_ACCOUNT_ID
+        access_token: Optional[str] = None,
+        page_id: Optional[str] = None,
+        instagram_id: Optional[str] = None
     ):
-        self.access_token = access_token
-        self.page_id = page_id
-        self.instagram_id = instagram_id
+        # Resolve from Supabase app_settings first (source of truth after
+        # owner token exchange), falling back to env. Previously this client
+        # read ONLY env → dashboard said "connected" while sends were simulated.
+        stored = self._load_stored_credentials()
+        self.access_token = access_token or (stored.get("token") if stored else None) or settings.META_PAGE_ACCESS_TOKEN
+        self.page_id = page_id or (stored.get("page_id") if stored else None) or settings.META_PAGE_ID
+        self.instagram_id = instagram_id or (stored.get("instagram_id") if stored else None) or settings.META_INSTAGRAM_ACCOUNT_ID
+
+    @staticmethod
+    def _load_stored_credentials() -> Optional[Dict[str, Any]]:
+        try:
+            creds = supabase_db.get_setting("meta_credentials")
+            if isinstance(creds, dict):
+                token = creds.get("token") or creds.get("page_access_token")
+                if token:
+                    return {
+                        "token": token,
+                        "page_id": creds.get("page_id"),
+                        "instagram_id": creds.get("instagram_account_id") or creds.get("instagram_id"),
+                    }
+        except Exception as e:
+            logger.debug(f"Stored meta_credentials unavailable: {e}")
+        return None
 
     async def _post_with_retry(
         self, url: str, params: Dict[str, Any], json_payload: Dict[str, Any],
@@ -127,12 +147,12 @@ class MetaGraphClient:
             payload["tag"] = tag
 
         try:
-            # If access_token is empty or mock, simulate successful send in development
+            # ZERO-FABRICATION: without a real token we FAIL honestly —
+            # no simulated delivery receipts, no fake activity_logs success.
             if not self.access_token or self.access_token.startswith("your-"):
-                logger.info(f"[DEV SIMULATION] Sent FB DM to {recipient_id}: '{message_text}'")
-                simulated_resp = {"recipient_id": recipient_id, "message_id": f"mid.simulated.{recipient_id}"}
-                self._log_activity("send_message", "facebook", recipient_id, "success", None)
-                return simulated_resp
+                logger.error(f"FB DM to {recipient_id} NOT sent: Meta token not configured (fail-closed, no simulation).")
+                self._log_activity("send_message", "facebook", recipient_id, "failed", "Meta token not configured")
+                raise MetaAPIError("Meta Page Access Token غير مضبوط — لم يتم إرسال الرسالة (لا توجد محاكاة)", status_code=503)
 
             resp = await self._post_with_retry(url, params, payload, "facebook", recipient_id, "send_message")
             if resp.status_code != 200:
@@ -167,11 +187,12 @@ class MetaGraphClient:
         }
 
         try:
+            # ZERO-FABRICATION: without a real token we FAIL honestly —
+            # no simulated delivery receipts, no fake activity_logs success.
             if not self.access_token or self.access_token.startswith("your-"):
-                logger.info(f"[DEV SIMULATION] Sent IG DM to {recipient_id}: '{message_text}'")
-                simulated_resp = {"recipient_id": recipient_id, "message_id": f"ig.mid.simulated.{recipient_id}"}
-                self._log_activity("send_message", "instagram", recipient_id, "success", None)
-                return simulated_resp
+                logger.error(f"IG DM to {recipient_id} NOT sent: Meta token not configured (fail-closed, no simulation).")
+                self._log_activity("send_message", "instagram", recipient_id, "failed", "Meta token not configured")
+                raise MetaAPIError("Meta Page Access Token غير مضبوط — لم يتم إرسال الرسالة (لا توجد محاكاة)", status_code=503)
 
             resp = await self._post_with_retry(url, params, payload, "instagram", recipient_id, "send_ig_message")
             if resp.status_code != 200:

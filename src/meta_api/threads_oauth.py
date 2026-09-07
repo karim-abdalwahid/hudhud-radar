@@ -15,6 +15,7 @@ with expiry tracking. The publisher consumes them from there.
 """
 import secrets
 import time
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from urllib.parse import quote, urlencode
 
@@ -56,6 +57,30 @@ class ThreadsOAuthManager:
         self._pending_states: Dict[str, float] = {}  # state -> created_at (CSRF, 10 min TTL)
 
     # ------------------------------------------------------------------
+    # CSRF state store — persisted to Supabase app_settings so the OAuth
+    # callback can hit a DIFFERENT serverless instance than /authorize
+    # (in-memory dict caused random "state not found" failures on Vercel).
+    # Memory dict remains as fast-path/fallback mirror.
+    # ------------------------------------------------------------------
+    def _persist_state(self, state: str, created_at: float):
+        self._pending_states[state] = created_at
+        try:
+            payload = {"states": {state: created_at}, "updated_at": datetime.now(timezone.utc).isoformat()}
+            supabase_db.set_setting("threads_oauth_states", payload)
+        except Exception as e:
+            logger.warning(f"Could not persist OAuth state to Supabase (memory-only): {e}")
+
+    def _load_stored_state(self, state: str) -> Optional[float]:
+        try:
+            payload = supabase_db.get_setting("threads_oauth_states") or {}
+            stored = payload.get("states", {}) if isinstance(payload, dict) else {}
+            if state in stored:
+                return float(stored[state])
+        except Exception:
+            pass
+        return None
+
+    # ------------------------------------------------------------------
     # Step 1: build the authorize URL
     # ------------------------------------------------------------------
     def build_authorize_url(self) -> Dict[str, Any]:
@@ -63,10 +88,10 @@ class ThreadsOAuthManager:
         if not app_id:
             return {"status": "error", "detail": "THREADS_APP_ID غير مضبوط"}
         state = secrets.token_urlsafe(24)
-        self._pending_states[state] = time.time()
         # Prune stale states (>10 minutes)
         now = time.time()
         self._pending_states = {s: t for s, t in self._pending_states.items() if now - t < 600}
+        self._persist_state(state, now)
 
         params = {
             "client_id": app_id,
@@ -79,10 +104,20 @@ class ThreadsOAuthManager:
         return {"status": "success", "authorize_url": url, "state": state}
 
     def validate_state(self, state: Optional[str]) -> bool:
-        """Validates and consumes a pending OAuth state (CSRF guard)."""
-        if not state or state not in self._pending_states:
+        """Validates and consumes a pending OAuth state (CSRF guard).
+        Checks memory first, then the Supabase-persisted store (cross-instance)."""
+        if not state:
             return False
-        created = self._pending_states.pop(state)
+        created = self._pending_states.pop(state, None)
+        if created is None:
+            created = self._load_stored_state(state)
+            if created is not None:
+                try:
+                    supabase_db.set_setting("threads_oauth_states", {"states": {}, "updated_at": datetime.now(timezone.utc).isoformat()})
+                except Exception:
+                    pass
+        if created is None:
+            return False
         return (time.time() - created) < 600
 
     # ------------------------------------------------------------------

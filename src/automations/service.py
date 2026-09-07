@@ -1,4 +1,4 @@
-﻿from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -20,7 +20,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
             "description": "Monitors Reel comments for keywords [Ø³ÙˆØ´ÙŠØ§Ù„, ÙƒÙˆØ±Ø³, ØªÙØ§ØµÙŠÙ„], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
             "platform": "instagram",
             "trigger_type": "comment_to_dm",
-            "status": "active",
+            "status": "paused",
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Reels & Posts",
@@ -70,8 +70,8 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "icon": "ðŸ¤–",
                     "config": {
                         "tone": "egyptian_professional",
-                        "include_offer": True,
-                        "discount_code": "HUDHUD20"
+                        "include_offer": False,
+                        "discount_code": ""
                     },
                     "position": {"x": 750, "y": 140}
                 },
@@ -84,7 +84,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "icon": "ðŸ’¬",
                     "config": {
                         "cta_button": "Book Free 15-min Call",
-                        "calendar_link": "https://calendar.app.google/hudhud-meeting"
+                        "calendar_link": ""
                     },
                     "position": {"x": 1080, "y": 140}
                 },
@@ -118,7 +118,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
             "description": "Engages Facebook Page post and video reel comments with a public acknowledgement and an automated Messenger inquiry.",
             "platform": "facebook",
             "trigger_type": "comment_to_dm",
-            "status": "active",
+            "status": "paused",
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Facebook Posts & Reels",
@@ -275,6 +275,7 @@ class AutomationsService:
                 for item in cloud.get("workflows", []):
                     wf = Workflow(**item)
                     self._workflows[wf.id] = wf
+                self._sanitize_legacy_fabrications()
                 logger.info(f"Loaded {len(self._workflows)} workflows from Supabase app_settings")
                 return
             except Exception as e:
@@ -288,17 +289,40 @@ class AutomationsService:
                 for item in data.get("workflows", []):
                     wf = Workflow(**item)
                     self._workflows[wf.id] = wf
+                self._sanitize_legacy_fabrications()
                 logger.info(f"Loaded {len(self._workflows)} workflows from {STORE_PATH}")
                 return
             except Exception as e:
                 logger.error(f"Error loading automations store: {e}")
 
-        # 3. First-run defaults
+        # 3. First-run defaults (all PAUSED — zero-fabrication: nothing ships
+        #    active with invented booking links or discount codes)
         defaults = _get_default_workflows()
         for item in defaults:
             wf = Workflow(**item)
             self._workflows[wf.id] = wf
         self._save()
+
+    def _sanitize_legacy_fabrications(self):
+        """One-time cleanup of previously-shipped fabricated defaults that
+        could DM real customers a fake booking link / discount code."""
+        dirty = False
+        for wf in self._workflows.values():
+            for node in (wf.nodes or []):
+                cfg = node.get("config") or {}
+                if cfg.get("discount_code") == "HUDHUD20":
+                    cfg["discount_code"] = ""
+                    cfg["include_offer"] = False
+                    node["config"] = cfg
+                    dirty = True
+                if cfg.get("calendar_link") == "https://calendar.app.google/hudhud-meeting":
+                    cfg["calendar_link"] = ""
+                    cfg["cta_button"] = ""
+                    node["config"] = cfg
+                    dirty = True
+        if dirty:
+            logger.warning("Sanitized legacy fabricated automation defaults (HUDHUD20 / fake calendar link).")
+            self._save()
 
     def _save(self):
         """Persists workflows to Supabase (primary) and disk (cache)."""
@@ -574,10 +598,8 @@ class AutomationsService:
                 continue
 
             logger.info(f"Live Automation Triggered: Workflow '{wf.name}' for comment '{comment_id}'")
-            wf.executions_count += 1
-            wf.last_executed_at = datetime.now(timezone.utc).isoformat()
-            self._save()
 
+            step_results = {"like": None, "reply": None, "dm": None}
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     # 1. Like comment
@@ -585,15 +607,18 @@ class AutomationsService:
                         try:
                             rate_limiter.check_and_acquire(platform_str)
                             if "instagram" in platform_str and settings.META_INSTAGRAM_ACCOUNT_ID:
-                                await client.post(
+                                resp = await client.post(
                                     f"{settings.META_GRAPH_API_BASE_URL}/{settings.META_INSTAGRAM_ACCOUNT_ID}/likes",
                                     data={"comment_id": comment_id, "access_token": token}
                                 )
                             else:
-                                await client.post(
+                                resp = await client.post(
                                     f"{settings.META_GRAPH_API_BASE_URL}/{comment_id}/likes",
                                     data={"access_token": token}
                                 )
+                            step_results["like"] = resp.status_code == 200
+                            if resp.status_code != 200:
+                                logger.warning(f"Like failed for comment {comment_id}: HTTP {resp.status_code} {resp.text[:150]}")
                         except RateLimitExceededError:
                             logger.warning(f"Automation like skipped (rate limit) for comment {comment_id}")
                         except Exception as e:
@@ -603,10 +628,13 @@ class AutomationsService:
                     if wf.reply_comment and wf.reply_comment_text and comment_id:
                         try:
                             rate_limiter.check_and_acquire(platform_str)
-                            await client.post(
+                            resp = await client.post(
                                 f"{settings.META_GRAPH_API_BASE_URL}/{comment_id}/replies",
                                 data={"message": wf.reply_comment_text, "access_token": token}
                             )
+                            step_results["reply"] = resp.status_code == 200
+                            if resp.status_code != 200:
+                                logger.warning(f"Reply failed for comment {comment_id}: HTTP {resp.status_code} {resp.text[:150]}")
                         except RateLimitExceededError:
                             logger.warning(f"Automation reply skipped (rate limit) for comment {comment_id}")
                         except Exception as e:
@@ -622,10 +650,13 @@ class AutomationsService:
                                 msg_payload = {"text": wf.dm_text}
                                 if wf.dm_link:
                                     msg_payload["text"] += f"\n{wf.dm_link}"
-                                await client.post(
+                                resp = await client.post(
                                     f"{settings.META_GRAPH_API_BASE_URL}/{target_id}/messages?access_token={token}",
                                     json={"recipient": {"comment_id": comment_id}, "message": msg_payload}
                                 )
+                                step_results["dm"] = resp.status_code == 200
+                                if resp.status_code != 200:
+                                    logger.warning(f"DM failed for comment {comment_id}: HTTP {resp.status_code} {resp.text[:150]}")
                         except RateLimitExceededError:
                             logger.warning(f"Automation DM skipped (rate limit) for comment {comment_id}")
                         except Exception as e:
@@ -633,7 +664,23 @@ class AutomationsService:
             except Exception as e:
                 logger.error(f"Automation execution error for comment {comment_id}: {e}")
 
-            return {"status": "executed", "workflow_id": wf.id}
+            # ZERO-FABRICATION: executions_count increments only when at least
+            # one step REALLY succeeded; failures are surfaced in the result.
+            any_success = any(v is True for v in step_results.values())
+            attempted = [k for k, v in step_results.items() if v is not None]
+            if any_success:
+                wf.executions_count += 1
+                wf.last_executed_at = datetime.now(timezone.utc).isoformat()
+                self._save()
+            else:
+                logger.error(f"Automation '{wf.name}' completed with NO successful steps for comment {comment_id}: {step_results}")
+
+            return {
+                "status": "executed" if any_success else "failed",
+                "workflow_id": wf.id,
+                "steps": step_results,
+                "steps_attempted": attempted,
+            }
         return None
 
 

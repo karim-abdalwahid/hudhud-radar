@@ -44,37 +44,37 @@ class MetaTokenManager:
         """
         Step 1 (Hudhud Method):
         Exchange a short-lived user token (1-2 hours) for a 60-day Long-Lived User Token.
-        Gracefully falls back to the provided token if app_secret is not configured.
+        ZERO-FABRICATION: if the exchange fails we raise — returning the
+        short-lived token mislabeled as 60-day long-lived caused silent token
+        death within hours (previously stamped never_expires=True downstream).
         """
-        if self.app_id and self.app_secret and not self.app_secret.startswith("your-"):
-            url = f"{self.BASE_URL}/oauth/access_token"
-            params = {
-                "grant_type": "fb_exchange_token",
-                "client_id": self.app_id,
-                "client_secret": self.app_secret,
-                "fb_exchange_token": short_lived_token
-            }
-            try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    resp = await client.get(url, params=params)
-                    data = resp.json()
-                    if resp.status_code == 200 and "access_token" in data:
-                        return {
-                            "access_token": data["access_token"],
-                            "token_type": data.get("token_type", "bearer"),
-                            "expires_in": data.get("expires_in", 5184000)  # ~60 days
-                        }
-                    else:
-                        logger.warning(f"Meta token exchange returned: {resp.text}")
-            except Exception as e:
-                logger.warning(f"Error calling fb_exchange_token: {e}")
+        if not self.app_id or not self.app_secret or self.app_secret.startswith("your-"):
+            raise MetaAPIError("META_APP_ID/META_APP_SECRET مطلوبان لتبادل التوكن طويل الأمد — فشل صريح بدل تنكير التوكن القصير.")
 
-        # Fallback to direct token
-        return {
-            "access_token": short_lived_token,
-            "token_type": "bearer",
-            "expires_in": 5184000
+        url = f"{self.BASE_URL}/oauth/access_token"
+        params = {
+            "grant_type": "fb_exchange_token",
+            "client_id": self.app_id,
+            "client_secret": self.app_secret,
+            "fb_exchange_token": short_lived_token
         }
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                data = resp.json()
+                if resp.status_code == 200 and "access_token" in data:
+                    return {
+                        "access_token": data["access_token"],
+                        "token_type": data.get("token_type", "bearer"),
+                        "expires_in": data.get("expires_in", 5184000)  # ~60 days
+                    }
+                else:
+                    err = data.get("error", {}).get("message", resp.text[:200])
+                    logger.error(f"Meta token exchange failed: {err}")
+                    raise MetaAPIError(f"فشل تبادل التوكن طويل الأمد: {err}", status_code=resp.status_code)
+        except httpx.RequestError as e:
+            logger.error(f"Network error calling fb_exchange_token: {e}")
+            raise MetaAPIError(f"خطأ شبكة أثناء تبادل التوكن: {e}")
 
     async def get_permanent_page_tokens(self, long_lived_user_token: str) -> List[Dict[str, Any]]:
         """

@@ -94,8 +94,24 @@ class SupabaseManager:
                 logger.warning(f"Failed to connect to Supabase: {e}. Falling back to in-memory store.")
                 self.is_connected = False
         else:
-            logger.info("Supabase credentials not fully configured. Using local in-memory store for development/testing.")
+            if settings.APP_ENV.lower() == "production":
+                logger.error(
+                    "PRODUCTION WITHOUT SUPABASE: writes would vanish on serverless recycle. "
+                    "InMemoryDatabase will serve reads but REJECT writes (fail-loud, no silent data loss)."
+                )
+            else:
+                logger.info("Supabase credentials not fully configured. Using local in-memory store for development/testing.")
             self.is_connected = False
+
+    def _reject_production_memory_write(self, table: str, op: str):
+        """ZERO-FABRICATION: in production without Supabase, writes to the
+        in-memory DB would 'succeed' then evaporate on cold start. Fail loud
+        instead of silently losing data."""
+        if settings.APP_ENV.lower() == "production":
+            raise DatabaseConnectionError(
+                f"Production write rejected: Supabase is not connected; "
+                f"in-memory {op} on '{table}' would silently lose data on serverless."
+            )
 
     def insert(self, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Insert a row into the specified table."""
@@ -108,6 +124,7 @@ class SupabaseManager:
             except Exception as e:
                 logger.error(f"Error inserting into Supabase table {table}: {e}")
                 raise DatabaseConnectionError(f"Insert failed on table {table}: {e}")
+        self._reject_production_memory_write(table, "insert")
         return self.memory_db.insert(table, data)
 
     def upsert(self, table: str, data: Dict[str, Any], on_conflict: str) -> Dict[str, Any]:
@@ -125,6 +142,7 @@ class SupabaseManager:
             except Exception as e:
                 logger.error(f"Error upserting into Supabase table {table}: {e}")
                 raise DatabaseConnectionError(f"Upsert failed on table {table}: {e}")
+        self._reject_production_memory_write(table, "upsert")
         return self.memory_db.insert(table, data)
 
     def select(self, table: str, filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
@@ -153,6 +171,7 @@ class SupabaseManager:
             except Exception as e:
                 logger.error(f"Error updating Supabase table {table}: {e}")
                 raise DatabaseConnectionError(f"Update failed on table {table}: {e}")
+        self._reject_production_memory_write(table, "update")
         return self.memory_db.update(table, record_id, updates)
 
     def delete(self, table: str, record_id: str) -> bool:
@@ -163,6 +182,7 @@ class SupabaseManager:
                 return True
             except Exception as e:
                 logger.error(f"Error deleting from Supabase table {table}: {e}")
+        self._reject_production_memory_write(table, "delete")
         return self.memory_db.delete(table, record_id)
 
     def get_setting(self, key: str, default: Any = None) -> Any:
