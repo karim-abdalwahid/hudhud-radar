@@ -898,3 +898,41 @@ The user requested a full professional study of the entire project followed by a
 - **Phase 4 (Google OAuth)**: blocked on owner creating Google Cloud OAuth Client (steps handed over) — then configure Supabase Auth Google provider + backend session sync.
 - **Phase 6 (App Review package)**: comprehensive guide authored at PROJECT_BRAIN/Roadmap/META_APP_REVIEW_GUIDE.md (business verification steps, ready-to-paste permission justifications AR/EN, video spec, Tester workaround). Owner action: submit reviews.
 - **Gemini Vision tab**: instagram_manage_insights added by owner; IG insights API still returns #10 (scope propagation may take time) — profile fallback active meanwhile.
+
+---
+
+## [Entry 023] INCIDENT: Cross-Project Vercel Contamination — Full Restoration Completed + Permanent Safety Rules
+- **Timestamp**: 2026-09-07T15:00:00+03:00
+- **Actor**: User (كريم) & AI Agent (opencode/GLM)
+- **Status**: RESTORED & VERIFIED ✅ — RULES NOW PERMANENT
+
+### 1. What Happened (Honest Account)
+During domain-ownership debugging (hudhud-radar.vercel.app mystery), the agent temporarily linked the CLI to the OLD separate project hudhud (vercel link --project hudhud) to inspect its aliases. A later ercel --prod ran while the link was still on the old project — deploying the CURRENT codebase to the old project and stealing two of its production aliases:
+- hudhud-amber.vercel.app → moved to the accidental deployment (then removed → 404)
+- hudhud-karim-abdalwahids-projects.vercel.app → moved to the accidental deployment
+Additionally the agent removed/re-created the hudhud-radar-steel alias twice (self-healed via redeploys), and removed hudhud-radar-karim-abdalwahids-projects.vercel.app once (self-healed).
+
+### 2. Impact Assessment
+- Old project (hudhud): 1 accidental production deployment (e8hw→4hnti1orw), amber alias 404 for a period, one alias stolen. NO env vars touched. NO code/repo touched (deployments only).
+- Current project (hudhud-radar): steel alias briefly removed then restored by redeploy. Env sync was clean (23/23 to correct project).
+
+### 3. Restoration Performed (verified)
+1. hudhud-amber.vercel.app → re-aliased to hudhud-bqh9p37as (the 54d original production) ✓
+2. hudhud-karim-abdalwahids-projects.vercel.app → re-aliased to bqh9p37as ✓
+3. Accidental deployment hudhud-4hnti1orw DELETED ✓
+4. Live verification: amber serves the OLD app ("هدهد · نشر إنستغرام" with its own /login — exactly pre-accident), all 3 old-project aliases now point to bqh9p37as, accidental deployment returns 404 (gone).
+5. Current project intact: hudhud-radar-steel.vercel.app serves latest (marker v2-threads-setup, threads/cron configured, 33 brains).
+
+### 4. Root Cause
+The CLI link (.vercel/project.json) is per-directory and was temporarily switched to the old project during debugging; a subsequent deploy command reused it. PowerShell pipe + multi-project CLI context switching is error-prone.
+
+### 5. PERMANENT SAFETY RULES (binding on ALL future agents)
+- **R1**: NEVER run ercel link --project <other> or switch projects in the CLI for ANY reason. If another project must be studied, ASK THE OWNER first and use read-only dashboard instructions for THEM to perform.
+- **R2**: Before EVERY ercel --prod, verify: ercel project ls output matches "hudhud-radar → hudhud-radar-steel.vercel.app" AND ercel whoami = karimabdalwahid1w-7747. Abort otherwise.
+- **R3**: NEVER run alias remove/create, env rm/add, deployments remove, or domains commands unless the owner explicitly approved that exact operation in the current conversation.
+- **R4**: The old project hudhud (hudhud-amber.vercel.app) is OFF-LIMITS entirely — it belongs to a separate account/context per owner.
+- **R5**: The ONLY project this codebase deploys to: hudhud-radar (prj_yxGldzs2buJhSxS6MFdDm6K6zZtB, team karim-abdalwahids-projects, domain target: hudhud-radar.vercel.app — currently claimed by the owner's personal scope; owner handling it via dashboard).
+- **R6**: The working directory is exclusively C:\Users\Dell\Desktop\OpenCodeProjects\hudhud-radar. References to other local projects are for LEARNING only — never modify them.
+
+### 6. Outstanding (owner dashboard actions)
+- hudhud-radar.vercel.app domain is claimed by the owner's personal-scope duplicate project (serves an old build, no env vars). Owner steps: vercel.com → scope switcher (top-left) → personal account → project hudhud-radar → delete it (or remove the domain from its Settings→Domains) → then in team scope project hudhud-radar → Settings → Domains → Add hudhud-radar.vercel.app. After that the canonical domain serves the latest deployment.
