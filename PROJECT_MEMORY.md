@@ -936,3 +936,44 @@ The CLI link (.vercel/project.json) is per-directory and was temporarily switche
 
 ### 6. Outstanding (owner dashboard actions)
 - hudhud-radar.vercel.app domain is claimed by the owner's personal-scope duplicate project (serves an old build, no env vars). Owner steps: vercel.com → scope switcher (top-left) → personal account → project hudhud-radar → delete it (or remove the domain from its Settings→Domains) → then in team scope project hudhud-radar → Settings → Domains → Add hudhud-radar.vercel.app. After that the canonical domain serves the latest deployment.
+
+---
+
+## [Entry 024] Scope Mystery SOLVED: hudhud2 Scope Owns the Canonical Domain — Dual-Deployment Architecture Documented
+- **Timestamp**: 2026-09-07T16:00:00+03:00
+- **Actor**: User (كريم) & AI Agent (opencode/GLM)
+- **Status**: FULL CLARITY ✅
+
+### 1. The Resolution (owner provided dashboard screenshot info)
+The owner's latest production deployment shows:
+- URL: hudhud-radar-95pjt6zyu-hudhud2.vercel.app
+- Domain: hudhud-radar.vercel.app
+- Author: karim-abdalwahid (GitHub), source main@f55cc09
+
+**There is a THIRD Vercel scope named hudhud2** which:
+1. Owns the canonical domain hudhud-radar.vercel.app
+2. Is connected to GitHub (karim-abdalwahid/hudhud-radar main) — auto-deploys every push
+3. Had partial env vars (Supabase ✓, META ✓, GEMINI ✓ with its own working key) but was MISSING: THREADS_APP_ID/SECRET/REDIRECT_URI, CRON_SECRET, and the newest META_PAGE_ACCESS_TOKEN
+
+This explains the entire earlier "domain mystery": the canonical domain was serving old code because GitHub pushes went to hudhud2 (without env), while our CLI deploys went to the team scope (hudhud-radar-steel.vercel.app) with full env.
+
+### 2. Current Verified State (both scopes serve latest code f55cc09+)
+| Scope | Domain | Code | Env |
+|---|---|---|---|
+| hudhud2 (canonical) | hudhud-radar.vercel.app | v2-threads-setup ✓ | Supabase ✓ META ✓ GEMINI ✓ / **missing THREADS_* + CRON_SECRET** |
+| team (backup) | hudhud-radar-steel.vercel.app | v2-threads-setup ✓ | all 23 ✓ |
+
+Old project hudhud (hudhud-amber.vercel.app): fully restored to pre-incident state, serves its own login — DO NOT TOUCH (R4).
+
+### 3. Owner Action Provided
+scratch/vercel-env-hudhud2.txt generated with the 6 missing/updated values (THREADS_APP_ID, THREADS_APP_SECRET, THREADS_REDIRECT_URI, CRON_SECRET, newest META_PAGE_ACCESS_TOKEN, LLM_MODEL). Owner adds them at: vercel.com → hudhud2 scope → project hudhud-radar → Settings → Environment Variables. After that the canonical domain is 100% complete, and cron-job.org URLs can be switched from steel to the canonical domain.
+
+### 4. Architecture Decision (practical)
+- **Primary**: hudhud2 scope (owns domain + GitHub auto-deploy on every push — ideal).
+- **Backup**: team scope (steel) — our CLI deploys; may be retired by owner later.
+- Both share the SAME Supabase database (users/leads/providers identical) — no data split.
+- Auth on both works with the same credentials (karim@ebdamarketing.com verified admin on both).
+
+### 5. Rules Update (extends Entry 023)
+- **R7**: GitHub pushes auto-deploy to hudhud2 scope — always push working code only.
+- **R8**: Env var changes must be applied to BOTH scopes (or owner migrates fully to hudhud2).
