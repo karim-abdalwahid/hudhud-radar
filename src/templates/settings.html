@@ -231,13 +231,16 @@
                     </div>
 
                     <!-- Where to configure each redirect (clears the "Form can't be saved" confusion) -->
-                    <div style="margin-top:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:#1e40af; line-height:1.7;">
-                        <strong>📍 أين يُضبط كل رابط؟ (مهم — كل تطبيق منفصل)</strong><br>
-                        1️⃣ <b>تطبيق Threads</b> (2373862910115515) → Threads API use case → Configuration → Redirect URIs:<br>
+                    <div style="margin-top:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:#1e40af; line-height:1.8;">
+                        <strong>📍 إعداد فورم Threads في لوحة Meta (انسخ حرفياً):</strong><br>
+                        1️⃣ <b>Redirect Callback URL</b>:<br>
                         <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/api/threads/oauth/callback</code><br>
-                        2️⃣ <b>تطبيق Meta الرئيسي</b> (2092880431308591) → Facebook Login → Settings → Valid OAuth Redirect URIs:<br>
-                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/settings</code><br>
-                        ⚠️ عفواً وضح: رابط Threads لا يوضع أبداً في تطبيق فيسبوك الرئيسي — لهذا كان الفورم يرفض الحفظ.
+                        2️⃣ <b>Uninstall Callback URL</b>:<br>
+                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/api/threads/uninstall</code><br>
+                        3️⃣ <b>Delete Callback URL (إلزامي — فراغه هو سبب رفض الحفظ!)</b>:<br>
+                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/api/data-deletion</code><br>
+                        4️⃣ <b>App Secret</b>: سر تطبيق Threads نفسه (8827…) وليس سر تطبيق فيسبوك الرئيسي<br>
+                        ⚠️ ملحوظة: هذه الحقول الثلاثة تُضبط في <b>تطبيق Threads فقط</b> — تطبيق فيسبوك الرئيسي له إعداد منفصل تماماً (Facebook Login → Redirect: <code class="mono">https://hudhud-radar.vercel.app/settings</code>)
                     </div>
                 </div>
                 </div><!-- /set-tab-page-threads -->

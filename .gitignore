@@ -62,5 +62,6 @@ src/knowledge/automations_store.json
 src/knowledge/meta_live_cache.json
 .tempmediaStorage/
 
-# Knowledge base moved to Supabase kb_documents (Phase 5) — local files are dev-only
+# Knowledge base moved to Supabase kb_documents (Phase 5) ï¿½ local files are dev-only
 docs/KNOWLEDGE_BASE/*.md
+.vercel

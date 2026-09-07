@@ -392,6 +392,9 @@ async def health_check():
     return {
         "status": "online",
         "app_env": settings.APP_ENV,
+        "deploy_marker": "v2-threads-setup",
+        "threads_app_configured": bool(settings.THREADS_APP_ID and settings.THREADS_APP_SECRET),
+        "cron_configured": bool(settings.CRON_SECRET),
         "supabase_connected": supabase_db.is_connected,
         "database_backend": "Supabase Cloud" if supabase_db.is_connected else "In-Memory Store (Dev)",
         "kb_documents_loaded": len(knowledge_base.knowledge_cache),
