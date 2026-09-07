@@ -201,7 +201,7 @@ def register_compliance_routes(app: FastAPI):
 
         # Meta-required response schema (Data Deletion Request Callback spec)
         return JSONResponse(content={
-            "url": f"https://hudhud-radar.vercel.app/data-deletion?id={confirmation_code}",
+            "url": f"{settings.APP_BASE_URL.rstrip('/')}/data-deletion?id={confirmation_code}",
             "confirmation_code": confirmation_code,
         })
 

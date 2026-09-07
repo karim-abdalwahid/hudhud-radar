@@ -1,7 +1,8 @@
 """Live verification of all owner feedback fixes (canonical domain)."""
 import httpx
+import os
 
-BASE = "https://hudhud-radar.vercel.app"
+BASE = os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app")
 
 r = httpx.get(f"{BASE}/login", timeout=30)
 c = r.text

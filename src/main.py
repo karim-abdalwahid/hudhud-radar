@@ -1363,6 +1363,13 @@ def render_page_template(filename: str, request: Optional[Request] = None) -> HT
             content = content.replace('<html lang="en" dir="ltr">', '<html lang="ar" dir="rtl">')
         else:
             content = content.replace('<html lang="ar" dir="rtl">', '<html lang="en" dir="ltr">')
+        # Canonical origin injection: templates never hardcode the domain —
+        # window.HUDHUD_BASE_URL is the single source of truth for absolute URLs.
+        content = content.replace(
+            "<head>",
+            f"<head>\n    <script>window.HUDHUD_BASE_URL = \"{settings.APP_BASE_URL.rstrip('/')}\";</script>",
+            1,
+        )
         return HTMLResponse(content=content)
     return HTMLResponse(content=f"<h1>Page template '{filename}' not found</h1>", status_code=404)
 

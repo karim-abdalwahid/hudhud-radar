@@ -1,7 +1,7 @@
-"""FINAL comprehensive verification on the canonical domain after env completion."""
+﻿"""FINAL comprehensive verification on the canonical domain after env completion."""
 import httpx
 
-BASE = "https://hudhud-radar.vercel.app"
+BASE = os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app")
 
 print("═" * 60)
 print("FINAL VERIFICATION — hudhud-radar.vercel.app (canonical)")

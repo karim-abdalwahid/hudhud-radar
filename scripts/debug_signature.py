@@ -1,4 +1,4 @@
-"""Debug: verify which secret the production instance actually holds by
+﻿"""Debug: verify which secret the production instance actually holds by
 checking env source of truth, then test signature locally."""
 import base64
 import hashlib
@@ -28,7 +28,7 @@ payload = base64.urlsafe_b64encode(
 sig = base64.urlsafe_b64encode(hmac.new(THREADS_SECRET_ON_VERCEL.encode(), payload, hashlib.sha256).digest())
 sr = sig.decode() + "." + payload.decode()
 r = httpx.post(
-    "https://hudhud-radar.vercel.app/api/data-deletion",
+    os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app") + "/api/data-deletion",
     data={"signed_request": sr}, timeout=60,
 )
 print("with vercel threads secret:", r.status_code, r.json())

@@ -70,7 +70,7 @@ class ThreadsOAuthManager:
 
         params = {
             "client_id": app_id,
-            "redirect_uri": settings.THREADS_REDIRECT_URI,
+            "redirect_uri": settings.EFFECTIVE_THREADS_REDIRECT_URI,
             "response_type": "code",
             "scope": THREADS_SCOPES,
             "state": state,
@@ -102,7 +102,7 @@ class ThreadsOAuthManager:
                     "client_id": app_id,
                     "client_secret": app_secret,
                     "grant_type": "authorization_code",
-                    "redirect_uri": settings.THREADS_REDIRECT_URI,
+                    "redirect_uri": settings.EFFECTIVE_THREADS_REDIRECT_URI,
                     "code": code,
                 },
             )

@@ -75,7 +75,7 @@
                 <div class="panel-section">
                     <div class="panel-header">
                         <div>
-                            <h2 class="panel-title" data-i18n="set.diag_title">1. Meta Graph API (v21.0) Diagnostics</h2>
+                            <h2 class="panel-title" data-i18n="set.diag_title">1. Meta Graph API (v26.0) Diagnostics</h2>
                             <div class="panel-desc" data-i18n="set.diag_desc">Official connection health for Facebook Page and Instagram Business Account</div>
                         </div>
                         <div id="live-connection-badge" class="badge badge-pending" style="font-size: 13px; padding: 4px 12px;" data-i18n="status.checking">Checking...</div>
@@ -213,7 +213,7 @@
                     <div style="display: flex; flex-direction: column; gap: 12px;">
                         <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
                             <div style="color: var(--text-secondary); margin-bottom: 6px;">Threads Callback URL (أضفه في تطبيق Threads):</div>
-                            <code class="mono" style="color: var(--accent-blue); word-break: break-all;" id="threads-callback-display">https://hudhud-radar.vercel.app/api/threads/oauth/callback</code>
+                            <code class="mono" style="color: var(--accent-blue); word-break: break-all;" id="threads-callback-display" data-base-url="/api/threads/oauth/callback"></code>
                         </div>
 
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -234,13 +234,13 @@
                     <div style="margin-top:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:#1e40af; line-height:1.8;">
                         <strong>📍 إعداد فورم Threads في لوحة Meta (انسخ حرفياً):</strong><br>
                         1️⃣ <b>Redirect Callback URL</b>:<br>
-                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/api/threads/oauth/callback</code><br>
+                        <code class="mono" style="direction:ltr; display:inline-block;" data-base-url="/api/threads/oauth/callback"></code><br>
                         2️⃣ <b>Uninstall Callback URL</b>:<br>
-                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/api/threads/uninstall</code><br>
+                        <code class="mono" style="direction:ltr; display:inline-block;" data-base-url="/api/threads/uninstall"></code><br>
                         3️⃣ <b>Delete Callback URL (إلزامي — فراغه هو سبب رفض الحفظ!)</b>:<br>
-                        <code class="mono" style="direction:ltr; display:inline-block;">https://hudhud-radar.vercel.app/api/data-deletion</code><br>
+                        <code class="mono" style="direction:ltr; display:inline-block;" data-base-url="/api/data-deletion"></code><br>
                         4️⃣ <b>App Secret</b>: سر تطبيق Threads نفسه (8827…) وليس سر تطبيق فيسبوك الرئيسي<br>
-                        ⚠️ ملحوظة: هذه الحقول الثلاثة تُضبط في <b>تطبيق Threads فقط</b> — تطبيق فيسبوك الرئيسي له إعداد منفصل تماماً (Facebook Login → Redirect: <code class="mono">https://hudhud-radar.vercel.app/settings</code>)
+                        ⚠️ ملحوظة: هذه الحقول الثلاثة تُضبط في <b>تطبيق Threads فقط</b> — تطبيق فيسبوك الرئيسي له إعداد منفصل تماماً (Facebook Login → Redirect: <code class="mono" data-base-url="/settings"></code>)
                     </div>
                 </div>
                 </div><!-- /set-tab-page-threads -->
@@ -306,7 +306,7 @@
                         <div style="background: var(--bg-input); padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
                             <div style="color: var(--text-secondary); margin-bottom: 4px;" data-i18n="set.callback_label">Verified Meta Webhook Callback URL:</div>
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                                <code id="webhook-callback-display" class="mono" style="color: var(--accent-blue); word-break: break-all;">https://hudhud-radar.vercel.app/api/webhook/meta</code>
+                                <code id="webhook-callback-display" class="mono" style="color: var(--accent-blue); word-break: break-all;" data-base-url="/api/webhook/meta"></code>
                                 <button type="button" class="btn-secondary" style="padding: 4px 10px; font-size: 12px; cursor: pointer;" onclick="copyWebhookUrl()">📋 Copy</button>
                             </div>
                         </div>
@@ -394,7 +394,7 @@
 
         function copyWebhookUrl() {
             const display = document.getElementById('webhook-callback-display');
-            const url = display ? display.textContent.trim() : 'https://hudhud-radar.vercel.app/api/webhook/meta';
+            const url = display ? display.textContent.trim() : (window.location.origin + '/api/webhook/meta');
             navigator.clipboard.writeText(url).then(() => {
                 const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
                 alert(isAr ? '✅ تم نسخ رابط الـ Webhook إلى الحافظة!' : '✅ Webhook URL copied to clipboard!');
@@ -402,6 +402,15 @@
                 prompt("Copy Webhook URL:", url);
             });
         }
+
+        // Populate every [data-base-url] element with the canonical origin served by the server.
+        // Single source of truth: settings.APP_BASE_URL injected below — no hardcoded domains.
+        (function fillBaseUrls() {
+            const base = window.HUDHUD_BASE_URL || window.location.origin;
+            document.querySelectorAll('[data-base-url]').forEach(el => {
+                el.textContent = base.replace(/\/$/, '') + el.getAttribute('data-base-url');
+            });
+        })();
 
         async function saveMetaConfig() {
             const token = document.getElementById('input-token').value.trim();
@@ -481,7 +490,7 @@
             const appId = (document.getElementById('input-app-id') && document.getElementById('input-app-id').value.trim()) || '2092880431308591';
             const redirectUri = window.location.origin + '/settings';
             const scopes = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,pages_read_user_content,read_insights,instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish';
-            let oauthUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+            let oauthUrl = `https://www.facebook.com/v26.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
             
             if (forceSwitch) {
                 oauthUrl += '&auth_type=reauthenticate';

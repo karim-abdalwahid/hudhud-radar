@@ -1,4 +1,4 @@
-"""Test which secret the production instance signs with (from pulled Vercel env)."""
+﻿"""Test which secret the production instance signs with (from pulled Vercel env)."""
 import base64
 import hashlib
 import hmac
@@ -14,7 +14,7 @@ ms = os.getenv("META_APP_SECRET", "")
 print("Vercel THREADS secret prefix:", ts[:12] if ts else "MISSING")
 print("Vercel META secret prefix:", ms[:12] if ms else "MISSING")
 
-BASE = "https://hudhud-radar.vercel.app"
+BASE = os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app")
 for name, sec in [("threads", ts), ("meta", ms)]:
     if not sec:
         continue

@@ -1,7 +1,8 @@
 """Audit the hudhud2-scope deployment (canonical domain): what env vars are missing."""
 import httpx
+import os
 
-BASE = "https://hudhud-radar.vercel.app"
+BASE = os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app")
 s = httpx.Client(timeout=60)
 
 # Login (Supabase users table is shared → same credentials work)

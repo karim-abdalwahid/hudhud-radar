@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     HOST: str = Field(default="0.0.0.0", description="Server host")
     SECRET_KEY: str = Field(default="dev-secret-key-change-in-production-32-chars-min", description="App secret key")
 
+    # Canonical public origin (single source of truth for every absolute URL
+    # the app emits: OAuth redirects, compliance callbacks, templates, scripts).
+    # Domain swap = change this env var in BOTH Vercel scopes + app dashboards.
+    APP_BASE_URL: str = Field(
+        default="https://hudhud-radar.vercel.app",
+        description="Canonical public origin without trailing slash",
+    )
+
     # Supabase Settings
     SUPABASE_URL: Optional[str] = Field(default=None, description="Supabase project URL")
     SUPABASE_KEY: Optional[str] = Field(default=None, description="Supabase public/anon key")
@@ -42,11 +50,15 @@ class Settings(BaseSettings):
     # Threads App (separate from the main Meta app — Threads uses its own OAuth)
     THREADS_APP_ID: Optional[str] = Field(default=None, description="Threads App ID")
     THREADS_APP_SECRET: Optional[str] = Field(default=None, description="Threads App Secret")
-    THREADS_REDIRECT_URI: str = Field(
-        default="https://hudhud-radar.vercel.app/api/threads/oauth/callback",
-        description="Threads OAuth redirect URI",
+    THREADS_REDIRECT_URI: Optional[str] = Field(
+        default=None,
+        description="Threads OAuth redirect URI (defaults to APP_BASE_URL/api/threads/oauth/callback)",
     )
     THREADS_BASE_URL: str = Field(default="https://graph.threads.net/v1.0", description="Threads Graph API base URL")
+
+    @property
+    def EFFECTIVE_THREADS_REDIRECT_URI(self) -> str:
+        return self.THREADS_REDIRECT_URI or f"{self.APP_BASE_URL.rstrip('/')}/api/threads/oauth/callback"
 
     # Rate Limiting & Safety Governance
     MAX_MESSAGES_PER_MINUTE: int = Field(default=20, description="Maximum outbound messages per minute")

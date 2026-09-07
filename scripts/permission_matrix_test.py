@@ -7,8 +7,9 @@ import json
 import sys
 
 import httpx
+import os
 
-BASE = "https://hudhud-radar-steel.vercel.app"
+BASE = os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app")
 
 ADMIN = {"email": "admin.test@hudhud.test", "password": "AdminTest#2026"}
 USER = {"email": "user.test@hudhud.test", "password": "UserTest#2026"}

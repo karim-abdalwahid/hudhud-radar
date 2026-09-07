@@ -2,6 +2,7 @@
 import sys
 
 import httpx
+import os
 
 TOKEN = "sbp_fc6bd018f43733b522f2326ecac2b54e8ce20e7f"
 REF = "yncxwcvxssvnjffrvxib"
@@ -16,9 +17,9 @@ def main():
         "external_google_enabled": True,
         "external_google_client_id": CLIENT_ID,
         "external_google_secret": CLIENT_SECRET,
-        "site_url": "https://hudhud-radar.vercel.app",
+        "site_url": os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app"),
         "redirect_allow_list": [
-            "https://hudhud-radar.vercel.app/**",
+            os.environ.get("APP_BASE_URL", "https://hudhud-radar.vercel.app") + "/**",
             "http://localhost:8000/**",
         ],
     }
