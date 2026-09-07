@@ -20,6 +20,9 @@ FORBIDDEN_SNIPPETS = [
     "Alex Johnson", "alex_agency", "Sarah M.", "Hot Lead (94% Intent)",
     "annual agency growth tier", "mid.simulated", "HUDHUD20",
     "hudhud-meeting", "hudhud.ai/offer", "hudhud.ai/booking",
+    # fabricated claim descriptions (state asserted without measurement)
+    "100% grounded", "Zero 24h window violations recorded",
+    "No rate limiting detected",
 ]
 
 
