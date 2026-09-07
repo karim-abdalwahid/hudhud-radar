@@ -33,6 +33,10 @@ def _isolated_user_store():
     kb_mod.knowledge_base._mode = "file"
     kb_mod.knowledge_base.kb_dir = Path(_tmp_kb_dir)
     kb_mod.knowledge_base.reload()
+    # LLM: force deterministic fallback heuristics (no live Gemini calls)
+    from src.config import settings as _settings
+    _orig_gemini_key = _settings.GEMINI_API_KEY
+    _settings.GEMINI_API_KEY = None
     # Webhook dedup: force memory-only for ALL instances (class-level) — the live
     # processed_events table now exists, so tests must never round-trip to it.
     from src.core.event_dedup import EventDeduplicator, event_deduplicator
@@ -48,6 +52,7 @@ def _isolated_user_store():
     AutomationsService._save = lambda self: None
     yield
     # Restore original state
+    _settings.GEMINI_API_KEY = _orig_gemini_key
     EventDeduplicator._db_ready = _orig_db_ready
     event_deduplicator._db_disabled = False
     for name, fn in (

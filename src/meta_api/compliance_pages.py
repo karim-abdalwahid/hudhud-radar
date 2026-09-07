@@ -7,7 +7,7 @@ Registered explicitly via register_compliance_routes(app) to avoid circular impo
 """
 from typing import Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -15,8 +15,8 @@ from src.core.supabase_client import supabase_db
 from src.core.logger import logger
 
 
+# Kept for backward compatibility with the JSON admin format
 class DataDeletionCallback(BaseModel):
-    """Meta's signed_request style payload is parsed minimally here (dev-friendly)."""
     user_id: Optional[str] = None
     email: Optional[str] = None
 
@@ -113,38 +113,146 @@ def register_compliance_routes(app: FastAPI):
         return HTMLResponse(content=_DELETION_HTML)
 
     @app.post("/api/data-deletion", tags=["Compliance"])
-    async def data_deletion_callback(payload: DataDeletionCallback):
+    async def data_deletion_callback(request: Request):
         """
-        Data deletion callback. In production this receives Meta's signed_request;
-        here we support explicit user_id/email deletion with audit logging.
+        Meta Data Deletion Request Callback (REQUIRED by Meta platform terms —
+        this exact endpoint URL goes in the Threads API "Delete data callback URL"
+        field and App settings → Basic → Data deletion).
+
+        Supports Meta's official form-encoded `signed_request` format AND our
+        JSON admin format. Responds with the Meta-required schema:
+        {"url": <status page>, "confirmation_code": <code>}
         """
-        if not payload.user_id and not payload.email:
-            return JSONResponse(status_code=400, content={"detail": "user_id or email required"})
+        import base64
+        import hashlib
+        import hmac as hmac_mod
+        import json as json_mod
+        import secrets as secrets_mod
+
+        from src.config import settings
+
+        content_type = request.headers.get("content-type", "")
+        user_id: Optional[str] = None
+        user_email: Optional[str] = None
+
+        if "application/json" in content_type:
+            try:
+                payload = await request.json()
+            except Exception:
+                return JSONResponse(status_code=400, content={"error": "invalid JSON"})
+            user_id = payload.get("user_id")
+            user_email = payload.get("email")
+        else:
+            form = await request.form()
+            signed_request = form.get("signed_request")
+            if not signed_request:
+                return JSONResponse(status_code=400, content={"error": "signed_request required"})
+            # Verify against either app secret (callback may be configured on either app)
+            try:
+                enc_sig, enc_payload = str(signed_request).split(".", 1)
+                sig = base64.urlsafe_b64decode(enc_sig + "=" * (-len(enc_sig) % 4))
+                raw = base64.urlsafe_b64decode(enc_payload + "=" * (-len(enc_payload) % 4))
+                data = json_mod.loads(raw)
+                verified = False
+                for secret in (settings.THREADS_APP_SECRET, settings.META_APP_SECRET):
+                    if not secret:
+                        continue
+                    expected = hmac_mod.new(secret.encode(), enc_payload.encode("ascii"), hashlib.sha256).digest()
+                    if hmac_mod.compare_digest(sig, expected):
+                        verified = True
+                        break
+                if not verified:
+                    return JSONResponse(status_code=403, content={"error": "invalid signed_request signature"})
+                user_id = str(data.get("user_id")) if data.get("user_id") else None
+            except Exception as e:
+                logger.error(f"Signed request parse failed: {e}")
+                return JSONResponse(status_code=400, content={"error": "malformed signed_request"})
+
+        if not user_id and not user_email:
+            # Meta may send an app-scoped id we cannot map to a local user —
+            # log it for manual action and still return a compliant confirmation.
+            logger.warning("Data deletion request without mappable user id")
 
         deleted = {"users": 0}
         try:
-            if payload.user_id:
-                supabase_db.delete("users", payload.user_id)
-                deleted["users"] = 1
-            elif payload.email:
-                rows = supabase_db.select("users", {"email": payload.email.lower()}) or []
+            if user_id:
+                try:
+                    supabase_db.delete("users", user_id)
+                    deleted["users"] += 1
+                except Exception:
+                    pass
+            if user_email:
+                rows = supabase_db.select("users", {"email": user_email.lower()}) or []
                 for u in rows:
                     supabase_db.delete("users", u["id"])
                     deleted["users"] += 1
         except Exception as e:
             logger.error(f"Data deletion error: {e}")
-            return JSONResponse(status_code=500, content={"detail": "deletion failed"})
+            return JSONResponse(status_code=500, content={"error": "deletion failed"})
 
+        confirmation_code = secrets_mod.token_hex(8)
         supabase_db.insert("activity_logs", {
             "action_type": "data_deletion_request",
             "platform": "system",
-            "target_id": payload.user_id or payload.email or "",
+            "target_id": user_id or user_email or "unknown",
             "status": "success",
-            "details": {"deleted": deleted},
+            "details": {"deleted": deleted, "confirmation_code": confirmation_code},
         })
-        return {
-            "status": "success",
-            "deleted": deleted,
-            "confirmation_code": f"del-{payload.user_id or hash(payload.email or '')}",
-            "message": "تم استلام طلب الحذف وتنفيذه وفق سياسة البيانات",
-        }
+
+        # Meta-required response schema (Data Deletion Request Callback spec)
+        return JSONResponse(content={
+            "url": f"https://hudhud-radar.vercel.app/data-deletion?id={confirmation_code}",
+            "confirmation_code": confirmation_code,
+        })
+
+    @app.post("/api/threads/uninstall", tags=["Compliance"])
+    async def threads_uninstall_callback(request: Request):
+        """
+        Threads "Uninstall Callback URL" target. Meta POSTs a signed_request
+        when a user removes the app. Verifies signature, clears stored
+        Threads credentials, and logs the event. Returns 200 as required.
+        """
+        import base64
+        import hashlib
+        import hmac as hmac_mod
+        import json as json_mod
+
+        from src.config import settings
+
+        try:
+            form = await request.form()
+            signed_request = form.get("signed_request")
+            if not signed_request:
+                return JSONResponse(status_code=400, content={"error": "signed_request required"})
+            enc_sig, enc_payload = str(signed_request).split(".", 1)
+            sig = base64.urlsafe_b64decode(enc_sig + "=" * (-len(enc_sig) % 4))
+            raw = base64.urlsafe_b64decode(enc_payload + "=" * (-len(enc_payload) % 4))
+            data = json_mod.loads(raw)
+            verified = False
+            for secret in (settings.THREADS_APP_SECRET, settings.META_APP_SECRET):
+                if not secret:
+                    continue
+                expected = hmac_mod.new(secret.encode(), enc_payload.encode("ascii"), hashlib.sha256).digest()
+                if hmac_mod.compare_digest(sig, expected):
+                    verified = True
+                    break
+            if not verified:
+                return JSONResponse(status_code=403, content={"error": "invalid signature"})
+
+            # The user uninstalled → revoke stored Threads token (security)
+            try:
+                supabase_db.set_setting("threads_credentials", {})
+            except Exception:
+                pass
+
+            supabase_db.insert("activity_logs", {
+                "action_type": "threads_app_uninstalled",
+                "platform": "system",
+                "target_id": str(data.get("user_id", "")),
+                "status": "success",
+                "details": {"note": "Threads credentials cleared"},
+            })
+            return {}
+        except Exception as e:
+            logger.error(f"Uninstall callback error: {e}")
+            return JSONResponse(status_code=400, content={"error": "callback failed"})
