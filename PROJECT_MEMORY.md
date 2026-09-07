@@ -1064,3 +1064,31 @@ scratch/vercel-env-hudhud2.txt generated with the 6 missing/updated values (THRE
 ### 7. Rules Reinforced
 - R9: No hardcoded domains anywhere — APP_BASE_URL is the only origin source (backend settings / window.HUDHUD_BASE_URL frontend / env for scripts).
 - R10: ZERO-FABRICATION is absolute: no mock receipts, no fake fallbacks, no mislabeled tokens, no invented defaults; failures surface honestly (status skipped/failed + reason).
+
+---
+
+## [Entry 027] Site-Wide Frontend Fabrications Sweep — All Dashboard Pages Cleaned + Guard Tests
+- **Timestamp**: 2026-09-07T22:30:00+03:00
+- **Actor**: User & AI Agent (opencode/GLM)
+- **Status**: LIVE ON PRODUCTION — 121/121 tests, all 8 dashboard pages verified CLEAN live
+
+### 1. Owner Escalation (honest accounting)
+Owner found leftover demo content (Alex Johnson inbox scaffold) AFTER agent's earlier "site cleaned" claim. Root cause: Phase C covered backend data paths systematically but the static HTML/JS content of dashboard templates was never swept page-by-page. Lesson adopted: template-content sweep is now a permanent automated guard (not a one-off manual pass).
+
+### 2. What Was Found & Fixed (commits e929313, bdfe074, 3f0bfc6)
+- **inbox.html**: hardcoded demo persona "Alex Johnson"/@alex_agency + "Hot Lead (94% Intent)" badge + invented buying-need text + fake "3.2s" AI response times → honest empty state rendered IMMEDIATELY on DOMContentLoaded (before fetch); agent badge shows real label without invented latency; lead-panel-need shows '—' (no data source yet).
+- **automations.html**: KPI strip hardcoded "3 workflows / 3 active / 265 executions / ~18.5 hrs saved" → zeros, real values from /api/automations on load; "Time Saved" card DELETED entirely (no backend metric exists — pure fabrication); new-rule form prefilled with fake "https://hudhud.ai/offer" link → empty; inspector placeholder hudhud.ai/booking → neutral.
+- **overview.html**: "2 Channels Live" hardcoded → computed from REAL connected channels (page_id + instagram_account_id from /api/meta/status); default "Active" → "—".
+- **knowledge.html**: "Active & Live" sync claim + "100% Grounded" accuracy claim → honest labels "Manual & On-Demand" / "Source-Only" (policy, not a measured metric); EN+AR i18n updated.
+- **identity.html**: "≥ 70% Confidence" hardcoded BUT actual production setting is 60% — REAL drift bug; now /api/identity/queue returns policy{manual_confirmation_required, auto_link_threshold_percent, queue_review_threshold_percent} from settings and page renders the real values.
+- **analytics.html**: "100%" compliance + agent-rate hardcoded → computed from REAL logs (statistics_engine now returns ai_agent_reply_rate_percent + window_compliance_percent; '—' when unavailable); RCA section static claims ("No rate limiting detected. Zero 24h window violations", "100% grounded...without hallucination") → RCA findings container now renders REAL failure_reasons_breakdown from activity_logs (or honest empty/pending states); orphaned i18n keys removed EN+AR.
+
+### 3. Guard Rail (permanent)
+tests/test_template_fabrications.py — site-wide sweep across ALL 10 dashboard pages asserting FORBIDDEN_SNIPPETS never return (Alex Johnson, Sarah M., HUDHUD20, hudhud.ai/*, "100% grounded", "Zero 24h window violations", "No rate limiting detected", mid.simulated, ...), no hardcoded percentage KPIs in metric-val elements, automations KPIs start at 0, analytics honest dashes, identity thresholds from backend. Excludes PUBLIC marketing pages (landing/auth demo cards are intentional product showcase per Entry 022).
+
+### 4. Verification
+- 121/121 unit tests. Live check on production (all authenticated): automations/overview(dashboard)/knowledge/identity/analytics/inbox/studio/leads = 200 CLEAN (pattern scan for every removed fabrication).
+
+### 5. Rules Reinforced
+- R11: Dashboard UI must never ship fabricated numbers/personas/claims — every displayed metric either comes from an API or shows 0/—/honest-label until real data exists. New templates require the sweep test to pass (CI gate).
+- R12: When the owner reports an issue, first re-scan the WHOLE class of that issue everywhere (not just the reported instance) — user-visible trust is the product.
