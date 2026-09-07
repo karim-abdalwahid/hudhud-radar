@@ -4,6 +4,7 @@ Generates viral, engaging Facebook & Instagram posts, Reel scripts, and Story se
 Adheres to Egyptian/Modern Arabic marketing voice, AIDA formula, and conversational CTAs.
 """
 from typing import Dict, Any, Optional, List
+import asyncio
 import json
 import httpx
 
@@ -62,20 +63,33 @@ class ContentEngine:
             }
         }
 
+        # Free-tier Gemini intermittently returns 503 (model overloaded) —
+        # retry transient failures before falling back to templates.
+        resp = None
         async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates") or []
-                parts = (candidates[0].get("content") or {}).get("parts") if candidates else None
-                raw_text = "".join(p.get("text", "") for p in (parts or []) if isinstance(p, dict)).strip()
-                if not raw_text:
-                    logger.warning(f"Gemini returned empty text (finishReason={candidates[0].get('finishReason') if candidates else 'none'})")
-                    return None
-                return self._parse_gemini_response(raw_text, req)
-            else:
-                logger.warning(f"Gemini API returned code {resp.status_code}: {resp.text[:300]}")
+            for attempt in range(3):
+                try:
+                    resp = await client.post(url, headers=headers, json=payload)
+                except httpx.RequestError:
+                    resp = None
+                if resp is not None and resp.status_code == 200:
+                    break
+                if resp is None or resp.status_code not in (500, 502, 503, 504):
+                    break
+                await asyncio.sleep(1.5 * (attempt + 1))
+
+        if resp is not None and resp.status_code == 200:
+            data = resp.json()
+            candidates = data.get("candidates") or []
+            parts = (candidates[0].get("content") or {}).get("parts") if candidates else None
+            raw_text = "".join(p.get("text", "") for p in (parts or []) if isinstance(p, dict)).strip()
+            if not raw_text:
+                logger.warning(f"Gemini returned empty text (finishReason={candidates[0].get('finishReason') if candidates else 'none'})")
                 return None
+            return self._parse_gemini_response(raw_text, req)
+        else:
+            logger.warning(f"Gemini API returned code {resp.status_code if resp is not None else 'network'}: {resp.text[:300] if resp is not None else 'request error'}")
+            return None
 
     def _build_gemini_prompt(self, req: ContentGenerationRequest) -> str:
         cta_word = req.cta_keyword or "ابدأ"
