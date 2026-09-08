@@ -16,7 +16,29 @@ from fastapi.responses import HTMLResponse
 
 from src.config import settings
 from src.core.http_utils import TEMPLATES_DIR
+from src.core.logger import logger
+from src.core.supabase_client import supabase_db
 from src.core.modules import module_registry, NavEntry, render_sidebar_nav
+
+
+def render_module_page(html: str, request: "Request") -> HTMLResponse:
+    """Serves a module-provided full HTML document with the registry sidebar
+    injected (shared chrome) — used by module-owned pages like /users."""
+    import re as _re
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    token = request.cookies.get(SESSION_COOKIE_NAME) if request else None
+    session = verify_session_token(token) if token else None
+    is_admin = bool(session and session.get("role") == "admin")
+    html = html.replace(
+        "<head>",
+        '<head>\n    <script>window.HUDHUD_BASE_URL = "' + settings.APP_BASE_URL.rstrip("/") + '";</script>',
+        1,
+    )
+    nav_match = _re.search(r'<nav class="sidebar-nav">.*?</nav>', html, _re.DOTALL)
+    if nav_match:
+        rendered = render_sidebar_nav(request.url.path, is_admin)
+        html = html[:nav_match.start()] + rendered + html[nav_match.end():]
+    return HTMLResponse(content=html)
 
 
 def _render_page_template(filename: str, request: Optional[Request] = None,
@@ -80,6 +102,29 @@ def _render_page_template(filename: str, request: Optional[Request] = None,
 
 
 def register(app: FastAPI) -> None:
+    # WS-E: lightweight internal traffic log for dashboard pages only
+    # (no tracking cookies, no third-party scripts — disclosed in Privacy §9)
+    @app.middleware("http")
+    async def _traffic_log_middleware(request: Request, call_next):
+        path = request.url.path
+        is_dashboard_page = not path.startswith(("/api/", "/static", "/webhooks")) \
+            and "." not in path.rsplit("/", 1)[-1] \
+            and path not in ("/terms", "/privacy", "/data-deletion", "/health")
+        response = await call_next(request)
+        if is_dashboard_page and response.status_code < 400:
+            try:
+                from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+                token = request.cookies.get(SESSION_COOKIE_NAME)
+                session = verify_session_token(token) if token else None
+                supabase_db.insert("site_traffic", {
+                    "path": path,
+                    "user_id": session.get("sub") if session else None,
+                    "is_admin": bool(session and session.get("role") == "admin"),
+                })
+            except Exception as e:
+                logger.debug(f"traffic log skipped: {e}")
+        return response
+
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def page_landing(request: Request):
         """SendRad-style World-Class Marketing & Feature Landing Page."""

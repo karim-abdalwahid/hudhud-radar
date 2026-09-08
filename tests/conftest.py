@@ -65,6 +65,16 @@ def _isolated_user_store():
         del auth_mod.user_store._memory_fallback
 
 
+@pytest.fixture(autouse=True)
+def _clear_auth_limiter_per_test():
+    """Tests register repeatedly from the same TestClient IP; the auth rate
+    limiter would trip 429 mid-suite. Clear it before EVERY test."""
+    from src.core import auth as _auth
+    _auth.auth_limiter._history.clear()
+    yield
+    _auth.auth_limiter._history.clear()
+
+
 @pytest.fixture(scope="session")
 def admin_creds():
     """Registers exactly one admin user (first user becomes admin) for the session."""
