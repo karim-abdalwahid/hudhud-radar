@@ -59,9 +59,14 @@ async def cron_scheduler_tick(request: Request):
     """
     Cron-safe GET trigger for the content scheduler (serverless environments
     have no background loop). Publishes all posts whose scheduled_for <= now.
+    WS-F: fires a notification when real publishing happened.
     """
     _verify_cron_secret(request)
     results = await content_scheduler.check_and_publish_due_posts()
+    if results:
+        from src.modules.notifications.hooks import _notify_admin
+        _notify_admin("📣 نشر محتوى مجدول", f"تم نشر {len(results)} منشور(ات) مجدولة",
+                      "success", {"job": "scheduler_tick", "count": len(results)})
     return {"status": "success", "due_posts_processed": len(results), "details": results}
 
 
@@ -69,7 +74,10 @@ async def cron_scheduler_tick(request: Request):
 async def cron_insights_sync(request: Request):
     """Cron trigger for daily Meta Insights sync (Facebook + Instagram metrics)."""
     _verify_cron_secret(request)
-    return await meta_insights_sync.sync_recent_metrics(days=7)
+    result = await meta_insights_sync.sync_recent_metrics(days=7)
+    from src.modules.notifications.hooks import notify_sync_result
+    notify_sync_result("insights", result)
+    return result
 
 
 @router.get("/api/admin/alerts", tags=["System"])

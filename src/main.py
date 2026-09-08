@@ -197,6 +197,7 @@ from src.modules import (  # noqa: E402
     health, webhooks, leads, identity, analytics, meta,
     content, cron_admin, ai, threads_marketing, knowledge, automations,
 )
+from src.modules import notifications as notifications_module  # noqa: E402
 from src.modules.compliance import register_compliance_routes  # noqa: E402
 from src.modules import legal as _legal
 
@@ -215,5 +216,6 @@ ai.register(app)
 threads_marketing.register(app)
 knowledge.register(app)
 automations.register(app)
+notifications_module.register(app)
 register_compliance_routes(app)
 _legal.register(app)

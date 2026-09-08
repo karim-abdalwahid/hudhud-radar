@@ -250,12 +250,97 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
+// --------------------------------------------------------------------
+// In-app notifications bell (WS-F) — polls /api/notifications every 60s,
+// renders a dropdown from the app-topbar on dashboard pages.
+// --------------------------------------------------------------------
+let _notifPolling = null;
+
+function injectNotificationsBell() {
+    // Only dashboard pages (topbar exists there); skip landing/auth
+    const topbar = document.querySelector('.app-topbar');
+    if (!topbar || document.getElementById('hudhud-bell')) return;
+
+    const wrap = document.createElement('div');
+    wrap.id = 'hudhud-bell';
+    wrap.style.cssText = 'position:relative;margin-inline-start:auto;display:flex;align-items:center;gap:10px;';
+    wrap.innerHTML = `
+        <button id="hudhud-bell-btn" style="position:relative;background:none;border:1px solid var(--border-default);
+            border-radius:12px;padding:8px 11px;cursor:pointer;font-size:16px;" title="Notifications">🔔
+            <span id="hudhud-bell-badge" style="display:none;position:absolute;top:-6px;inset-inline-end:-6px;
+                background:#dc2626;color:#fff;border-radius:99px;font-size:10.5px;font-weight:800;
+                padding:1px 6px;min-width:18px;text-align:center;">0</span>
+        </button>
+        <div id="hudhud-bell-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);
+            inset-inline-end:0;width:340px;max-height:420px;overflow-y:auto;background:var(--bg-card);
+            border:1px solid var(--border-default);border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,0.14);z-index:90;"></div>
+    `;
+    topbar.appendChild(wrap);
+
+    document.getElementById('hudhud-bell-btn').onclick = toggleBellDropdown;
+    document.addEventListener('click', (e) => {
+        const dd = document.getElementById('hudhud-bell-dropdown');
+        if (dd && !dd.contains(e.target) && e.target.id !== 'hudhud-bell-btn') dd.style.display = 'none';
+    });
+
+    refreshNotifications();
+    if (!_notifPolling) _notifPolling = setInterval(refreshNotifications, 60000);
+}
+
+async function refreshNotifications() {
+    try {
+        const res = await fetch('/api/notifications?limit=20');
+        if (!res.ok) return; // 401 on public pages — silent
+        const data = await res.json();
+        const badge = document.getElementById('hudhud-bell-badge');
+        if (badge) {
+            badge.textContent = data.unread || 0;
+            badge.style.display = (data.unread || 0) > 0 ? 'block' : 'none';
+        }
+        renderBellDropdown(data.notifications || []);
+    } catch (e) { /* silent — bell is a courtesy */ }
+}
+
+function renderBellDropdown(items) {
+    const dd = document.getElementById('hudhud-bell-dropdown');
+    if (!dd) return;
+    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+    if (!items.length) {
+        dd.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">${isAr ? 'لا إشعارات بعد' : 'No notifications yet'}</div>`;
+        return;
+    }
+    const colors = { success: '#059669', warning: '#b45309', error: '#dc2626', broadcast: '#1d4ed8', info: '#64748b' };
+    dd.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border-default);position:sticky;top:0;background:var(--bg-card);">
+            <strong style="font-size:13px;">${isAr ? 'الإشعارات' : 'Notifications'}</strong>
+            <button onclick="markAllNotificationsRead()" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;font-weight:600;">${isAr ? 'تعليم الكل كمقروء' : 'Mark all read'}</button>
+        </div>
+        ${items.map(n => `
+            <div style="padding:11px 14px;border-bottom:1px solid var(--border-default);${n.read ? 'opacity:0.55;' : ''}">
+                <div style="font-size:12.8px;font-weight:700;color:${colors[n.type] || 'var(--text-primary)'};">${escapeHtml(n.title)}</div>
+                ${n.body ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${escapeHtml(n.body)}</div>` : ''}
+                <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">${escapeHtml(String(n.created_at || '').slice(0, 16).replace('T', ' '))}</div>
+            </div>`).join('')}
+    `;
+}
+
+function toggleBellDropdown() {
+    const dd = document.getElementById('hudhud-bell-dropdown');
+    if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+async function markAllNotificationsRead() {
+    try { await fetch('/api/notifications/read-all', { method: 'POST' }); } catch (e) {}
+    refreshNotifications();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     hudhudRoleManager.init();
     checkSystemMetaStatus();
     // Poll every 60s instead of 15s to avoid burning Meta Graph API rate limits
     setInterval(checkSystemMetaStatus, 60000);
     injectSessionUser();
+    injectNotificationsBell();
 });
 
 window.addEventListener('hudhud_lang_change', () => {
