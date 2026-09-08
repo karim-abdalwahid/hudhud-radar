@@ -62,11 +62,9 @@ def _set_session_cookie(resp, token: str):
 
 
 def register_router(app: FastAPI) -> None:
-    @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
-    @app.get("/register", response_class=HTMLResponse, include_in_schema=False)
-    async def auth_page(request: Request):
-        """SendRad-style login/register page with phone field (owner requirement)."""
-        return HTMLResponse((TEMPLATES_DIR / "auth.html").read_text(encoding="utf-8"))
+    # NOTE: /login + /register HTML pages moved to the pages module (WS0.3)
+    # so auth.html goes through the unified template pipeline. This module
+    # owns the auth API + Google OAuth only.
 
     @app.post("/auth/register", tags=["Auth"])
     async def register_user(payload: RegisterPayload, request: Request):

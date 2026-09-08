@@ -19,22 +19,26 @@ from src.core.http_utils import TEMPLATES_DIR
 from src.core.modules import module_registry, NavEntry, render_sidebar_nav
 
 
-def _render_page_template(filename: str, request: Optional[Request] = None) -> HTMLResponse:
+def _render_page_template(filename: str, request: Optional[Request] = None,
+                          force_ltr_default: bool = False) -> HTMLResponse:
     """Reads and serves dedicated SaaS page template with language-aware initial tags.
     WS0.4: sidebar nav is RENDERED SERVER-SIDE from the module registry —
     the <nav class="sidebar-nav">…</nav> block in templates is legacy-only
-    and gets replaced when present (zero drift between pages)."""
+    and gets replaced when present (zero drift between pages).
+    force_ltr_default=True serves the raw EN/LTR head (auth.html manages its
+    own RTL flip client-side via localStorage; server default is English — WS-D)."""
     target = TEMPLATES_DIR / filename
     if target.exists():
         content = target.read_text(encoding="utf-8")
-        lang = "en"
         path = request.url.path if request else "/"
-        if request:
-            lang = request.query_params.get("lang") or request.cookies.get("hudhud_lang") or "en"
-        if lang == "ar":
-            content = content.replace('<html lang="en" dir="ltr">', '<html lang="ar" dir="rtl">')
-        else:
-            content = content.replace('<html lang="ar" dir="rtl">', '<html lang="en" dir="ltr">')
+        if not force_ltr_default:
+            lang = "en"
+            if request:
+                lang = request.query_params.get("lang") or request.cookies.get("hudhud_lang") or "en"
+            if lang == "ar":
+                content = content.replace('<html lang="en" dir="ltr">', '<html lang="ar" dir="rtl">')
+            else:
+                content = content.replace('<html lang="ar" dir="rtl">', '<html lang="en" dir="ltr">')
 
         # Canonical origin injection: templates never hardcode the domain.
         content = content.replace(
@@ -80,6 +84,14 @@ def register(app: FastAPI) -> None:
     async def page_landing(request: Request):
         """SendRad-style World-Class Marketing & Feature Landing Page."""
         return _render_page_template("landing.html", request)
+
+    @app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+    @app.get("/register", response_class=HTMLResponse, include_in_schema=False)
+    async def page_auth(request: Request):
+        """SendRad-style login/register page (migrated from auth_module to the
+        unified template pipeline: HUDHUD_BASE_URL injection + server-side
+        lang/dir defaults, WS-C+D)."""
+        return _render_page_template("auth.html", request, force_ltr_default=True)
 
     @app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
     async def page_overview(request: Request):

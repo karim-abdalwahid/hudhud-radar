@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,10 +34,11 @@
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
+            flex-direction: row-reverse; /* WS-C: LTR(EN) → form LEFT / showcase RIGHT; RTL(AR) mirrors → form RIGHT */
             overflow-x: hidden;
         }
 
-        /* ============ Left showcase panel (sendrad-style) ============ */
+        /* ============ Showcase panel (sendrad-style) ============ */
         .showcase {
             flex: 1 1 55%;
             display: flex;
@@ -288,6 +289,10 @@
             .form-side { border: none; flex: 1; }
             .m-brand { display: flex; }
         }
+
+        /* Mobile: direction reset not needed (column) — but keep AR slide direction sane */
+        html[dir="rtl"] body { flex-direction: row; } /* RTL(AR): DOM order already puts showcase first visually RIGHT */
+        @media (max-width: 900px) { html[dir="rtl"] body { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -510,7 +515,7 @@
         ]
     };
 
-    let lang = localStorage.getItem("hudhud_lang") || "ar";
+    let lang = localStorage.getItem("hudhud_lang") || "en"; // WS-D: English is the default site language
     let mode = "login";
 
     function applyLang() {
