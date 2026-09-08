@@ -4,6 +4,68 @@
 
 ---
 
+## 🟢 التنفيذ الحالي: hudhd.com (سبتمبر 2026)
+
+| البند | القيمة |
+|---|---|
+| الدومين المدفوع (Hostinger) | `hudhd.com` |
+| **الـ Canonical المعتمد** | `https://www.hudhd.com` (Vercel اختار www تلقائياً كأول دومين أضيف — apex بيعمل 308 redirect عليه تلقائياً) |
+| DNS (Hostinger) | `A @ → 216.198.79.1` + `CNAME www → vercel-dns` ✅ منفذ |
+| Vercel Domains (hudhud2) | `www.hudhd.com` + `hudhud-radar.vercel.app` ✅ شغالين SSL 200 |
+| Local `.env` | `APP_BASE_URL=https://www.hudhd.com` ✅ محدّث |
+| **قيد التنفيذ** | تحديث allowlists (جوجل/ثريدز/ميتا/سوبابيز/cron) + env flip في Vercel |
+
+### قيم copy-paste لكل لوحة (www.hudhd.com)
+
+**Google Cloud → OAuth Client → Authorized redirect URIs (أضف — سيب القديم):**
+```
+https://www.hudhd.com/auth/google/callback
+```
+
+**Threads app dashboard (استبدل الثلاثة):**
+```
+Redirect Callback URL:  https://www.hudhd.com/api/threads/oauth/callback
+Uninstall Callback URL: https://www.hudhd.com/api/threads/uninstall
+Delete Callback URL:    https://www.hudhd.com/api/data-deletion
+```
+
+**Meta app (تطبيق فيسبوك):**
+```
+Facebook Login → Valid OAuth Redirect URIs (أضف):
+https://www.hudhd.com/settings
+
+Webhooks → Callback URL (حدّث):
+https://www.hudhd.com/api/webhook/meta
+
+Data Deletion Callback (حدّث):
+https://www.hudhd.com/api/data-deletion
+```
+
+**Supabase → Auth → URL Configuration:**
+```
+Site URL:      https://www.hudhd.com
+Redirect URLs: https://www.hudhd.com/**  (سيب القديمة أيضاً)
+```
+
+**cron-job.org (الـ jobين):**
+```
+https://www.hudhd.com/api/cron/insights-sync?key=<نفس CRON_SECRET>
+https://www.hudhd.com/api/cron/scheduler-tick?key=<نفس CRON_SECRET>
+```
+
+**Vercel env (hudhud2 — All Environments) ثم Redeploy:**
+```
+APP_BASE_URL=https://www.hudhd.com
+```
+
+### ترتيب التنفيذ الآمن (نافذة كسر صفرية تقريباً)
+1. جوجل + FB Login redirect: **أضف الجديد مع الإبقاء على القديم** (آمنة في أي وقت)
+2. Threads (3 حقول) + Vercel APP_BASE_URL + Redeploy: **نفس الجلسة ورا بعض** (ثواني)
+3. Meta webhook + data-deletion + Supabase + cron
+4. تحقق وكيل: /health على الدومينين + OAuth flows + فحص openapi
+
+---
+
 ## 1️⃣ مصادر الحقيقة الوحيدة (بعد التوحيد)
 
 | الموضع | المصدر |
