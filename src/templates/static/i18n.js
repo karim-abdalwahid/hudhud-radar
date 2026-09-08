@@ -1036,7 +1036,7 @@ const HUDHUD_TRANSLATIONS = {
         "st.filter_fb": "📘 فيسبوك",
         "st.filter_type_label": "النوع:",
         "st.filter_platform_label": "المنصة:",
-        "nav.automations": "الأتمتة وسير العمل",`n        "nav.users_admin": "المستخدمون ولوحة الإدارة",
+        "nav.automations": "الأتمتة وسير العمل",`n        "nav.users_admin": "المستخدمون ولوحة الإدارة",`n        "nav.templates_admin": "قوالب الرسائل",
         "auto.title": "بناء الأتمتة وسير العمل المرئي (Visual Workflows)",
         "auto.subtitle": "بناء ومزامنة سلاسل الأتمتة التفاعلية بالسحب والإفلات لمحادثات وتعليقات فيسبوك وإنستغرام",
         "auto.new_workflow": "+ إنشاء أتمتة جديدة",
@@ -1134,7 +1134,7 @@ const HUDHUD_TRANSLATIONS = {
         "st.page_indicator": "صفحة {current} من {total}",
 
         // مسارات وسير عمل الأتمتة (Automations Hub)
-        "nav.automations": "الأتمتة وسير العمل",`n        "nav.users_admin": "المستخدمون ولوحة الإدارة",
+        "nav.automations": "الأتمتة وسير العمل",`n        "nav.users_admin": "المستخدمون ولوحة الإدارة",`n        "nav.templates_admin": "قوالب الرسائل",
         "auto.title": "بناء الأتمتة وسير العمل المرئي (Visual Workflows)",
         "auto.subtitle": "بناء مسارات تفاعلية وسيناريوهات ردود تلقائية لإنستغرام وفيسبوك بالسحب والإفلات",
         "auto.new_workflow": "+ إنشاء أتمتة جديدة",

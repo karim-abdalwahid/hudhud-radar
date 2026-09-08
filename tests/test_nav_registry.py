@@ -21,7 +21,7 @@ def test_admin_sees_all_nav_with_active_state(client: TestClient):
     assert "/settings" in nav and "/identity" in nav and "/analytics" in nav
     assert 'nav-item active' in nav          # current page highlighted
     assert nav.count("nav-section-title") == 3
-    assert nav.count('class="nav-item') == 10  # 10 canonical entries
+    assert nav.count('class="nav-item') == 12  # /users + /templates admin console entries
 
 
 def test_regular_user_hides_admin_nav(client_as_user: TestClient):

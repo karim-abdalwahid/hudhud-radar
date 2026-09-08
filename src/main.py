@@ -200,6 +200,7 @@ from src.modules import (  # noqa: E402
 from src.modules import notifications as notifications_module  # noqa: E402
 from src.modules import admin_console as admin_console_module  # noqa: E402
 from src.modules import admin_users_page  # noqa: E402
+from src.modules import templates_manager  # noqa: E402
 from src.modules.compliance import register_compliance_routes  # noqa: E402
 from src.modules import legal as _legal
 
@@ -221,5 +222,6 @@ automations.register(app)
 notifications_module.register(app)
 admin_console_module.register(app)
 admin_users_page.register(app)
+templates_manager.register(app)
 register_compliance_routes(app)
 _legal.register(app)
