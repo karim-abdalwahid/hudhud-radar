@@ -26,3 +26,4 @@ except Exception as _boot_error:  # pragma: no cover
 
     def HTMLResponseSafe(safe):
         return _HR(content=f"<h2>boot failure</h2><pre>{safe}</pre>", status_code=500)
+# rebuild tick 1914707098
