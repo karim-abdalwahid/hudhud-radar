@@ -41,7 +41,7 @@ def google_creds(monkeypatch):
 def test_google_start_redirects_to_google_with_our_domain(client: TestClient, google_creds, monkeypatch):
     stored = {}
     monkeypatch.setattr(
-        "src.main.supabase_db.set_setting",
+        "src.modules.auth_module.supabase_db.set_setting",
         lambda k, v: stored.update({k: v}) or True,
     )
     r = client.get("/auth/google", follow_redirects=False)
@@ -49,7 +49,7 @@ def test_google_start_redirects_to_google_with_our_domain(client: TestClient, go
     loc = r.headers["location"]
     assert loc.startswith("https://accounts.google.com/o/oauth2/v2/auth")
     assert "client_id=test-client-id" in loc
-    # THE FIX: redirect_uri must be OUR canonical domain — never Supabase
+    # THE FIX: redirect_uri must be OUR canonical domain Ã¢â‚¬â€ never Supabase
     from src.config import settings as _settings
     expected_ru = f"redirect_uri={_settings.APP_BASE_URL.rstrip('/').replace('/', '%2F').replace(':', '%3A')}%2Fauth%2Fgoogle%2Fcallback"
     assert expected_ru in loc, f"expected {expected_ru} in {loc}"
@@ -72,7 +72,7 @@ def test_google_callback_rejects_invalid_state(client: TestClient, google_creds)
 
 def test_google_callback_full_success_creates_user(client: TestClient, google_creds, monkeypatch):
     # Seed a valid state through the start endpoint
-    monkeypatch.setattr("src.main.supabase_db.set_setting", lambda k, v: True)
+    monkeypatch.setattr("src.modules.auth_module.supabase_db.set_setting", lambda k, v: True)
     r = client.get("/auth/google", follow_redirects=False)
     loc = r.headers["location"]
     state = loc.split("state=")[1].split("&")[0]
@@ -112,7 +112,7 @@ def test_google_callback_full_success_creates_user(client: TestClient, google_cr
 
 
 def test_google_callback_rejects_unverified_email(client: TestClient, google_creds, monkeypatch):
-    monkeypatch.setattr("src.main.supabase_db.set_setting", lambda k, v: True)
+    monkeypatch.setattr("src.modules.auth_module.supabase_db.set_setting", lambda k, v: True)
     r = client.get("/auth/google", follow_redirects=False)
     state = r.headers["location"].split("state=")[1].split("&")[0]
 
