@@ -80,6 +80,7 @@ def admin_creds():
                 "password": ADMIN_PASSWORD,
                 "phone": "+201000000000",
                 "full_name": "Hudhud Test Admin",
+                "terms_accepted": True,
             },
         )
         assert res.status_code == 200, f"Admin registration failed: {res.text}"
@@ -123,6 +124,7 @@ def _regular_user_creds(admin_creds):
             "password": ADMIN_PASSWORD,
             "phone": "+201000000001",
             "full_name": "Hudhud Test User",
+            "terms_accepted": True,
         },
     )
     assert res.status_code == 200, f"User registration failed: {res.text}"

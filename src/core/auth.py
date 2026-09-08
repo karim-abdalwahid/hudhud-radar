@@ -250,9 +250,12 @@ class UserStore:
         return len(self._memory_users)
 
     def create_user(
-        self, email: str, password: str, phone: Optional[str] = None, full_name: Optional[str] = None
+        self, email: str, password: str, phone: Optional[str] = None,
+        full_name: Optional[str] = None,
+        terms_accepted_at: Optional[str] = None, terms_version: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Creates a user. First-ever user is promoted to admin (owner)."""
+        """Creates a user. First-ever user is promoted to admin (owner).
+        terms_accepted_at/version recorded by the consent gate (WS-B)."""
         email = (email or "").strip().lower()
         if self.get_by_email(email):
             raise ValueError("البريد الإلكتروني مسجل بالفعل")
@@ -265,6 +268,9 @@ class UserStore:
             "role": role,
             "is_active": True,
         }
+        if terms_accepted_at:
+            record["terms_accepted_at"] = terms_accepted_at
+            record["terms_version"] = terms_version
         from src.core.supabase_client import supabase_db
 
         # In-memory mode (dev/test isolation): never touch the cloud DB

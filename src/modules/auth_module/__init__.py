@@ -36,7 +36,8 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 GOOGLE_OAUTH_SCOPES = "openid email profile"
 _google_oauth_states: Dict[str, float] = {}  # state -> created_at (CSRF, 10-min TTL)
 
-_registration_cap = 500  # WS-B: raised from 50 (owner approval, pre-Phase 9)
+_registration_cap = 500      # WS-B: raised from 50 (owner approval, pre-Phase 9)
+LEGAL_TERMS_VERSION = "2026-09-08"  # keep in sync with src/modules/legal/__init__.py
 
 
 class RegisterPayload(BaseModel):
@@ -44,7 +45,7 @@ class RegisterPayload(BaseModel):
     password: str
     phone: Optional[str] = None
     full_name: Optional[str] = None
-    terms_accepted: Optional[bool] = None  # WS-B will make this REQUIRED
+    terms_accepted: bool = False  # WS-B consent gate: MUST be true (client checkbox)
 
 
 class LoginPayload(BaseModel):
@@ -78,6 +79,11 @@ def register_router(app: FastAPI) -> None:
             raise HTTPException(status_code=400, detail="كلمة المرور يجب أن تكون 8 أحرف على الأقل")
         if "@" not in payload.email or "." not in payload.email:
             raise HTTPException(status_code=400, detail="البريد الإلكتروني غير صالح")
+        if not payload.terms_accepted:
+            raise HTTPException(
+                status_code=400,
+                detail="يجب الموافقة على شروط الاستخدام وسياسة الخصوصية قبل إنشاء الحساب"
+            )
         if user_store.count() >= _registration_cap:
             raise HTTPException(status_code=403, detail="التسجيل مغلق حالياً")
 
@@ -88,6 +94,8 @@ def register_router(app: FastAPI) -> None:
                 password=payload.password,
                 phone=payload.phone,
                 full_name=payload.full_name,
+                terms_accepted_at=datetime.now(timezone.utc).isoformat(),
+                terms_version=LEGAL_TERMS_VERSION,
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=safe_error(e))
@@ -238,6 +246,10 @@ def register_router(app: FastAPI) -> None:
                         "password_hash": "oauth_google",
                         "role": "user",
                         "is_active": True,
+                        # Consent gate: acceptance captured BEFORE redirecting to
+                        # Google (checkbox required on the signup page).
+                        "terms_accepted_at": datetime.now(timezone.utc).isoformat(),
+                        "terms_version": LEGAL_TERMS_VERSION,
                     }
                     created = supabase_db.insert("users", record) or record
                     local = created if "id" in created else {**record, "id": "google-user"}

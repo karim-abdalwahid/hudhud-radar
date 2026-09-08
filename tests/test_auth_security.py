@@ -68,7 +68,7 @@ def test_register_login_logout_flow(anon_client, admin_creds):
     import uuid
     email = f"flow_user_{uuid.uuid4().hex[:6]}@hudhud.test"
     reg = anon_client.post("/auth/register", json={
-        "email": email, "password": "StrongPass#1", "phone": "+201234567890", "full_name": "Flow User",
+        "email": email, "password": "StrongPass#1", "terms_accepted": True, "phone": "+201234567890", "full_name": "Flow User", "terms_accepted": True,
     })
     assert reg.status_code == 200
     assert reg.json()["status"] == "success"
@@ -90,7 +90,7 @@ def test_register_login_logout_flow(anon_client, admin_creds):
 
 def test_register_duplicate_email_rejected(anon_client, admin_creds):
     res = anon_client.post("/auth/register", json={
-        "email": admin_creds["email"], "password": "StrongPass#1",
+        "email": admin_creds["email"], "password": "StrongPass#1", "terms_accepted": True,
     })
     assert res.status_code == 400
     assert "مسجل" in res.json()["detail"]
@@ -115,7 +115,7 @@ def test_second_user_is_not_admin(anon_client):
     import uuid
     email = f"user_{uuid.uuid4().hex[:6]}@hudhud.test"
     res = anon_client.post("/auth/register", json={
-        "email": email, "password": "StrongPass#1",
+        "email": email, "password": "StrongPass#1", "terms_accepted": True,
     })
     assert res.status_code == 200
     assert res.json()["role"] == "user"
@@ -147,7 +147,7 @@ def test_admin_api_blocked_for_non_admin(anon_client, admin_creds):
     # Register a plain user
     import uuid
     email = f"plain_{uuid.uuid4().hex[:6]}@hudhud.test"
-    anon_client.post("/auth/register", json={"email": email, "password": "StrongPass#1"})
+    anon_client.post("/auth/register", json={"email": email, "password": "StrongPass#1", "terms_accepted": True})
 
     # Try an admin-only mutation
     res = anon_client.post("/api/meta/configure", json={"page_id": "123456"})

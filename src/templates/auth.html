@@ -261,6 +261,18 @@
         .foot-note { text-align: center; font-size: 13px; color: var(--text-secondary); margin-top: 20px; }
         .foot-note a { color: var(--primary); text-decoration: none; font-weight: 600; }
 
+        /* Consent gate (WS-B) — SendRad-style: small square + underlined links */
+        .consent-field { margin: 4px 0 8px; }
+        .consent-box { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+        .consent-box input[type="checkbox"] {
+            width: 17px; height: 17px; margin-top: 3px; accent-color: var(--primary);
+            cursor: pointer; flex-shrink: 0;
+        }
+        .consent-text { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+        .consent-text a { color: var(--primary); text-decoration: underline; font-weight: 600; }
+        .consent-required { display: block; font-style: normal; font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+        .consent-error { color: #dc2626 !important; font-weight: 600; }
+
         .lang-toggle { position: fixed; top: 18px; inset-inline-end: 18px; z-index: 60; }
         .lang-toggle button {
             font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
@@ -371,8 +383,36 @@
                     <label data-i18n="confirm">تأكيد كلمة المرور</label>
                     <input type="password" id="regConfirm" required minlength="8" autocomplete="new-password" data-i18n-ph="password_ph" placeholder="••••••••">
                 </div>
+                <!-- Consent gate (WS-B): required before ANY signup path -->
+                <div class="field consent-field">
+                    <label class="consent-box" for="regTerms">
+                        <input type="checkbox" id="regTerms" required>
+                        <span class="consent-text">
+                            <span data-i18n="consent_prefix">أوافق على</span>
+                            <a href="/terms" target="_blank" rel="noopener" data-i18n="consent_terms">شروط الاستخدام</a>
+                            <span data-i18n="consent_and">و</span>
+                            <a href="/privacy" target="_blank" rel="noopener" data-i18n="consent_privacy">سياسة الخصوصية</a>.
+                            <em class="consent-required" data-i18n="consent_required">مطلوب لإنشاء الحساب.</em>
+                        </span>
+                    </label>
+                </div>
                 <button type="submit" class="btn-submit" id="regBtn" data-i18n="register_btn">إنشاء الحساب والدخول</button>
             </form>
+
+            <!-- Consent gate for the Google path too: the checkbox sits above
+                 the Google button and is enforced by googleSignIn() -->
+            <div class="consent-field" id="googleConsentWrap">
+                <label class="consent-box" for="googleTerms">
+                    <input type="checkbox" id="googleTerms">
+                    <span class="consent-text">
+                        <span data-i18n="consent_prefix">أوافق على</span>
+                        <a href="/terms" target="_blank" rel="noopener" data-i18n="consent_terms">شروط الاستخدام</a>
+                        <span data-i18n="consent_and">و</span>
+                        <a href="/privacy" target="_blank" rel="noopener" data-i18n="consent_privacy">سياسة الخصوصية</a>.
+                        <em class="consent-required" data-i18n="consent_required_google">مطلوب للمتابعة بحساب Google.</em>
+                    </span>
+                </label>
+            </div>
 
             <div class="divider"><span data-i18n="or">أو</span></div>
             <button type="button" class="btn-google" onclick="googleSignIn()">
@@ -409,6 +449,11 @@
             "cc_search_ph": "ابحث باسم الدولة أو كود الهاتف…",
             "login_btn": "دخول إلى لوحة التحكم", "register_btn": "إنشاء الحساب والدخول",
             "google_btn": "المتابعة بحساب Google",
+            "consent_prefix": "أوافق على", "consent_terms": "شروط الاستخدام",
+            "consent_and": "و", "consent_privacy": "سياسة الخصوصية",
+            "consent_required": "مطلوب لإنشاء الحساب.",
+            "consent_required_google": "مطلوب للمتابعة بحساب Google.",
+            "consent_error": "يجب الموافقة على الشروط وسياسة الخصوصية أولاً",
             "back_home": "العودة إلى", "home": "الصفحة الرئيسية",
             "err_mismatch": "كلمتا المرور غير متطابقتين",
             "err_network": "تعذر الاتصال بالخادم",
@@ -439,7 +484,12 @@
             "err_network": "Could not reach the server",
             "err_login": "Sign-in failed — check your credentials",
             "err_register": "Could not create the account",
-            "google_soon": "Google sign-in is being activated — available after admin connects Google OAuth"
+            "google_soon": "Google sign-in is being activated — available after admin connects Google OAuth",
+            "consent_prefix": "I agree to the", "consent_terms": "Terms of Service",
+            "consent_and": "and", "consent_privacy": "Privacy Policy",
+            "consent_required": "Required to create an account.",
+            "consent_required_google": "Required to continue with Google.",
+            "consent_error": "Please agree to the Terms of Service and Privacy Policy first"
         }
     };
     // Demo chat scripts per language (animated sequence)
@@ -658,6 +708,10 @@
         e.preventDefault(); hideMsg();
         const pwd = document.getElementById("regPassword").value;
         if (pwd !== document.getElementById("regConfirm").value) { showMsg("error", t("err_mismatch")); return false; }
+        if (!document.getElementById("regTerms").checked) {
+            showMsg("error", t("consent_error"));
+            return false;
+        }
         const digits = document.getElementById("regPhone").value.replace(/[^0-9]/g, "");
         const phone = (selectedCountry[2] + digits).replace(/\s/g, "");
         const btn = document.getElementById("regBtn"); btn.disabled = true;
@@ -667,7 +721,8 @@
                 body: JSON.stringify({
                     email: document.getElementById("regEmail").value.trim(),
                     password: pwd, phone: phone,
-                    full_name: document.getElementById("regName").value.trim()
+                    full_name: document.getElementById("regName").value.trim(),
+                    terms_accepted: true
                 })
             });
             const data = await res.json();
@@ -678,7 +733,18 @@
         return false;
     }
 
-    function googleSignIn() { window.location.href = "/auth/google"; }
+    function googleSignIn() {
+        // Consent gate (WS-B): Google signup requires ToS+Privacy acceptance too
+        const cb = document.getElementById("googleTerms");
+        if (!cb.checked) {
+            const wrap = document.getElementById("googleConsentWrap");
+            wrap.classList.add("consent-error");
+            showMsg("error", t("consent_error"));
+            return;
+        }
+        wrap && document.getElementById("googleConsentWrap").classList.remove("consent-error");
+        window.location.href = "/auth/google";
+    }
 
     applyLang();
     </script>
