@@ -43,6 +43,20 @@ def _render_page_template(filename: str, request: Optional[Request] = None) -> H
             1,
         )
 
+        # Brand identity links (WS0.5): favicon + manifest — injected once,
+        # applies to every page without per-template edits.
+        content = content.replace(
+            "<head>",
+            "<head>\n"
+            "    <link rel=\"icon\" href=\"/static/favicon.ico\" sizes=\"any\">\n"
+            "    <link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/static/favicon-32.png\">\n"
+            "    <link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"/static/favicon-16.png\">\n"
+            "    <link rel=\"apple-touch-icon\" href=\"/static/apple-touch-icon.png\">\n"
+            "    <link rel=\"manifest\" href=\"/static/manifest.json\">\n"
+            "    <meta name=\"theme-color\" content=\"#0f172a\">",
+            1,
+        )
+
         # Registry-driven sidebar (single source of truth for navigation)
         is_admin = False
         if request:
