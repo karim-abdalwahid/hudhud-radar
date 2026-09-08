@@ -1123,3 +1123,29 @@ Old flow = Supabase hosted OAuth (/auth/v1/authorize?provider=google) → consen
 2. Vercel (hudhud2 scope + team scope per R8) → add env: GOOGLE_CLIENT_ID=963263901125-6pgblcislp00kf47epv4dbkupdejacag.apps.googleusercontent.com + GOOGLE_CLIENT_SECRET=(the GOCSPX-… value from enable_google_oauth.py git history or owner's records).
 3. Redeploy → /auth/google must 303 to accounts.google.com with our domain on the consent screen.
 4. ROTATE: Google client secret + Supabase management token (were committed historically).
+
+---
+
+## [Entry 029] Ops Deep-Dive: Gemini Quota Mystery Solved + Alerts Cache Overhaul + Threads Connected + Roadmap v2
+- **Timestamp**: 2026-09-08T00:30:00+03:00
+- **Actor**: User & AI Agent (opencode/GLM)
+- **Status**: LIVE — all 6 system alerts OK (meta/threads/gemini/webhook/scheduler/supabase)
+
+### 1. Gemini "quota exhausted" Mystery — SOLVED (owner was right to question it)
+Owner: "نستخدمتهوش خالص". Truth: free tier = **20 requests/MINUTE** for gemini-flash-latest; the per-instance alerts cache meant every serverless cold start re-hit Gemini, plus /api/debug/llm-status and permission-matrix runs consumed it. The agent itself was barely used. Proof: direct curl showed 200 then 429 with body 'limit: 20 ... retry in 54s'.
+Fixes: (a) alerts now double-cached — memory 120s + SHARED Supabase app_settings 'system_alerts_cache' (10-min TTL across ALL instances; force=true bypasses); (b) 429 message now HONEST: parses Google's retry hint → per-minute (<120s retry) vs daily; (c) old message wrongly claimed 'daily exhausted'.
+
+### 2. Re-run Checks Button — was broken (owner caught it)
+Button called loadSystemAlerts(true) which DID NOT EXIST (silent console error). Now real: loadSystemAlerts(force) → /api/admin/alerts?force=true → bypasses both caches → re-renders. +1 guard test asserting wiring exists.
+
+### 3. Threads — owner connected; stale alert explained
+Owner logged in via Threads OAuth (worked: user karim__abdalwahid, 60-day token). Alert still said 'not connected' because of the same stale per-instance cache + broken re-run button. Verified live after fix: threads_token = ok 'Threads connected (@karim__abdalwahid) — 59 days left'. Settings Threads section also localized (was EN-only, exposed App ID in title) + honest description.
+
+### 4. Simulated-Logs Migration — executed, result: ZERO
+scripts/migrate_simulated_messages.py (dry-run + --apply). Scanned live DB: 0 messages with receipts at all (the DEV-SIM era wrote activity_logs only, no real message rows survived). DB is CLEAN — no fabricated rows to mark. Tool kept for future safety; appends honest audit entry if ever used.
+
+### 5. Development_Roadmap.md — rewritten v2 (was broken-encoding v1)
+Clean Arabic roadmap reflecting reality: Phases 1-5 complete (incl. 026-028 hardening), Phase 6 = multi-tenant SaaS (NEXT, owner-approved), owner to-dos table, tech-debt list, R1-R12 summary. Single source replaced.
+
+### 6. Verification
+131/131 tests (+4 alerts tests: shared cache behavior, force bypass, per-minute vs daily 429, button wiring). Live force re-run: ALL 6 CHECKS OK including gemini ok + threads ok.
