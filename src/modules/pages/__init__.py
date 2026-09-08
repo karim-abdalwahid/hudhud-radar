@@ -16,28 +16,47 @@ from fastapi.responses import HTMLResponse
 
 from src.config import settings
 from src.core.http_utils import TEMPLATES_DIR
-from src.core.modules import module_registry
+from src.core.modules import module_registry, NavEntry, render_sidebar_nav
 
 
 def _render_page_template(filename: str, request: Optional[Request] = None) -> HTMLResponse:
-    """Reads and serves dedicated SaaS page template with language-aware initial tags."""
+    """Reads and serves dedicated SaaS page template with language-aware initial tags.
+    WS0.4: sidebar nav is RENDERED SERVER-SIDE from the module registry —
+    the <nav class="sidebar-nav">…</nav> block in templates is legacy-only
+    and gets replaced when present (zero drift between pages)."""
     target = TEMPLATES_DIR / filename
     if target.exists():
         content = target.read_text(encoding="utf-8")
         lang = "en"
+        path = request.url.path if request else "/"
         if request:
             lang = request.query_params.get("lang") or request.cookies.get("hudhud_lang") or "en"
         if lang == "ar":
             content = content.replace('<html lang="en" dir="ltr">', '<html lang="ar" dir="rtl">')
         else:
             content = content.replace('<html lang="ar" dir="rtl">', '<html lang="en" dir="ltr">')
-        # Canonical origin injection: templates never hardcode the domain —
-        # window.HUDHUD_BASE_URL is the single source of truth for absolute URLs.
+
+        # Canonical origin injection: templates never hardcode the domain.
         content = content.replace(
             "<head>",
             f"<head>\n    <script>window.HUDHUD_BASE_URL = \"{settings.APP_BASE_URL.rstrip('/')}\";</script>",
             1,
         )
+
+        # Registry-driven sidebar (single source of truth for navigation)
+        is_admin = False
+        if request:
+            from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+            token = request.cookies.get(SESSION_COOKIE_NAME)
+            session = verify_session_token(token) if token else None
+            is_admin = bool(session and session.get("role") == "admin")
+
+        import re as _re
+        nav_match = _re.search(r'<nav class="sidebar-nav">.*?</nav>', content, _re.DOTALL)
+        if nav_match:
+            rendered = render_sidebar_nav(path, is_admin)
+            content = content[:nav_match.start()] + rendered + content[nav_match.end():]
+
         return HTMLResponse(content=content)
     return HTMLResponse(content=f"<h1>Page template '{filename}' not found</h1>", status_code=404)
 
@@ -103,4 +122,26 @@ module_registry.register_module(
     name="pages",
     description="Dashboard HTML pages (landing, overview, leads, studio, knowledge, identity, analytics, onboarding, inbox, settings, automations)",
     register_router=register,
+    nav=[
+        NavEntry(href="/inbox", label_key="nav.inbox", icon="💬",
+                 section="nav.conversations", order=1),
+        NavEntry(href="/onboarding", label_key="nav.onboarding", icon="🚀",
+                 section="nav.conversations", order=2),
+        NavEntry(href="/dashboard", label_key="nav.overview", icon="📊",
+                 section="nav.workspaces", order=1),
+        NavEntry(href="/leads", label_key="nav.leads", icon="👥",
+                 section="nav.workspaces", order=2),
+        NavEntry(href="/studio", label_key="nav.studio", icon="✍️",
+                 section="nav.workspaces", order=3),
+        NavEntry(href="/automations", label_key="nav.automations", icon="⚡",
+                 section="nav.workspaces", order=4),
+        NavEntry(href="/knowledge", label_key="nav.knowledge", icon="🧠",
+                 section="nav.workspaces", order=5),
+        NavEntry(href="/identity", label_key="nav.identity", icon="🔍",
+                 section="nav.workspaces", order=6, admin_only=True),
+        NavEntry(href="/analytics", label_key="nav.analytics", icon="📈",
+                 section="nav.analytics_system", order=1, admin_only=True),
+        NavEntry(href="/settings", label_key="nav.settings", icon="⚙️",
+                 section="nav.analytics_system", order=2, admin_only=True),
+    ],
 )

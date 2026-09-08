@@ -85,18 +85,8 @@ const hudhudRoleManager = {
         // Group developer navigation items
         this.organizeDevNav(sidebar, isAr);
 
-        // Ensure Automations navigation link is present in Workspaces
-        const nav = sidebar.querySelector('.sidebar-nav');
-        if (nav) {
-            const studioLink = nav.querySelector('a[href="/studio"]');
-            if (studioLink && !nav.querySelector('a[href="/automations"]')) {
-                const autoLink = document.createElement('a');
-                autoLink.href = '/automations';
-                autoLink.className = `nav-item ${window.location.pathname === '/automations' ? 'active' : ''}`;
-                autoLink.innerHTML = `<span class="nav-icon">⚡</span> <span data-i18n="nav.automations">${isAr ? 'الأتمتة وسير العمل' : 'Automations'}</span>`;
-                studioLink.insertAdjacentElement('afterend', autoLink);
-            }
-        }
+        // NOTE (WS0.4): sidebar nav links are now rendered SERVER-SIDE from the
+        // module registry — the old client-side Automations injection is gone.
 
         // Add developer console banner if currently on a dev route
         this.injectDevPageBanner();

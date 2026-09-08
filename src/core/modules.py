@@ -156,3 +156,50 @@ class ModuleRegistry:
 
 
 module_registry = ModuleRegistry()
+
+
+# --------------------------------------------------------------------
+# Canonical sidebar navigation — THE single source of truth (WS0.4).
+# Templates no longer hardcode nav; the server renders it from here.
+# Adding a dashboard page = one NavEntry. Drift between pages is impossible.
+# --------------------------------------------------------------------
+from dataclasses import dataclass as _dc  # noqa: E402
+
+
+@_dc
+class SidebarSection:
+    key: str          # i18n key for the section title
+    fallback: str     # English fallback text
+
+
+SIDEBAR_SECTIONS = {
+    "nav.conversations": SidebarSection("nav.conversations", "Conversations & AI Agent"),
+    "nav.workspaces": SidebarSection("nav.workspaces", "Workspaces"),
+    "nav.analytics_system": SidebarSection("nav.analytics_system", "Analytics & System"),
+}
+
+
+def render_sidebar_nav(current_path: str, is_admin: bool) -> str:
+    """Renders the sidebar <nav> HTML from the registry — role-aware."""
+    import html as _html
+    entries = module_registry.sorted_nav(is_admin)
+    parts = ['<nav class="sidebar-nav">']
+    last_section = None
+    for n in entries:
+        if n.section != last_section:
+            sec = SIDEBAR_SECTIONS.get(n.section)
+            label = _html.escape(sec.fallback if sec else n.section)
+            parts.append(
+                f'<div class="nav-section-title" data-i18n="{n.section}">{label}</div>'
+            )
+            last_section = n.section
+        active = " active" if current_path == n.href else ""
+        icon = _html.escape(n.icon, quote=False)
+        label_fb = n.href.strip("/") or "home"
+        parts.append(
+            f'<a href="{_html.escape(n.href)}" class="nav-item{active}">'
+            f'<span class="nav-icon">{icon}</span> '
+            f'<span data-i18n="{n.label_key}">{_html.escape(label_fb)}</span></a>'
+        )
+    parts.append("</nav>")
+    return "\n".join(parts)
