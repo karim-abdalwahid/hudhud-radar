@@ -1149,3 +1149,32 @@ Clean Arabic roadmap reflecting reality: Phases 1-5 complete (incl. 026-028 hard
 
 ### 6. Verification
 131/131 tests (+4 alerts tests: shared cache behavior, force bypass, per-minute vs daily 429, button wiring). Live force re-run: ALL 6 CHECKS OK including gemini ok + threads ok.
+
+---
+
+## [Entry 030] Steel Retired (Vulnerable Stale Copy) + Owner Security Decisions Recorded
+- **Timestamp**: 2026-09-08T01:30:00+03:00
+- **Actor**: User & AI Agent (opencode/GLM)
+- **Status**: steel offline & removed — canonical unaffected (verified live)
+
+### 1. Owner Decisions (recorded verbatim intent)
+1. **Google Secret rotation**: owner reports doing Reset Secret on client 963263901125 — BUT live probe shows the OLD leaked secret STILL ACTIVE (invalid_grant not invalid_client) and prod still uses same client_id. Reset did NOT actually apply (likely wrong GCP project selected or not confirmed). RENAMED owner to-do — see §4.
+2. **Supabase Management Token**: owner decision — keep available (repo stays private; token needed for future dev work). Token now lives in local .env (gitignored) for ops scripts; NOT re-committed to code. Risk accepted by owner (documented).
+3. **Steel retirement**: owner questioned why two deployments exist → agent audit found steel serving STALE pre-hardening code WITH the CRITICAL unauthenticated data-deletion bug LIVE (verified: JSON deletion request succeeded on steel). Canonical unaffected. Verdict: the 'backup' had become a liability — no rollback value (Vercel keeps per-project history), only dual-env sync burden (R8) plus a live vulnerable copy sharing the SAME production Supabase.
+
+### 2. Steel Decommission (executed, reversible-less but code fully in git)
+- Removed alias hudhud-radar-steel.vercel.app (from deployment e8hw0qeyx)
+- Removed alias hudhud-radar-karim-abdalwahids-projects.vercel.app (second public URL, same stale code)
+- Deleted deployment e8hw0qeyx entirely (was the only production deployment in team scope)
+- Post-checks: steel domain 404, data-deletion endpoint unreachable; canonical health 200 unaffected
+- R4 (old hudhud project / hudhud-amber) untouched as always
+- team-scope project 'hudhud-radar' still EXISTS (empty of deployments) — owner may delete the project from dashboard whenever; zero urgency since nothing is reachable
+
+### 3. Rules Update
+- **R13**: The ONLY active deployment of this codebase is the hudhud2 scope (GitHub auto-deploy, canonical domain). No secondary deployments — if a staging environment is ever needed, create a dedicated Vercel project per-branch, never a stale parallel copy of production.
+
+### 4. Updated Owner To-Do (the REAL remaining items)
+1. **Google Secret rotation — NOT APPLIED YET**: console.cloud.google.com → select the CORRECT project containing client 963263901125-6pgblcislp00kf47epv4dbkupdejacag → Credentials → OAuth 2.0 Client → reset secret → copy NEW GOCSPX-... → update GOOGLE_CLIENT_SECRET in Vercel env (hudhud2) → Redeploy → tell agent to re-probe (agent will confirm old secret returns invalid_client).
+2. Google OAuth consent screen → publish In Production (status unverified by agent).
+3. Meta App Review submissions (P6) per META_APP_REVIEW_GUIDE.md.
+4. Optional: delete the now-empty hudhud-radar project in team scope (cosmetic).
