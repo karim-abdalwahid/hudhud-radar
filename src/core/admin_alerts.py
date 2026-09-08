@@ -79,7 +79,10 @@ def _check_threads_token() -> Dict[str, Any]:
 
 
 def _check_gemini() -> Dict[str, Any]:
-    """Tiny live Gemini call to detect quota/auth issues."""
+    """Tiny live Gemini call to detect quota/auth issues.
+    Honest 429 handling: free tier = ~20 requests/MINUTE for flash models —
+    health-check calls themselves can trip it. Reports per-minute vs daily
+    based on Google's retry hint instead of always claiming 'daily quota'."""
     key = settings.GEMINI_API_KEY
     if not key or key.startswith("your-"):
         return {"id": "gemini", "level": "warning",
@@ -96,9 +99,24 @@ def _check_gemini() -> Dict[str, Any]:
         if r.status_code == 200:
             return {"id": "gemini", "level": "ok", "title_ar": "Gemini يعمل", "title_en": "Gemini operational"}
         if r.status_code == 429:
+            # Parse Google's error body: 'retry in Xs' — small X = per-minute limit
+            body = ""
+            try:
+                body = r.json().get("error", {}).get("message", "")
+            except Exception:
+                body = r.text[:500]
+            retry_seconds = None
+            import re as _re
+            m = _re.search(r"retry in ([\d.]+)s", body, _re.IGNORECASE)
+            if m:
+                retry_seconds = float(m.group(1))
+            if retry_seconds is not None and retry_seconds < 120:
+                return {"id": "gemini", "level": "warning",
+                        "title_ar": f"⚠️ Gemini: تجاوزنا حد الدقيقة المجاني (20 طلب/دقيقة) — يستأنف بعد {int(retry_seconds)} ثانية. الوكيل شغال طبيعي — ده سببه فحوصات الصحة المتكررة",
+                        "title_en": f"⚠️ Gemini per-minute free limit hit (20 req/min) — resumes in {int(retry_seconds)}s. Agent is fine — caused by frequent health checks"}
             return {"id": "gemini", "level": "warning",
                     "title_ar": "⚠️ حصة Gemini اليومية استُنفدت — القوالب الاحتياطية تعمل مؤقتاً",
-                    "title_en": "⚠️ Gemini quota exhausted — fallback templates active"}
+                    "title_en": "⚠️ Gemini daily quota exhausted — fallback templates active"}
         return {"id": "gemini", "level": "warning",
                 "title_ar": f"⚠️ Gemini يستجيب بخطأ {r.status_code}", "title_en": f"⚠️ Gemini error {r.status_code}"}
     except Exception as e:
@@ -156,10 +174,26 @@ def _check_supabase() -> Dict[str, Any]:
 
 
 def collect_alerts(force: bool = False) -> List[Dict[str, Any]]:
-    """Runs all checks (cached for CACHE_TTL). Returns list sorted by severity."""
+    """Runs all checks. Two-layer cache to stop burning external quotas:
+    1) In-memory per-instance (fast, 120s TTL)
+    2) Shared Supabase app_settings cache ('system_alerts_cache') so all
+       serverless instances reuse one round of checks (10-min TTL) —
+       previously every cold start re-hit Meta+Gemini and the Gemini
+       free tier (20 req/min) got exhausted by HEALTH CHECKS alone."""
     now = time.time()
     if not force and _alerts_cache["alerts"] is not None and (now - _alerts_cache["ts"]) < CACHE_TTL:
         return _alerts_cache["alerts"]
+
+    # Shared cache read (skip when force=True — admin clicked re-run)
+    if not force:
+        try:
+            shared = supabase_db.get_setting("system_alerts_cache") or {}
+            if isinstance(shared, dict) and shared.get("alerts") and (now - float(shared.get("ts", 0))) < 600:
+                _alerts_cache["ts"] = now
+                _alerts_cache["alerts"] = shared["alerts"]
+                return shared["alerts"]
+        except Exception:
+            pass
 
     checks = [
         _check_meta_token(),
@@ -173,4 +207,10 @@ def collect_alerts(force: bool = False) -> List[Dict[str, Any]]:
     checks.sort(key=lambda a: order.get(a["level"], 9))
     _alerts_cache["ts"] = now
     _alerts_cache["alerts"] = checks
+
+    # Persist to shared cache (best-effort)
+    try:
+        supabase_db.set_setting("system_alerts_cache", {"ts": now, "alerts": checks})
+    except Exception:
+        pass
     return checks

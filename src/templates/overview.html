@@ -278,25 +278,54 @@
                     const panel = document.getElementById('system-alerts');
                     const list = document.getElementById('alerts-list');
                     const alerts = (await aRes.json()).alerts || [];
-                    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-                    const colors = {
-                        critical: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
-                        warning:  { bg: '#fffbeb', border: '#fde68a', text: '#b45309' },
-                        info:     { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
-                        ok:       { bg: '#ecfdf5', border: '#a7f3d0', text: '#059669' }
-                    };
-                    list.innerHTML = alerts.map(a => {
-                        const c = colors[a.level] || colors.ok;
-                        const title = isAr ? a.title_ar : a.title_en;
-                        const icon = a.level === 'critical' ? '⛔' : a.level === 'warning' ? '⚠️' : a.level === 'info' ? 'ℹ️' : '✓';
-                        return `<div style="background:${c.bg};border:1px solid ${c.border};color:${c.text};padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;">${icon} ${escapeHtml(title)}</div>`;
-                    }).join('');
+                    renderSystemAlerts(alerts);
                     panel.style.display = 'block';
                 } else {
                     document.getElementById('system-alerts').style.display = 'none';
                 }
             } catch (e) {
                 console.debug("System alerts offline", e);
+            }
+        }
+
+        function renderSystemAlerts(alerts) {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const colors = {
+                critical: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
+                warning:  { bg: '#fffbeb', border: '#fde68a', text: '#b45309' },
+                info:     { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },
+                ok:       { bg: '#ecfdf5', border: '#a7f3d0', text: '#059669' }
+            };
+            const list = document.getElementById('alerts-list');
+            if (!list) return;
+            list.innerHTML = alerts.map(a => {
+                const c = colors[a.level] || colors.ok;
+                const title = isAr ? a.title_ar : a.title_en;
+                const icon = a.level === 'critical' ? '⛔' : a.level === 'warning' ? '⚠️' : a.level === 'info' ? 'ℹ️' : '✓';
+                return `<div style="background:${c.bg};border:1px solid ${c.border};color:${c.text};padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;">${icon} ${escapeHtml(title)}</div>`;
+            }).join('');
+        }
+
+        async function loadSystemAlerts(force = false) {
+            // Real re-run: force=true bypasses BOTH memory and shared caches server-side
+            const panel = document.getElementById('system-alerts');
+            const list = document.getElementById('alerts-list');
+            try {
+                const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                if (force && list) {
+                    list.innerHTML = `<div style="padding:10px 14px;color:var(--text-muted);font-size:13px;">${isAr ? '⏳ جاري إعادة الفحص...' : '⏳ Re-running checks...'}</div>`;
+                }
+                const res = await fetch('/api/admin/alerts' + (force ? '?force=true' : ''));
+                if (!res.ok) {
+                    if (panel) panel.style.display = 'none';
+                    return;
+                }
+                const alerts = (await res.json()).alerts || [];
+                renderSystemAlerts(alerts);
+                if (panel) panel.style.display = 'block';
+            } catch (e) {
+                console.debug("System alerts re-run failed", e);
+                if (list) list.innerHTML = `<div style="padding:10px 14px;color:var(--badge-amber-text);font-size:13px;">${isAr ? 'فشل إعادة الفحص — أعد المحاولة' : 'Re-run failed — try again'}</div>`;
             }
         }
 
