@@ -1178,3 +1178,30 @@ Clean Arabic roadmap reflecting reality: Phases 1-5 complete (incl. 026-028 hard
 2. Google OAuth consent screen → publish In Production (status unverified by agent).
 3. Meta App Review submissions (P6) per META_APP_REVIEW_GUIDE.md.
 4. Optional: delete the now-empty hudhud-radar project in team scope (cosmetic).
+
+---
+
+## [Entry 031] Meta Tech Provider Access Verification — SUBMITTED (Under Review)
+- **Timestamp**: 2026-09-08T02:00:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: SUBMITTED — Meta reviewing, response within 5 days
+
+### 1. Owner Pre-work
+- **Facebook Business verification COMPLETED earlier** (documents submitted & approved) — the foundational prerequisite.
+- Business linked to the app (Business Settings → Apps).
+
+### 2. Access Verification Submission (with agent-prepared answers)
+- Business type: **SaaS Platform** (only — deliberately not Agency/Freelancer to avoid portfolio questions)
+- Platform Data usage: full honest description of Hudhud's SaaS flow (client-connected accounts only, AI replies within 24h window, voluntary contact capture, content publishing, per-client stats, no data selling, deletion available) — verified to match actual code behavior.
+- Multiple portfolios: **No**
+- Website: https://hudhud-radar.vercel.app — landing footer upgraded FIRST (commit a3619b1): real business name (إبدأ ماركتينج — Karim Abdalwahid), contact email, Privacy Policy + Data Deletion links (both live 200), removed odd 'SendRad Architecture' credit line.
+- Deadline was 11/7/2026 — submitted ~2 months early.
+- Result: 'We're reviewing your submission and will reach out within 5 days if we need more information.'
+
+### 3. Why This Matters
+Tech Provider classification is the legal key for Phase 9 (multi-tenant: clients connect their own Pages/accounts via our platform). Combined with completed business verification, the two biggest Meta-side prerequisites for Phase 9 are now done or in-flight.
+
+### 4. Follow-ups
+- If Meta asks for more info within 5 days: owner forwards the question, agent drafts the answer.
+- After approval: proceed with App Review submissions (P6) then Phase 9 planning.
+- Landing footer change live via auto-deploy (a3619b1).
