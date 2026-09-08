@@ -1205,3 +1205,27 @@ Tech Provider classification is the legal key for Phase 9 (multi-tenant: clients
 - If Meta asks for more info within 5 days: owner forwards the question, agent drafts the answer.
 - After approval: proceed with App Review submissions (P6) then Phase 9 planning.
 - Landing footer change live via auto-deploy (a3619b1).
+
+---
+
+## [Entry 032] Domain Migration to hudhd.com — In Flight + Google Client Recreated
+- **Timestamp**: 2026-09-08T03:00:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: DNS+SSL LIVE on www.hudhd.com — allowlist updates in progress (1 mismatch found & being fixed)
+
+### 1. Domain Facts (verified live)
+- Paid domain: **hudhd.com** (Hostinger, owner purchased). DNS: A @ → 216.198.79.1, CNAME www → vercel-dns. ✅
+- Vercel (hudhud2) auto-primary = **www.hudhd.com** (added first; apex 308-redirects to www — accepted as canonical, Vercel free tier gives no manual primary picker). ✅
+- https://www.hudhd.com/health = 200 full app + SSL. Old domain hudhud-radar.vercel.app still attached (will keep as secondary/redirect).
+- Bonus: Hostinger Email Marketing 1yr free (200 emails/mo, 100 recipients) — reserved for owner newsletter + lead follow-up; NOT for transactional email (stays Supabase).
+
+### 2. Canonical Switch Prepared
+- .env: APP_BASE_URL=https://www.hudhd.com (local, already updated).
+- DOMAIN_SWAP_RUNBOOK.md updated with the www.hudhd.com copy-paste allowlist values for Google/FB/Threads/Supabase/cron + safe ordering (add-with-keep-old first, then atomic flip: Threads URLs + Vercel env + redeploy, then rest).
+- Awaiting owner completion of dashboard allowlists + Vercel APP_BASE_URL flip + redeploy.
+
+### 3. Google Client — RECREATED (owner decision)
+Owner created a NEW Google Cloud project/client (old leaked-secret client retired by replacement, rotation-by-replacement). New client_id live in prod: 307812245320-nhfr1d5bdjurr5d8tftmcsfepic1ns2m....
+- Live probe found: Google authorize returns **redirect_uri_mismatch** → the new client's Authorized redirect URI not yet added/propagated. Owner instructed: add EXACTLY https://www.hudhd.com/auth/google/callback (single URI — no legacy URIs needed since new client).
+- After fix: agent re-probes (expect 200 consent, no redirect_uri_mismatch) then owner updates GOOGLE_CLIENT_SECRET on Vercel if not already (owner says done + redeployed).
+- Old client 963263901125... no longer used by the app — leaked secret in git history is now MOOT (client retired). Task closed differently than planned — acceptable.
