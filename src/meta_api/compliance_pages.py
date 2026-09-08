@@ -102,10 +102,9 @@ h1{font-size:26px;margin:0 0 8px;} h2{font-size:18px;margin-top:28px;border-bott
 def register_compliance_routes(app: FastAPI):
     """Registers privacy & data-deletion routes on the FastAPI app."""
 
-    @app.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
-    async def privacy_policy_page():
-        """Public privacy policy (Meta App Review requirement)."""
-        return HTMLResponse(content=_PRIVACY_HTML)
+    # NOTE: /privacy is now served by the dedicated legal module (bilingual,
+    # full policy). This module keeps the Meta-required /data-deletion page
+    # and the signed callback endpoints only.
 
     @app.get("/data-deletion", response_class=HTMLResponse, include_in_schema=False)
     async def data_deletion_page():

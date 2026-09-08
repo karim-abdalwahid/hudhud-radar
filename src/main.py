@@ -198,6 +198,7 @@ from src.modules import (  # noqa: E402
     content, cron_admin, ai, threads_marketing, knowledge, automations,
 )
 from src.modules.compliance import register_compliance_routes  # noqa: E402
+from src.modules import legal as _legal
 
 _auth_register_router(app)
 _pages_register(app)
@@ -215,3 +216,4 @@ threads_marketing.register(app)
 knowledge.register(app)
 automations.register(app)
 register_compliance_routes(app)
+_legal.register(app)
