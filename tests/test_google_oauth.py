@@ -49,8 +49,10 @@ def test_google_start_redirects_to_google_with_our_domain(client: TestClient, go
     loc = r.headers["location"]
     assert loc.startswith("https://accounts.google.com/o/oauth2/v2/auth")
     assert "client_id=test-client-id" in loc
-    # THE FIX: redirect_uri must be OUR domain — never Supabase
-    assert "redirect_uri=https%3A%2F%2Fhudhud-radar.vercel.app%2Fauth%2Fgoogle%2Fcallback" in loc
+    # THE FIX: redirect_uri must be OUR canonical domain — never Supabase
+    from src.config import settings as _settings
+    expected_ru = f"redirect_uri={_settings.APP_BASE_URL.rstrip('/').replace('/', '%2F').replace(':', '%3A')}%2Fauth%2Fgoogle%2Fcallback"
+    assert expected_ru in loc, f"expected {expected_ru} in {loc}"
     assert "state=" in loc
     assert "supabase" not in loc.lower()
 

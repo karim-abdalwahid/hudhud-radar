@@ -62,7 +62,7 @@ from src.meta_api.extended_api import (
     marketing_leads_sync,
 )
 from src.meta_api.threads_oauth import threads_oauth as threads_oauth_manager
-from src.meta_api.compliance_pages import register_compliance_routes
+from src.modules.compliance import register_compliance_routes  # modular architecture: compliance module (pilot)
 from src.ai.provider_manager import ai_provider_manager
 
 from src.content_studio.models import (
@@ -139,13 +139,14 @@ def _safe_error(e: Exception, meta_detail: str = "") -> str:
 
 
 def _is_public(path: str) -> bool:
-    if path in PUBLIC_EXACT_PATHS:
-        return True
-    return any(path.startswith(p) for p in PUBLIC_PATH_PREFIXES)
+    # Registry-aware: legacy lists + any module-declared public paths.
+    from src.core.auth import is_public_path
+    return is_public_path(path)
 
 
 def _is_admin_route(path: str, method: str) -> bool:
-    if path in ADMIN_EXACT_PATHS or path in ADMIN_PAGE_PATHS:
+    from src.core.auth import is_admin_page
+    if path in ADMIN_EXACT_PATHS or is_admin_page(path):
         return True
     if any(path.startswith(p) for p in ADMIN_PATH_PREFIXES):
         return True

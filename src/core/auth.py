@@ -97,6 +97,49 @@ ADMIN_MUTATION_PREFIXES = (
 
 
 # --------------------------------------------------------------------
+# Registry-aware path policy (Entry: modular architecture)
+# Legacy hand-maintained lists above remain authoritative for routes still
+# living inline in main.py. Modules registered via src/core/modules.py add
+# their rules dynamically — so NEW features can never be "forgotten".
+# --------------------------------------------------------------------
+def _module_public_exact() -> set:
+    try:
+        from src.core.modules import module_registry
+        return module_registry.public_exact_paths()
+    except Exception:
+        return set()
+
+
+def _module_public_prefixes() -> tuple:
+    try:
+        from src.core.modules import module_registry
+        return module_registry.public_prefixes()
+    except Exception:
+        return ()
+
+
+def _module_admin_pages() -> set:
+    try:
+        from src.core.modules import module_registry
+        return module_registry.admin_page_paths()
+    except Exception:
+        return set()
+
+
+def is_public_path(path: str) -> bool:
+    """True when no session is required: legacy lists + module declarations."""
+    if path in PUBLIC_EXACT_PATHS or path in _module_public_exact():
+        return True
+    if any(path.startswith(p) for p in PUBLIC_PATH_PREFIXES):
+        return True
+    return any(path.startswith(p) for p in _module_public_prefixes())
+
+
+def is_admin_page(path: str) -> bool:
+    return path in ADMIN_PAGE_PATHS or path in _module_admin_pages()
+
+
+# --------------------------------------------------------------------
 # Password Hashing (PBKDF2-HMAC-SHA256)
 # --------------------------------------------------------------------
 def hash_password(password: str) -> str:
