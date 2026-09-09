@@ -476,18 +476,44 @@ Analytics) لا تُحمّل إلا بعد موافقتك حيث تكون الم
 </div></body></html>"""
 
 
+_LANG_GLOBE = """<div style="position:fixed;top:18px;inset-inline-end:18px;z-index:99;">
+  <button onclick="toggleLangMenu()" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+    padding:9px 14px;cursor:pointer;font-size:15px;box-shadow:0 2px 8px rgba(15,23,42,0.08);">🌐</button>
+  <div id="langMenu" style="display:none;position:absolute;top:calc(100% + 6px);inset-inline-end:0;
+    background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 10px 26px rgba(15,23,42,0.14);
+    min-width:160px;overflow:hidden;">
+    <a href="?lang=en" style="display:flex;gap:8px;align-items:center;padding:11px 15px;font-size:13.5px;
+      font-weight:600;color:#0f172a;text-decoration:none;">🇺🇸 English</a>
+    <a href="?lang=ar" style="display:flex;gap:8px;align-items:center;padding:11px 15px;font-size:13.5px;
+      font-weight:600;color:#0f172a;text-decoration:none;border-top:1px solid #e2e8f0;">🇪🇬 العربية</a>
+  </div>
+</div>
+<script>
+function toggleLangMenu() {
+  const m = document.getElementById('langMenu');
+  if (m) m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', function(e) {
+  const m = document.getElementById('langMenu');
+  if (m && !e.target.closest('[onclick*=toggleLangMenu]')) m.style.display = 'none';
+});
+</script>"""
+
+
 def register(app: FastAPI) -> None:
     @app.get("/terms", response_class=HTMLResponse, include_in_schema=False)
     async def terms_page(request: Request):
         lang = request.query_params.get("lang") or request.cookies.get("hudhud_lang") or "en"
         tpl = _TERMS_AR if lang == "ar" else _TERMS_EN
-        return HTMLResponse(content=_fill(tpl))
+        html = _fill(tpl).replace("</body>", _LANG_GLOBE + "\n</body>")
+        return HTMLResponse(content=html)
 
     @app.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
     async def privacy_page(request: Request):
         lang = request.query_params.get("lang") or request.cookies.get("hudhud_lang") or "en"
         tpl = _PRIVACY_AR if lang == "ar" else _PRIVACY_EN
-        return HTMLResponse(content=_fill(tpl))
+        html = _fill(tpl).replace("</body>", _LANG_GLOBE + "\n</body>")
+        return HTMLResponse(content=html)
 
 
 def _fill(tpl: str) -> str:

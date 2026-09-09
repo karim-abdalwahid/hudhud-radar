@@ -62,7 +62,10 @@ h1{font-size:26px;margin:0 0 8px;} h2{font-size:18px;margin-top:28px;border-bott
 
 <h2>5. التواصل</h2>
 <p>لأي استفسار حول الخصوصية: استخدم صفحة التواصل في المنصة.</p>
-</div></body></html>"""
+</div>'<div style="position:fixed;top:18px;inset-inline-end:18px;z-index:99;">
+  <a href="/data-deletion?lang=ar" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px 14px;font-size:14px;text-decoration:none;color:#0f172a;box-shadow:0 2px 8px rgba(15,23,42,0.08);">🌐 العربية</a>
+  <a href="/data-deletion" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px 14px;font-size:14px;text-decoration:none;color:#0f172a;box-shadow:0 2px 8px rgba(15,23,42,0.08);">🌐 English</a>
+</div>'\n</body></html>"""
 
 
 _DELETION_HTML = """<!DOCTYPE html>
@@ -96,7 +99,10 @@ h1{font-size:26px;margin:0 0 8px;} h2{font-size:18px;margin-top:28px;border-bott
 <li>توكنات الوصول لصفحاتك.</li>
 <li>سجلات العملاء والمحادثات المخزنة.</li>
 </ul>
-</div></body></html>"""
+</div>'<div style="position:fixed;top:18px;inset-inline-end:18px;z-index:99;">
+  <a href="/data-deletion?lang=ar" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px 14px;font-size:14px;text-decoration:none;color:#0f172a;box-shadow:0 2px 8px rgba(15,23,42,0.08);">🌐 العربية</a>
+  <a href="/data-deletion" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:9px 14px;font-size:14px;text-decoration:none;color:#0f172a;box-shadow:0 2px 8px rgba(15,23,42,0.08);">🌐 English</a>
+</div>'\n</body></html>"""
 
 
 def register_compliance_routes(app: FastAPI):
