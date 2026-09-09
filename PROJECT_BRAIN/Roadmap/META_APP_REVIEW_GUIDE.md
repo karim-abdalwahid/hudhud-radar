@@ -14,9 +14,25 @@
 | التكلفة؟ | **صفر** — كله مجاني |
 | المدة؟ | مراجعة الصلاحيات عادة 1-7 أيام لكل دفعة |
 
+
+---
+
+## ⚡ الحالة الحالية (سبتمبر 2026 — قبل التقديم)
+
+| المتطلب | الحالة |
+|---|---|
+| Business Verification | ✅ مكتمل |
+| Tech Provider (Access Verification) | ✅ **معتمد — SaaS Platform** (Entry 036) |
+| Privacy Policy (دون تسجيل دخول) | ✅ `https://www.hudhd.com/privacy` |
+| Data Deletion (صفحة + callback موقّع) | ✅ `https://www.hudhd.com/data-deletion` |
+| Webhooks callback موحد على hudhd.com | ✅ (`APP_BASE_URL` مصدر وحيد) |
+| جاهز للتقديم | ✅ **كل شيء جاهز — نفّذ الدفعات أدناه** |
+
+> ملاحظة S-Purge (Entry 035): المنصة محايدة تماماً — لا بيزنس شخصي في الواجهات/النصوص، وهذا يقوّي الـ Review.
+
 ## 2. ما أنجزناه بالفعل (متطلبات جاهزة)
-✅ Privacy Policy حية: `https://hudhud-radar.vercel.app/privacy`
-✅ Data Deletion: صفحة `https://hudhud-radar.vercel.app/data-deletion` + callback API
+✅ Privacy Policy حية: `https://www.hudhd.com/privacy` (ثنائية EN/AR)
+✅ Data Deletion: صفحة `https://www.hudhd.com/data-deletion` + callback موقّع fail-closed
 ✅ استبيانات البيانات ستجيب عنها بنفس المعلومات أدناه
 
 ## 3. خطوات التوثيق التجاري (Business Verification) — 15 دقيقة
