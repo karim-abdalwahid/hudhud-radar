@@ -1466,3 +1466,24 @@ Polar dashboard delivers to https://www.hudhd.com/api/payments/webhook/polar wit
 - Wizard checkout wiring UI polish (billing/success page).
 - PostHog toggle + Meta App Review submissions (owner).
 - Phase 10 Affiliate (post-launch).
+
+---
+
+## [Entry 041] Checkout UI + Billing Pages LIVE — Phase 9 Customer Flow Complete
+- **Timestamp**: 2026-09-09T20:00:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: LIVE — 225/225 tests, all customer-facing billing surfaces deployed
+
+### 1. Deployed (commits c04343f, 38447fa)
+- **/billing/checkout-page**: plan composer — platform selector cards with OFFICIAL brand SVGs, live quote via /api/billing/quote (multi-platform discounts + coupon validation shown inline), trial banner (3 days all-platforms, card required), bilingual EN/AR.
+- **/billing/success**: Polar return target — polls /api/billing/subscription every 2.5s until entitlements sync (webhook-driven), shows activated platforms, bilingual, then routes to onboarding step 3 with connect unlocked.
+- **/api/billing/catalog-public**: public pricing catalog for the checkout page (no secrets).
+- Brand platformIcon() used in composer cards (official marks per platform).
+
+### 2. Complete Customer Payment Journey (LIVE, sandbox)
+Register → consent gate → onboarding wizard (skippable, subscription wall on connect) → /billing/checkout-page → select platforms (live quote + discounts + coupon) → Polar sandbox checkout (real URL) → pay with test card → Polar webhook → entitlements synced → success page shows activated platforms → connect unlocked → agent works on user's own connected accounts.
+
+### 3. Owner checklist to go fully live (non-code)
+1. Polar: switch sandbox → live organization + real products + POLAR_* env update.
+2. Meta App Review submissions (Tech Provider verified — guide ready).
+3. support@hudhd.com forwarding (Hostinger) — instructions already provided.
