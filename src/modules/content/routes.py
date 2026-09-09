@@ -19,6 +19,9 @@ from src.modules.context import (  # explicit for readability
     ai_provider_manager, content_scheduler, _verify_cron_secret,
     _meta_status_cache, META_STATUS_CACHE_TTL, _llm_status_probe,
     collect_alerts, TEMPLATES_DIR,
+    ContentGenerationRequest, ContentGenerationResponse,
+    ContentPostCreate, ContentPostUpdate, ContentPostResponse,
+    ContentPlatform, PostType, ContentStatus, CreationMode,
 )
 
 router = APIRouter()

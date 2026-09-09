@@ -2,7 +2,7 @@
 Meta platform adapter — wraps the existing meta_api singletons behind the
 PlatformAdapter contract. Delegation only: no behavior changes, zero risk.
 """
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from src.platforms.base import PlatformAdapter, PlatformCapabilities, PlatformStatus
 
