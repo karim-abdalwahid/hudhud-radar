@@ -1413,3 +1413,27 @@ Test-stray users from Phase 9 dev runs were caught by the acceptance sweep (user
 ### 5. Rules
 - R16 upheld: identity scan CLEAN throughout the wave.
 - Payment security posture: webhook fail-closed + idempotent + geo-pricing via X-Vercel-IP-Country (no third-party geolocation).
+
+---
+
+## [Entry 039] Brand Marks Deployed + Wizard v2 Live — Phase 9 UI Wave Complete
+- **Timestamp**: 2026-09-09T15:30:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: LIVE — 222/222 tests, acceptance 17/17 (wizard elements verified authed)
+
+### 1. Official Platform Brand Icons (S-B, commit 7789dba)
+Owner directive: real social platform brand marks everywhere — no emoji placeholders.
+- src/platforms/brand_icons.py: official inline SVG marks (facebook #1877F2, instagram gradient, threads black, whatsapp #25D366, tiktok) with per-render unique gradient ids + generic fallback glyph.
+- src/core/modules.py exposes platform_icon_svg() — future platforms get brand marks by adding ONE dict entry.
+- scripts/apply_brand_icons.py: surgical replacement across templates — landing integration cards, onboarding circles, inbox channel-dots (via window.platformIcon() JS helper in saas.js for dynamic renders).
+- Adding a future platform (TikTok...) = 1 SVG dict entry + adapter — icons/branding flow automatically.
+
+### 2. Onboarding Wizard v2 (commit c9d6262)
+- Step 3 subscription wall: 'No active subscription' banner + Start Free Trial (3 days) + Subscribe buttons; Connect buttons DISABLED (opacity .45) until /api/billing/subscription reports can_connect=true (live gate, fail-closed if probe fails).
+- Skip buttons on ALL steps (owner: 'يقدر يعمل skip عادي جدا') + 'Skip — finish setup without connecting' on step 3.
+- Step 2: Agent Role + 'Other (write your own)' → custom input; AI Brain dropdown with admin-note (models = admin-enabled only); finalize(skip=true) allows empty knowledge on skip.
+- Live-verified authed: wizard-container, sub-wall, brand IG svg, skip buttons, agent-role-custom all present on production /onboarding.
+- Probing note: unauthenticated /onboarding redirects to /login (middleware) — acceptance probes must authenticate first (updated in sweep notes).
+
+### 3. i18n Fix
+Found + fixed literal backtick-n corruption in i18n.js (from a prior PowerShell replace) — node --check now clean; EN+AR keys added for all new wizard strings.
