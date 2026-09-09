@@ -11,7 +11,7 @@ Admin Console module (WS-E+H) — owner-only management surfaces:
 Traffic collection: middleware hook (lightweight internal log, no tracking
 cookies — disclosed in the Privacy Policy, section 9 Cookies).
 """
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
