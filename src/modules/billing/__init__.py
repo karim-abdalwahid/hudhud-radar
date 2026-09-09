@@ -254,10 +254,15 @@ def register(app: FastAPI) -> None:
             products = [mapping.get(p) for p in ("facebook", "instagram", "threads")]
             products = [p for p in products if p]
             if products and token:
+                from src.config import settings as _st
+                _ret = _st.APP_BASE_URL.rstrip("/") + "/billing/success"
                 r2 = _hx.post("https://sandbox-api.polar.sh/v1/checkouts/",
                               headers={"Authorization": f"Bearer {token}"},
                               json={"products": products,
-                                    "customer_email": "diag@hudhd.com"},
+                                    "customer_email": "diag@hudhd.com",
+                                    "success_url": _ret,
+                                    "metadata": {"user_id": "diag",
+                                                 "platforms": "facebook,instagram,threads"}},
                               timeout=30, follow_redirects=True)
                 out["checkout_test_status"] = r2.status_code
                 if r2.status_code in (200, 201):
