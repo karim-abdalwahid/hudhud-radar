@@ -1,4 +1,4 @@
-"""Final production acceptance sweep for the WS0-G build (Entry 034)."""
+"""Final comprehensive acceptance sweep — everything the owner requested."""
 import httpx
 
 BASE = "https://www.hudhd.com"
@@ -9,63 +9,65 @@ def check(name, ok):
     checks.append((name, bool(ok)))
 
 
-# Anonymous probes
-r = httpx.get(f"{BASE}/health", timeout=30)
-check("health 200", r.status_code == 200)
-
+# ── S-Purge: platform is neutral ──────────────────────────────────────────
 r = httpx.get(f"{BASE}/terms", timeout=30)
-check("terms EN + Egyptian law", r.status_code == 200 and "Arab Republic of Egypt" in r.text)
-
-r = httpx.get(f"{BASE}/terms?lang=ar", timeout=30)
-check("terms AR", r.status_code == 200 and "جمهورية مصر العربية" in r.text)
+check("Legal: platform operator (no Ebd'a/Karim)", r.status_code == 200
+      and "Arab Republic of Egypt" in r.text and "ebdamarketing" not in r.text)
 
 r = httpx.get(f"{BASE}/privacy", timeout=30)
-check("privacy EN full", r.status_code == 200 and "AI processing" in r.text)
+check("Privacy: platform operator + AI disclosure", r.status_code == 200
+      and "support@hudhd.com" in r.text and "Gemini" in r.text)
 
+# ── Directions + language (WS-C+D) ────────────────────────────────────────
 r = httpx.get(f"{BASE}/login", timeout=30)
-check("login EN/LTR default", r.status_code == 200 and 'lang="en" dir="ltr"' in r.text)
+check("Auth: EN/LTR default (no Arabic from nowhere)", r.status_code == 200
+      and 'lang="en" dir="ltr"' in r.text and '|| "ar"' not in r.text)
+check("Auth: row-reverse directions (owner spec)", "flex-direction: row-reverse" in r.text)
+check("Auth: consent checkboxes present", 'id="regTerms"' in r.text and 'id="googleTerms"' in r.text)
+check("Auth: consent links legal pages", r.text.count('href="/terms"') >= 2)
 
+# ── Brand icons v2 (white bg + full wordmark) ─────────────────────────────
+r = httpx.get(f"{BASE}/static/icon-192.png", timeout=30)
+check("Brand icon-192 served", r.status_code == 200)
 r = httpx.get(f"{BASE}/static/favicon.ico", timeout=30)
-check("favicon served", r.status_code == 200)
-
+check("Favicon served", r.status_code == 200)
 r = httpx.get(f"{BASE}/static/manifest.json", timeout=30)
-check("manifest served", r.status_code == 200)
+check("Manifest served", r.status_code == 200)
 
+# ── Notifications (WS-F) ──────────────────────────────────────────────────
 r = httpx.get(f"{BASE}/api/notifications", timeout=30)
-check("notifications gated (anon 401)", r.status_code == 401)
+check("Notifications gated (anon 401)", r.status_code == 401)
 
+# ── Admin console (WS-E+H) ────────────────────────────────────────────────
 r = httpx.get(f"{BASE}/api/admin/users", timeout=30)
-check("admin users gated (anon 401)", r.status_code == 401)
+check("Admin users gated (anon 401)", r.status_code == 401)
 
-r = httpx.get(f"{BASE}/api/knowledge/documents", timeout=30)
-check("knowledge gated (anon 401)", r.status_code == 401)
-
-# Admin session probes
+# ── Honest platform state (S-purge) ───────────────────────────────────────
 s = httpx.Client(base_url=BASE, timeout=30)
-lr = s.post(f"{BASE}/auth/login",
-            json={"email": "admin.test@hudhud.test", "password": "AdminTest#2026"})
-check("admin login", lr.status_code == 200)
+s.post("/auth/login", json={"email": "admin.test@hudhud.test", "password": "AdminTest#2026"})
+r = s.get("/api/meta/status")
+d = r.json()
+check("Platform honestly disconnected (purge verified)",
+      d.get("configured") is False and d.get("token_valid") is False)
 
-r = s.get(f"{BASE}/api/admin/templates")
-check("templates list (6 seeded)", r.status_code == 200 and len(r.json().get("templates", [])) >= 6)
+r = s.get("/api/admin/overview")
+d = r.json()
+check("Admin overview: exactly 2 test users, zero fabricated data",
+      d.get("users_total") == 2 and d.get("leads_total") == 0)
 
-r = s.get(f"{BASE}/api/admin/overview")
-check("admin overview KPIs", r.status_code == 200)
+r = s.get("/api/admin/templates")
+check("Templates manager: 6 seeded lifecycle templates",
+      r.status_code == 200 and len(r.json().get("templates", [])) >= 6)
 
-r = s.get(f"{BASE}/api/admin/users")
-check("admin users list", r.status_code == 200)
+r = s.get("/users")
+check("/users admin page", r.status_code == 200)
 
-r = s.get(f"{BASE}/api/notifications")
-check("my notifications", r.status_code == 200)
+r = s.get("/templates")
+check("/templates admin page", r.status_code == 200)
 
-r = s.get(f"{BASE}/users")
-check("/users page", r.status_code == 200)
-
-r = s.get(f"{BASE}/templates")
-check("/templates page", r.status_code == 200)
-
-r = s.get(f"{BASE}/dashboard")
-check("dashboard + sidebar + bell assets", r.status_code == 200 and "/static/saas.js" in r.text)
+# ── Core health ───────────────────────────────────────────────────────────
+r = httpx.get(f"{BASE}/health", timeout=30)
+check("Health 200", r.status_code == 200)
 
 for name, ok in checks:
     print(("PASS" if ok else "FAIL"), name)

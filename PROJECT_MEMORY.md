@@ -1359,3 +1359,26 @@ Meta approved the owner's business as a Tech Provider (SaaS Platform). The submi
 ### 3. Next Meta-side steps (owner dashboard)
 - OAuth consent screen (Google) → Publish App (if not yet).
 - Meta App Review: submit permission requests (guide ready) for Advanced Access.
+
+---
+
+## [Entry 037] Brand v2 + Vercel Clarifications + Purge Verified + Full Acceptance 17/17
+- **Timestamp**: 2026-09-09T12:00:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: ALL VERIFIED LIVE
+
+### 1. Owner Decisions & Clarifications
+- Vercel: NO CLI switch to hudhud2 — it would break the owner's OTHER project (separate folder/account uses the same machine CLI; login is per-machine). Owner reverted CLI login to the old account. Team-member invite unavailable on Hobby (Pro required). Standing arrangement: owner checks hudhud2 dashboard (logs/env) and shares findings; agent never touches other Vercel accounts (R1/R4/R5 remain).
+- Owner removed META_PAGE_ACCESS_TOKEN/PAGE_ID/INSTAGRAM_ACCOUNT_ID from hudhud2 env → live-verified: meta/status configured:false, token_valid:false (honest disconnected platform post-purge). S2b complete.
+- Google: owner PUBLISHED the OAuth consent app from Branding section (that IS the Publish App step — confirmed done).
+- Brand icons v2 spec: WHITE background; LARGE icons = full wordmark with EVERY letter visible matching the site navbar; SMALL (google-120/favicons) = compact H. with blue dot, high quality.
+- Meta Tech Provider VERIFIED (Entry 036) — Phase 9 legally unblocked.
+
+### 2. Brand v2 Executed (commit 11cf044)
+scripts/generate_brand_icons.py rewritten: auto-fit algorithm finds the largest font where 'Hudhud.' fits within 86% canvas width (guarantees no letter clipping — owner had reported the wordmark ran outside the icon); white rounded-square bg; navy text + blue dot (site palette); small marks rendered at 4x and LANCZOS-downscaled for crispness. Outputs: 1024/512/192/180 full wordmark + google-120/favicons H. + SVG master.
+
+### 3. Full Acceptance Sweep (scripts/final_acceptance_sweep.py) — 17/17 PASS live
+Legal neutral operator · Privacy platform contact · EN/LTR default + no-ar-fallback · row-reverse directions · consent checkboxes ×2 + legal links · brand assets served · notifications/admin gated · platform honestly disconnected · exactly 2 test users · 6 templates · /users + /templates pages · health.
+
+### 4. Standing Arrangement (updated R1-R5 context)
+- Agent CLI stays on old account for the owner's OTHER project convenience — but NEVER touches other accounts/projects (R1/R4). All hudhud2 dashboard-side actions (env, logs, deletes) = owner performs and shares results; agent verifies via the live site.
