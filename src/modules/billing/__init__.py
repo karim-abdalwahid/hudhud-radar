@@ -223,6 +223,33 @@ def register(app: FastAPI) -> None:
             raise HTTPException(status_code=502, detail=str(e))
         return {"status": "success", "quote": quote, **result}
 
+    @app.get("/api/admin/billing/polar-diag", tags=["Billing"])
+    async def polar_diagnostics(request: Request):
+        """Admin-only: verifies Polar config presence + live API reachability.
+        Never exposes the token itself."""
+        _require_admin(request)
+        from src.config import settings
+        token = settings.POLAR_ACCESS_TOKEN or ""
+        org = settings.POLAR_ORGANIZATION_ID or ""
+        out = {
+            "token_set": bool(token),
+            "token_prefix": (token[:12] + "...") if token else None,
+            "org_id_set": bool(org),
+            "mode": "sandbox" if "sandbox-api" in (getattr(gateway_api := None, "__str__", lambda: "")() or "") or True else None,
+        }
+        # live API probe
+        try:
+            import httpx as _hx
+            r = _hx.get("https://sandbox-api.polar.sh/v1/products?limit=1",
+                        headers={"Authorization": f"Bearer {token}"}, timeout=20)
+            out["sandbox_api_status"] = r.status_code
+            out["sandbox_reachable"] = r.status_code == 200
+            if r.status_code == 401:
+                out["hint"] = "TOKEN مرفوض — تأكد أنه من نفس الـ Organization (sandbox)"
+        except Exception as e:
+            out["sandbox_api_error"] = str(e)[:200]
+        return {"status": "success", "diag": out}
+
     @app.post("/api/billing/trial", tags=["Billing"])
     async def start_trial_checkout(request: Request):
         """3-day all-platforms trial — requires card capture via the gateway."""
