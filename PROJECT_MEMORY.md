@@ -1257,3 +1257,54 @@ Owner created a NEW Google Cloud project/client (old leaked-secret client retire
 - Meta Webhooks/Data-deletion + cron URLs: owner updated (agent verified what's verifiable; Meta fields not externally readable).
 - Old vercel.app domain stays attached as legacy secondary — can be removed from Vercel domains anytime.
 - Update ops scripts' default fallback APP_BASE_URL (scripts read env first — default still canonical-vercel-app; harmless).
+
+---
+
+## [Entry 034] Modular Architecture Rebuild (WS0) + Full Feature Wave (WS-A→G) — Deployed & Verified
+- **Timestamp**: 2026-09-09T07:00:00+03:00
+- **Actor**: User (Owner, full authority granted) & AI Agent (opencode/GLM)
+- **Status**: ALL LIVE — 190/190 tests + 18/18 production acceptance sweep
+
+### 1. Owner Directives
+- Full authority to execute all approved workstreams autonomously; stop only for critical items.
+- Site is pre-launch (no real customers) → full migration allowed (no strangler needed).
+- Code must be modular: add platforms/features without breaking existing paths; human-readable and AI-agent-friendly.
+- Supabase management token: owner-approved for dev work (repo stays private).
+- New requirements integrated: Legal pages, consent gate, bilingual EN-default, notifications (in-app v1 + email later), admin users console (+credits/+plans), editable templates manager, brand icons (1024 + Google 120).
+
+### 2. WS0 — Architecture (commits 7200313, c4bf9f9, 4622b89, 8e3c060, 54128f7, 80f0d24)
+- **Module Registry** (src/core/modules.py): self-contained modules declare routes/pages/nav/auth. Adding a feature = 1 folder + 1 registration line.
+- **Platform Adapters** (src/platforms/): PlatformAdapter contract with capabilities gating; meta+threads wrap existing singletons; new platform = 1 folder + 1 line + 1 enum ALTER.
+- **Auth policy is registry-aware**: modules self-declare public paths; default-deny for undeclared mutations (kills the 'forgotten admin gate' bug class — the llm-status incident can never recur).
+- **main.py 1,493 → 187 lines**: 15+ modules (health, webhooks, leads, identity, analytics, meta, content, cron_admin, ai, threads_marketing, knowledge, automations, pages, inbox_onboarding, auth_module, compliance, notifications, admin_console, admin_users_page, templates_manager, legal).
+- **Registry-driven sidebar**: server-rendered nav, role-aware (users no longer SEE admin links), active computed per-path, drift-impossible (regression: leads.html lacked /automations link).
+- **Brand icons**: deterministic generator (brand/ + scripts/generate_brand_icons.py): 1024/512/192/180 + compact H. for Google-120 consent logo + favicons + manifest.json, injected in every page.
+- **context.py**: shared kernel (services/settings/caches) — the single import point for module routes.
+
+### 3. Feature Wave (commits e349a83, 0fc9a0e, d721906, b410704, 9bf166d, 3f1c51c)
+- **WS-A Legal**: /terms (15 sections) + /privacy (14 sections), EN+AR toggle, Egyptian law + Cairo Economic Courts (owner decision), every claim maps to real behavior (24h window, Gemini processing, Supabase/Vercel, PBKDF2, data-deletion). Legal module; compliance now serves deletion only.
+- **WS-B Consent gate**: migration 005 (terms_accepted_at/terms_version applied to prod). /auth/register REQUIRES terms_accepted=true (400 otherwise); Google signup stamps acceptance (captured pre-redirect). SendRad-style checkbox with underlined links for BOTH paths. Registration cap 50→500.
+- **WS-C+D Directions+Language**: EN default site-wide (auth.html EN/LTR head; '|| ar' fallback killed); directions: LTR=form-left, RTL=mirrored (owner spec); auth page through unified template pipeline.
+- **WS-F Notifications**: migration 006 (notifications table+RLS+helper fn). User APIs (list/unread/read/read-all) + admin broadcast (all users or single target) + job hooks (scheduler publish, insights sync → admin notifications) + bell UI in saas.js (60s polling, badge, dropdown). Fail-silent: business ops never break on notification failure. In-app only v1; email rides this table later.
+- **WS-E+H Admin Console**: migration 007 (users.plan/ai_credits + site_traffic). APIs: list/search, PATCH (edit/activate/disable/self-protection), +credits grants, plan set (free|starter|growth|scale manual pre-Phase 9), overview KPIs, internal traffic log (no tracking cookies; disclosed Privacy §9). /users admin page with KPIs, users table (+Credits/Plan/Disable buttons), traffic top-paths.
+- **WS-G Templates**: migration 008 (message_templates + 6 seeded lifecycle templates). render_and_notify(key,user,values) engine with {placeholders}; admin APIs (list/update/restore/toggle); /templates page (live preview with sample data, enable/disable, restore default); welcome_signup lifecycle hook fires on registration.
+
+### 4. DEPLOYMENT INCIDENT + ROOT CAUSE (critical lesson)
+- Production went 500 after the wave. Long diagnosis: bisect probes (minimal fastapi served 200 → src.main import chain broken on server).
+- **Root cause 1 (builds failing)**: Vercel's Python entrypoint scan requires a DIRECT module-level pp = ... in api/index.py. The diag version assigned app inside try/except → 'Could not find top-level app' → builds failed since 322139b (owner pulled the exact build log — the breakthrough).
+- **Root cause 2 (runtime crash)**: Vercel Python = 3.12 (evaluates annotations eagerly) vs local 3.14 (PEP 649 lazy). Missing imports (typing.Dict in admin_console; Content models via star-import shadowing in content; Optional in meta_adapter) crashed at import ONLY on 3.12.
+- Fixes: direct top-level app assignment; +typing imports; scan_annotation_traps.py added (scripts/) — scans ALL src for annotation Names not imported; MUST run before any deploy (add to checklist/R14).
+- **Final verification**: 190/190 unit + 18/18 live production acceptance sweep (health, terms EN/AR+law, privacy, login EN/LTR, favicon, manifest, gates, admin login/templates/overview/users, notifications, /users, /templates pages).
+
+### 5. Owner question answered (permissions)
+- CLI is scoped to team 'karim-abdalwahids-projects' ONLY; hudhud2 (owner's personal team scope) is NOT accessible to the CLI — R1 forbids scope switching. For production logs/builds on hudhud2 the owner checks vercel.com dashboard (as done today — the build log owner provided identified the root cause).
+- Owner offered to grant broader access; decision recorded: owner dashboard checks remain the mechanism for hudhud2-scope items (logs, env vars, deployments). No CLI scope changes.
+
+### 6. Rules Added
+- **R14**: Before EVERY deploy: run scripts/scan_annotation_traps.py + confirm api/index.py has DIRECT top-level 'app =' (Vercel entrypoint scan).
+- **R15**: New feature = new module under src/modules/ with register_module() declaring pages/nav/auth. No inline additions to main.py.
+
+### 7. Remaining (documented, not started)
+- Phase 9 multi-tenant plan (owner review before code)
+- Google consent 'Publish App' + Meta App Review submissions (owner dashboard)
+- Owner to-dos from Entry 028/030 (rotate Google secret still pending probe confirmation)
