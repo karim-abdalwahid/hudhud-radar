@@ -1382,3 +1382,34 @@ Legal neutral operator · Privacy platform contact · EN/LTR default + no-ar-fal
 
 ### 4. Standing Arrangement (updated R1-R5 context)
 - Agent CLI stays on old account for the owner's OTHER project convenience — but NEVER touches other accounts/projects (R1/R4). All hudhud2 dashboard-side actions (env, logs, deletes) = owner performs and shares results; agent verifies via the live site.
+
+---
+
+## [Entry 038] Phase 9 Build Wave — Billing/Payments/Coupons/Settings/Themes/Isolation LIVE
+- **Timestamp**: 2026-09-09T14:00:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: 9.1-9.5 deployed & verified — 222/222 tests + 17/17 acceptance
+
+### 1. Owner Setup Completed
+- Polar.sh **sandbox org** created (hudhd-sandbox) + webhook registered (https://www.hudhd.com/api/payments/webhook/polar) + POLAR_ACCESS_TOKEN/POLAR_WEBHOOK_SECRET set on hudhud2 env by owner.
+- Vercel CLI switch CANCELLED (owner insight: machine-level login would break the owner's other project). Standing: owner checks hudhud2 dashboard; agent never touches other accounts.
+- Meta **Tech Provider VERIFIED** (Entry 036) — Phase 9 legally unblocked.
+
+### 2. Implemented (commits 73cd0dc, 4f757d2, 1503023, 4a55672)
+- **9.1 Billing foundation**: migration 009 applied (platform_addons_catalog FB/+IG/+Threads/ seeded, user_subscriptions, user_entitlements, payment_events, usage_events, coupons+coupon_redemptions — all RLS'd). EntitlementService (fail-closed reads, sync_from_platforms = payment-truth exact-sync, trial 3d all-platforms with auto-expiry). PricingService (per-platform sum − multi-platform discounts from admin settings − coupon, stacked). APIs: quote/subscription/admin catalog/settings.
+- **9.2 Payments**: PaymentProvider contract + **Polar.sh adapter** (svix webhook verification fail-closed + 5min timestamp tolerance, checkout over product-per-platform from admin mapping, trial=checkout with card capture) + registry (add gateway = 1 file + 1 line) + **webhook endpoint /api/payments/webhook/{provider}**: verify → dedup (payment_events) → resolve user by email → sync entitlements → activate/cancel with notifications. Unknown provider 404, invalid signature 400, stale timestamp 400, duplicate ignored.
+- **9.3 Admin Site Control**: /api/admin/site-settings whitelist (payment_gateway, payment_mode, multi_platform_discounts, pricing_usd, currency_table geo-pricing, theme_default, registration_cap) + checkout endpoint (coupon validation incl. per-user targeting) + trial endpoint + coupons admin CRUD (percent/fixed/platform_unlock/credits, per-user targeting, usage limits).
+- **9.4 Themes + Language**: theme system Light/Dark/Device (prefers-color-scheme live-follow) with admin-panel-configurable default + topbar switcher; Language **globe dropdown** (🌐 → 🇺🇸 English / 🇪🇬 العربية) replacing simple toggle.
+- **9.5 Isolation**: migration 010 applied (user_id on leads/messages/content_posts/page_performance_metrics/activity_logs/notifications + indexes). Leads API scoped: regular users see ONLY their own (admin = workspace view); cross-access → 403.
+
+### 3. Dev-Data Hygiene
+Test-stray users from Phase 9 dev runs were caught by the acceptance sweep (users_total drifted 2→6) → scripts/cleanup_dev_users.py removes ALL non-test users + clears sweep traffic/logs/notifications. Sweep re-run: 17/17 with exactly 2 users.
+
+### 4. Remaining in Phase 9
+- 9.2b: sandbox PRODUCTS creation in Polar dashboard (owner, 3 products) + polar_product_ids mapping (admin setting) + live checkout UI test — checkout endpoint ready and waiting.
+- Wizard v2 redesign (3-step skippable with disabled-connect state) — spec confirmed in Entry 037 discussion.
+- PostHog (9.6 toggle-gated), Meta App Review submissions (owner), Phase 10 Affiliate (post-launch, recorded).
+
+### 5. Rules
+- R16 upheld: identity scan CLEAN throughout the wave.
+- Payment security posture: webhook fail-closed + idempotent + geo-pricing via X-Vercel-IP-Country (no third-party geolocation).
