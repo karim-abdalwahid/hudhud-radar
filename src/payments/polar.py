@@ -89,7 +89,7 @@ class PolarGateway(PaymentProvider):
         }
         if quote.get("coupon_discount_usd"):
             payload["discount_id"] = quote.get("coupon_polar_id")
-        with httpx.Client(timeout=30) as c:
+        with httpx.Client(timeout=30, follow_redirects=True) as c:
             r = c.post(f"{self.api}/v1/checkouts", headers=self._headers(), json=payload)
             if r.status_code not in (200, 201):
                 logger.error(f"Polar checkout failed: {r.status_code} {r.text[:300]}")
@@ -98,11 +98,32 @@ class PolarGateway(PaymentProvider):
         return {"checkout_url": data.get("url"), "provider_ref": data.get("id")}
 
     def start_trial(self, user: Dict[str, Any], return_url: str) -> Dict[str, Any]:
-        """Trial = a checkout over ALL platform products; Polar trial days are
-        configured per product in the dashboard (3 days, card required)."""
-        all_platforms = ["facebook", "instagram", "threads"]
-        quote = {"platforms": all_platforms, "coupon_discount_usd": 0}
-        return self.create_checkout(user, quote, return_url)
+        """Trial = checkout over the TRIAL products (3-day free period configured
+        per product in the Polar dashboard, card required). Falls back to normal
+        products if trial mapping is absent."""
+        mapping = self._product_ids()
+        trial_ids = [mapping.get(f"trial-{p}") for p in ("facebook", "instagram", "threads")]
+        trial_ids = [t for t in trial_ids if t]
+        if not trial_ids:
+            logger.warning("No trial product mapping — falling back to regular products")
+            return self.create_checkout(
+                user, {"platforms": ["facebook", "instagram", "threads"],
+                       "coupon_discount_usd": 0}, return_url)
+        payload = {
+            "products": trial_ids,
+            "success_url": return_url,
+            "customer_email": user.get("email"),
+            "metadata": {"user_id": user.get("id"),
+                         "platforms": ["facebook", "instagram", "threads"],
+                         "trial": True},
+        }
+        with httpx.Client(timeout=30, follow_redirects=True) as c:
+            r = c.post(f"{self.api}/v1/checkouts", headers=self._headers(), json=payload)
+            if r.status_code not in (200, 201):
+                logger.error(f"Polar trial checkout failed: {r.status_code} {r.text[:300]}")
+                raise RuntimeError("تعذر إنشاء تجربة الدفع — حاول مجدداً")
+            data = r.json()
+        return {"checkout_url": data.get("url"), "provider_ref": data.get("id")}
 
     # ------------------------------------------------------------------
     def verify_webhook(self, headers: Dict[str, str], raw_body: bytes) -> bool:
