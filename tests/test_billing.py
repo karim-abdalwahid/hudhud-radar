@@ -227,3 +227,32 @@ def test_my_subscription_empty(client: TestClient, fake_billing):
     r = client.get("/api/billing/subscription")
     assert r.status_code == 200
     assert r.json()["status"] == "none"
+
+# ── Checkout + coupons + site settings (9.3) ─────────────────────────────
+def test_checkout_requires_auth(anon_client: TestClient):
+    r = anon_client.post("/api/billing/checkout", json={"platforms": ["facebook"]})
+    assert r.status_code == 401
+
+
+def test_checkout_rejects_empty_platforms(client: TestClient, fake_billing):
+    r = client.post("/api/billing/checkout", json={"platforms": []})
+    assert r.status_code == 400
+
+
+def test_coupon_create_requires_admin(client_as_user: TestClient):
+    r = client_as_user.post("/api/admin/billing/coupons", json={
+        "code": "TEST10", "kind": "percent", "value": 10})
+    assert r.status_code == 403
+
+
+def test_site_settings_gated(client_as_user: TestClient, anon_client: TestClient):
+    assert client_as_user.get("/api/admin/site-settings").status_code == 403
+    assert anon_client.get("/api/admin/site-settings").status_code == 401
+
+
+def test_site_settings_rejects_unknown_key(client: TestClient, fake_billing):
+    """Pydantic ignores unknown fields; ALLOWED_SETTING_KEYS whitelist means
+    nothing unknown is ever persisted (safe default-deny)."""
+    r = client.put("/api/admin/site-settings", json={"evil_key": "x"})
+    st = client.get("/api/admin/site-settings").json()["settings"]
+    assert "evil_key" not in st

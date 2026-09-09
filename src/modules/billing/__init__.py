@@ -184,6 +184,146 @@ def register(app: FastAPI) -> None:
         logger.info(f"{provider} webhook processed: {event['event_type']} kind={kind}")
         return {"status": "received", "kind": kind}
 
+    # ---------------- Checkout (9.2) ----------------
+    class CheckoutPayload(BaseModel):
+        platforms: List[str]
+        coupon: Optional[str] = None
+
+    @app.post("/api/billing/checkout", tags=["Billing"])
+    async def create_checkout(payload: CheckoutPayload, request: Request):
+        """Creates a gateway checkout for the chosen platforms (coupon applied)."""
+        session = _me(request)
+        plats = [p.strip().lower() for p in payload.platforms if p.strip()]
+        if not plats:
+            raise HTTPException(status_code=400, detail="اختر منصة واحدة على الأقل")
+        coupon_row = None
+        if payload.coupon:
+            rows = supabase_db.select("coupons", {"code": payload.coupon.strip().upper()}) or []
+            if not rows or not rows[0].get("is_active"):
+                raise HTTPException(status_code=400, detail="الكوبون غير صالح أو منتهي")
+            coupon_row = rows[0]
+            if coupon_row.get("applies_to_user"):
+                target = coupon_row["applies_to_user"].strip().lower()
+                me_email = session.get("email", "").strip().lower()
+                if target not in (me_email, session.get("sub")):
+                    raise HTTPException(status_code=403, detail="هذا الكوبون مخصص لحساب آخر")
+        quote = pricing_service.quote(plats, coupon_row)
+        if not quote.get("platforms"):
+            raise HTTPException(status_code=400, detail="لا توجد منصات متاحة في الاختيار")
+        user = {"id": session["sub"], "email": session["email"]}
+        from src.payments.registry import active_gateway
+        gateway = active_gateway()
+        if not gateway:
+            raise HTTPException(status_code=503, detail="بوابة الدفع غير مهيأة — تواصل معنا")
+        from src.config import settings
+        return_url = f"{settings.APP_BASE_URL.rstrip('/')}/billing/success"
+        try:
+            result = gateway.create_checkout(user, quote, return_url)
+        except RuntimeError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        return {"status": "success", "quote": quote, **result}
+
+    @app.post("/api/billing/trial", tags=["Billing"])
+    async def start_trial_checkout(request: Request):
+        """3-day all-platforms trial — requires card capture via the gateway."""
+        session = _me(request)
+        user = {"id": session["sub"], "email": session["email"]}
+        from src.payments.registry import active_gateway
+        gateway = active_gateway()
+        if not gateway:
+            raise HTTPException(status_code=503, detail="بوابة الدفع غير مهيأة")
+        from src.config import settings
+        return_url = f"{settings.APP_BASE_URL.rstrip('/')}/billing/success"
+        try:
+            result = gateway.start_trial(user, return_url)
+        except RuntimeError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        return {"status": "success", **result}
+
+    # ---------------- Coupons (9.3) ----------------
+    class CouponCreatePayload(BaseModel):
+        code: str
+        kind: str = "percent"                      # percent|fixed|platform_unlock|credits
+        value: float = 0
+        platform: Optional[str] = None             # for platform_unlock
+        applies_to_user: Optional[str] = None      # email; None = anyone
+        max_total_uses: Optional[int] = None
+        max_uses_per_user: int = 1
+        expires_at: Optional[str] = None
+
+    @app.get("/api/admin/billing/coupons", tags=["Billing"])
+    async def list_coupons(request: Request):
+        _require_admin(request)
+        rows = supabase_db.select("coupons") or []
+        rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+        return {"status": "success", "coupons": rows}
+
+    @app.post("/api/admin/billing/coupons", tags=["Billing"])
+    async def create_coupon(payload: CouponCreatePayload, request: Request):
+        _require_admin(request)
+        code = payload.code.strip().upper()
+        if not code or len(code) < 4:
+            raise HTTPException(status_code=400, detail="الكود قصير جداً")
+        if payload.kind not in ("percent", "fixed", "platform_unlock", "credits"):
+            raise HTTPException(status_code=400, detail="نوع كوبون غير معروف")
+        if payload.kind == "percent" and not (0 < payload.value <= 100):
+            raise HTTPException(status_code=400, detail="نسبة الخصم يجب أن تكون بين 1 و 100")
+        existing = supabase_db.select("coupons", {"code": code}) or []
+        if existing:
+            raise HTTPException(status_code=400, detail="هذا الكود مستخدم بالفعل")
+        applies_user_id = None
+        if payload.applies_to_user:
+            from src.core.auth import user_store
+            target = user_store.get_by_email(payload.applies_to_user.strip().lower())
+            if not target:
+                raise HTTPException(status_code=404, detail="المستخدم المحدد غير موجود")
+            applies_user_id = target["id"]
+        created = supabase_db.insert("coupons", {
+            "code": code, "kind": payload.kind, "value": payload.value,
+            "platform": payload.platform, "applies_to_user": applies_user_id,
+            "max_total_uses": payload.max_total_uses,
+            "max_uses_per_user": payload.max_uses_per_user,
+            "expires_at": payload.expires_at, "is_active": True,
+        })
+        return {"status": "success", "coupon": created}
+
+    @app.delete("/api/admin/billing/coupons/{coupon_id}", tags=["Billing"])
+    async def delete_coupon(coupon_id: str, request: Request):
+        _require_admin(request)
+        supabase_db.delete("coupons", coupon_id)
+        return {"status": "success"}
+
+    # ---------------- Site settings (9.3 — everything in one place) ----------------
+    ALLOWED_SETTING_KEYS = (
+        "payment_gateway", "payment_mode", "multi_platform_discounts",
+        "pricing_usd", "currency_table", "theme_default", "registration_cap",
+    )
+
+    class SiteSettingsPayload(BaseModel):
+        payment_gateway: Optional[str] = None
+        payment_mode: Optional[str] = None         # sandbox|live
+        multi_platform_discounts: Optional[dict] = None
+        pricing_usd: Optional[dict] = None          # {platform: price}
+        currency_table: Optional[dict] = None       # {EG: {currency, rate, round_to}}
+        theme_default: Optional[str] = None
+        registration_cap: Optional[int] = None
+
+    @app.get("/api/admin/site-settings", tags=["Admin Console"])
+    async def get_site_settings(request: Request):
+        _require_admin(request)
+        out = {k: supabase_db.get_setting(k) for k in ALLOWED_SETTING_KEYS}
+        return {"status": "success", "settings": out}
+
+    @app.put("/api/admin/site-settings", tags=["Admin Console"])
+    async def update_site_settings(payload: SiteSettingsPayload, request: Request):
+        _require_admin(request)
+        data = payload.model_dump(exclude_none=True)
+        for k, v in data.items():
+            if k not in ALLOWED_SETTING_KEYS:
+                raise HTTPException(status_code=400, detail=f"مفتاح غير مسموح: {k}")
+            supabase_db.set_setting(k, v)
+        return {"status": "success", "updated": list(data.keys())}
+
 
 module_registry.register_module(
     name="billing",
