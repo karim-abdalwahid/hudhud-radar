@@ -85,7 +85,9 @@ class PolarGateway(PaymentProvider):
             "products": products,
             "success_url": return_url,
             "customer_email": user.get("email"),
-            "metadata": {"user_id": user.get("id"), "platforms": quote.get("platforms", [])},
+            # Polar metadata values MUST be strings (nested/list values → 422)
+            "metadata": {"user_id": str(user.get("id") or ""),
+                         "platforms": ",".join(quote.get("platforms", []))},
         }
         if quote.get("coupon_discount_usd"):
             payload["discount_id"] = quote.get("coupon_polar_id")
@@ -114,9 +116,9 @@ class PolarGateway(PaymentProvider):
             "products": trial_ids,
             "success_url": return_url,
             "customer_email": user.get("email"),
-            "metadata": {"user_id": user.get("id"),
-                         "platforms": ["facebook", "instagram", "threads"],
-                         "trial": True},
+            "metadata": {"user_id": str(user.get("id") or ""),
+                         "platforms": "facebook,instagram,threads",
+                         "trial": "true"},
         }
         with httpx.Client(timeout=30, follow_redirects=True) as c:
             r = c.post(f"{self.api}/v1/checkouts/", headers=self._headers(), json=payload)
