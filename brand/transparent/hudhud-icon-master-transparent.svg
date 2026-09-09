@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <clipPath id="r"><rect width="1024" height="1024" rx="184"/></clipPath>
+  </defs>
+  <g clip-path="url(#r)">
+    <rect width="1024" height="1024" fill="none"/>
+    <text x="512" y="516" font-family="Montserrat, 'Plus Jakarta Sans', sans-serif"
+          font-weight="800" font-size="292" fill="#0f172a"
+          text-anchor="middle" dominant-baseline="central">Hudhud<tspan fill="#2563eb">.</tspan></text>
+  </g>
+</svg>
