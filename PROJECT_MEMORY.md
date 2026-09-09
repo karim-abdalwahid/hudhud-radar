@@ -1487,3 +1487,8 @@ Register → consent gate → onboarding wizard (skippable, subscription wall on
 1. Polar: switch sandbox → live organization + real products + POLAR_* env update.
 2. Meta App Review submissions (Tech Provider verified — guide ready).
 3. support@hudhd.com forwarding (Hostinger) — instructions already provided.
+
+### 5. Post-Entry Fix (same session)
+- GET /api/data-deletion was returning 405 (Method Not Allowed) — Meta reviewers and users who visit this URL in a browser got nothing. Fixed: compliance module now serves the deletion instructions page (HTML) on GET. Live-verified: 200 text/html.
+- Language globe 🌐 added to legal pages (/terms, /privacy) and the deletion page — EN/AR toggle via ?lang= links (same ?lang= pattern as the rest of the site).
+- App Review justifications document (APP_REVIEW_JUSTIFICATIONS.md) created with ready-to-paste EN messages for ALL 60+ permissions in the owner's review list, including removal recommendations for unused permissions (branded content, catalog management, keyword search, location tagging, profile discovery, share_to_instagram, live video, shopping tags, upcoming events, creator marketplace) — these MUST be removed from the request to avoid rejections.
