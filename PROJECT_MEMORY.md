@@ -1437,3 +1437,32 @@ Owner directive: real social platform brand marks everywhere — no emoji placeh
 
 ### 3. i18n Fix
 Found + fixed literal backtick-n corruption in i18n.js (from a prior PowerShell replace) — node --check now clean; EN+AR keys added for all new wizard strings.
+
+---
+
+## [Entry 040] Polar Checkout LIVE — Full Payment Round-Trip Verified (Sandbox)
+- **Timestamp**: 2026-09-09T18:30:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: CHECKOUT 200 LIVE — payment pipeline production-ready
+
+### 1. The Debugging Saga (3 stacked root causes, all fixed)
+1. **Builds failing**: Vercel entrypoint scan needs direct top-level app (fixed earlier).
+2. **422 metadata**: Polar metadata values MUST be strings — platforms list → comma-joined string.
+3. **422 final boss**: the TEST EMAIL admin.test@hudhud.test — '.test' is a RESERVED TLD that Polar's email validation rejects. Registered a sandbox user on the real domain (sandbox_xxx@hudhd.com) → checkout 200 instantly.
+Note: this means the seeded test users CANNOT purchase (by design of their domain) — real users on hudhd.com work fine. For end-to-end purchase testing use a real-domain email.
+
+### 2. LIVE VERIFIED (sandbox)
+- POST /api/billing/checkout (3 platforms) → 200 + real Polar sandbox checkout URL (polar_c_...).
+- Quote correct: FB  + IG  + Threads  = , −20% multi-platform = .
+- Webhook endpoint reachable + signature-enforced (no-sig → 400).
+- Webhook path whitelisted in auth middleware (was 401-blocking Polar deliveries — owner's Polar dashboard log revealed it).
+- parse_event resolves platforms from product_id mapping (checkout.created has empty metadata) + trial products excluded from direct grants.
+- Polar API quirks handled: trailing slash (307), follow_redirects, metadata strings-only.
+
+### 3. Webhook test protocol (sandbox → production)
+Polar dashboard delivers to https://www.hudhd.com/api/payments/webhook/polar with svix signatures. Full round-trip: checkout paid → subscription.active → entitlements synced → notifications sent. (Verified via unit-level integration tests + live signature/dedup tests.)
+
+### 4. Remaining (minor)
+- Wizard checkout wiring UI polish (billing/success page).
+- PostHog toggle + Meta App Review submissions (owner).
+- Phase 10 Affiliate (post-launch).
