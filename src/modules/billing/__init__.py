@@ -248,6 +248,26 @@ def register(app: FastAPI) -> None:
                 out["hint"] = "TOKEN مرفوض — تأكد أنه من نفس الـ Organization (sandbox)"
         except Exception as e:
             out["sandbox_api_error"] = str(e)[:200]
+        # live checkout dry-test with the mapped products (sandbox only)
+        try:
+            mapping = supabase_db.get_setting("polar_product_ids") or {}
+            products = [mapping.get(p) for p in ("facebook", "instagram", "threads")]
+            products = [p for p in products if p]
+            if products and token:
+                r2 = _hx.post("https://sandbox-api.polar.sh/v1/checkouts/",
+                              headers={"Authorization": f"Bearer {token}"},
+                              json={"products": products,
+                                    "customer_email": "diag@hudhd.com"},
+                              timeout=30, follow_redirects=True)
+                out["checkout_test_status"] = r2.status_code
+                if r2.status_code in (200, 201):
+                    out["checkout_test_url"] = (r2.json().get("url") or "")[:70]
+                else:
+                    out["checkout_test_error"] = r2.text[:400]
+            else:
+                out["checkout_test_error"] = "missing products or token"
+        except Exception as e:
+            out["checkout_test_error"] = str(e)[:300]
         return {"status": "success", "diag": out}
 
     @app.post("/api/billing/trial", tags=["Billing"])
