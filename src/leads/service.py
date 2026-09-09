@@ -74,9 +74,13 @@ class LeadService:
         messages = self.db.select("messages", {"lead_id": lead_id})
         return sorted(messages, key=lambda m: m.get("sent_at", ""))
 
-    def get_all_leads(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """List all leads."""
-        leads = self.db.select("leads")
+    def get_all_leads(self, limit: int = 100, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List leads — scoped to the requesting user when user_id provided
+        (Phase 9.5 per-user isolation)."""
+        if user_id:
+            leads = self.db.select("leads", {"user_id": user_id})
+        else:
+            leads = self.db.select("leads")
         return leads[:limit]
 
 

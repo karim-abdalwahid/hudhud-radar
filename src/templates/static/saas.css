@@ -14,7 +14,6 @@
     --border-default: #e2e8f0;
     --border-muted: #f1f5f9;
     --border-hover: #cbd5e1;
-    
     /* Typography Colors */
     --text-primary: #0f172a;
     --text-secondary: #475569;
@@ -55,6 +54,35 @@
     --radius-md: 12px;
     --radius-lg: 16px;
     --sidebar-width: 260px;
+}
+/* ==========================================================================
+   Theme System (WS-9.4): Light (default) / Dark / Device-following.
+   Toggled via <html data-theme="dark|light"> set by saas.js theme manager.
+   ========================================================================== */
+[data-theme="dark"] {
+    --bg-page: #0b1220;
+    --bg-card: #101a2c;
+    --bg-surface: #101a2c;
+    --bg-subtle: #0e1626;
+    --bg-input: #0d1524;
+    --border-default: #1e293b;
+    --border-muted: #16213a;
+    --border-hover: #334155;
+
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #60a5fa;
+}
+[data-theme="dark"] .badge,
+[data-theme="dark"] .panel-section,
+[data-theme="dark"] table td,
+[data-theme="dark"] table th {
+    border-color: var(--border-default);
 }
 
 * {

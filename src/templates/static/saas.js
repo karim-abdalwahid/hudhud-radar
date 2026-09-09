@@ -334,6 +334,110 @@ async function markAllNotificationsRead() {
     refreshNotifications();
 }
 
+// --------------------------------------------------------------------
+// Theme manager (WS-9.4): light | dark | device (follows the user's OS)
+// Saved in localStorage; "device" uses prefers-color-scheme automatically.
+// --------------------------------------------------------------------
+const hudhudTheme = {
+    get() {
+        const saved = localStorage.getItem('hudhud_theme') || 'device';
+        if (saved === 'dark' || saved === 'light') return saved;
+        // device mode
+        return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ? 'dark' : 'light';
+    },
+    apply() {
+        const mode = localStorage.getItem('hudhud_theme') || 'device';
+        const effective = this.get();
+        document.documentElement.setAttribute('data-theme', effective);
+        const sel = document.getElementById('hudhud-theme-select');
+        if (sel) sel.value = mode;
+    },
+    set(mode) {
+        if (!['light', 'dark', 'device'].includes(mode)) return;
+        localStorage.setItem('hudhud_theme', mode);
+        this.apply();
+    },
+    injectSwitcher() {
+        const topbar = document.querySelector('.app-topbar');
+        if (!topbar || document.getElementById('hudhud-theme-select')) return;
+        const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;align-items:center;margin-inline-start:auto;gap:8px;';
+        wrap.innerHTML = `
+            <select id="hudhud-theme-select" style="background:var(--bg-card);color:var(--text-primary);
+                border:1px solid var(--border-default);border-radius:10px;padding:7px 10px;font-family:inherit;
+                font-size:12.5px;font-weight:600;cursor:pointer;">
+                <option value="light">${isAr ? '☀️ فاتح' : '☀️ Light'}</option>
+                <option value="dark">${isAr ? '🌙 داكن' : '🌙 Dark'}</option>
+                <option value="device">${isAr ? '🖥️ حسب الجهاز' : '🖥️ Device'}</option>
+            </select>`;
+        // Bell is appended after — keep bell last (right side)
+        const bell = document.getElementById('hudhud-bell');
+        if (bell) topbar.insertBefore(wrap, bell); else topbar.appendChild(wrap);
+        wrap.querySelector('select').onchange = (e) => this.set(e.target.value);
+        this.apply();
+        // follow OS live in device mode
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if ((localStorage.getItem('hudhud_theme') || 'device') === 'device') this.apply();
+            });
+        }
+    }
+};
+
+// --------------------------------------------------------------------
+// Language globe dropdown (WS-9.4) — replaces the simple toggle:
+// user opens the globe menu and picks the language explicitly.
+// --------------------------------------------------------------------
+function injectLanguageGlobe() {
+    const topbar = document.querySelector('.app-topbar');
+    if (!topbar || document.getElementById('hudhud-lang-globe')) return;
+    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+    const wrap = document.createElement('div');
+    wrap.id = 'hudhud-lang-globe';
+    wrap.style.cssText = 'position:relative;display:flex;align-items:center;gap:8px;';
+    wrap.innerHTML = `
+        <button id="hudhud-lang-btn" style="background:var(--bg-card);color:var(--text-primary);
+            border:1px solid var(--border-default);border-radius:10px;padding:7px 12px;cursor:pointer;
+            font-size:15px;" title="Language">🌐</button>
+        <div id="hudhud-lang-menu" style="display:none;position:absolute;top:calc(100% + 6px);
+            inset-inline-start:0;background:var(--bg-card);border:1px solid var(--border-default);
+            border-radius:12px;box-shadow:0 10px 26px rgba(15,23,42,0.14);z-index:95;min-width:170px;overflow:hidden;">
+            <button onclick="setHudhudLanguage('en')" style="display:flex;gap:8px;align-items:center;width:100%;
+                background:none;border:none;padding:10px 14px;cursor:pointer;font-size:13.5px;font-weight:600;
+                color:var(--text-primary);">🇺🇸 English</button>
+            <button onclick="setHudhudLanguage('ar')" style="display:flex;gap:8px;align-items:center;width:100%;
+                background:none;border:none;padding:10px 14px;cursor:pointer;font-size:13.5px;font-weight:600;
+                color:var(--text-primary);border-top:1px solid var(--border-default);">🇪🇬 العربية</button>
+        </div>`;
+    // insert before the theme select
+    const themeSel = document.getElementById('hudhud-theme-select');
+    const anchor = themeSel ? themeSel.parentElement : null;
+    if (anchor) topbar.insertBefore(wrap, anchor); else topbar.appendChild(wrap);
+    document.getElementById('hudhud-lang-btn').onclick = (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById('hudhud-lang-menu');
+        if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    };
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('hudhud-lang-menu');
+        if (menu && !wrap.contains(e.target)) menu.style.display = 'none';
+    });
+}
+
+function setHudhudLanguage(lang) {
+    if (window.hudhudI18n && window.hudhudI18n.setLanguage) {
+        window.hudhudI18n.setLanguage(lang);
+    } else {
+        localStorage.setItem('hudhud_lang', lang);
+        document.cookie = `hudhud_lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
+        window.location.reload();
+    }
+    const menu = document.getElementById('hudhud-lang-menu');
+    if (menu) menu.style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     hudhudRoleManager.init();
     checkSystemMetaStatus();
@@ -341,6 +445,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(checkSystemMetaStatus, 60000);
     injectSessionUser();
     injectNotificationsBell();
+    hudhudTheme.injectSwitcher();
+    injectLanguageGlobe();
 });
 
 window.addEventListener('hudhud_lang_change', () => {

@@ -27,14 +27,35 @@ router = APIRouter()
 # 3. Leads and Conversations APIs
 # --------------------------------------------------------------------
 @router.get("/api/leads", tags=["Leads"])
-async def list_leads(limit: int = 100):
-    return {"leads": lead_service.get_all_leads(limit)}
+async def list_leads(limit: int = 100, request: Request = None):
+    """Per-user isolation (Phase 9.5): non-admin users see ONLY their own
+    leads; admins see the workspace (until Phase 9 assign-scoping lands)."""
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    from fastapi import Request as _R
+    session = None
+    if request:
+        token = request.cookies.get(SESSION_COOKIE_NAME)
+        session = verify_session_token(token) if token else None
+    if not session:
+        raise HTTPException(status_code=401, detail="غير مصرح")
+    uid = None if session.get("role") == "admin" else session.get("sub")
+    return {"leads": lead_service.get_all_leads(limit, user_id=uid)}
 
 
 @router.get("/api/leads/{lead_id}", tags=["Leads"])
-async def get_lead(lead_id: str):
+async def get_lead(lead_id: str, request: Request = None):
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    session = None
+    if request:
+        token = request.cookies.get(SESSION_COOKIE_NAME)
+        session = verify_session_token(token) if token else None
+    if not session:
+        raise HTTPException(status_code=401, detail="غير مصرح")
     lead = lead_service.get_lead_by_id(lead_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
+    # isolation: regular users cannot read other users' leads
+    if session.get("role") != "admin" and lead.get("user_id") not in (None, session.get("sub")):
+        raise HTTPException(status_code=403, detail="غير مصرح — هذا العميل ليس ضمن حسابك")
     messages = lead_service.get_messages_for_lead(lead_id)
     return {"lead": lead, "messages": messages}
