@@ -169,6 +169,23 @@ class PolarGateway(PaymentProvider):
                 platforms = _json.loads(platforms)
             except Exception:
                 platforms = [p.strip() for p in platforms.split(",") if p.strip()]
+        # checkout.created carries NO metadata — resolve platforms from the
+        # product_id(s) via our product mapping (order/subscription events too)
+        if not platforms:
+            def _resolve(obj: Any) -> List[str]:
+                found = []
+                mapping = self._product_ids()
+                pid = (obj or {}).get("product_id")
+                if pid:
+                    for plat, prod_id in mapping.items():
+                        if prod_id == pid and not plat.startswith("trial-"):
+                            found.append(plat)
+                for pp in (obj or {}).get("products", []) or []:
+                    for plat, prod_id in mapping.items():
+                        if prod_id == pp.get("id") and not plat.startswith("trial-") and plat not in found:
+                            found.append(plat)
+                return found
+            platforms = _resolve(data) or _resolve(data.get("subscription") or {})
         kind = "other"
         if event_type in ("subscription.active", "subscription.created", "order.paid"):
             kind = "subscription_activated"
