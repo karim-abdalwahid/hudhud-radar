@@ -98,6 +98,16 @@ def register_router(app: FastAPI) -> None:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=safe_error(e))
 
+        # WS-G lifecycle: welcome template → in-app notification (fail-silent)
+        try:
+            from src.modules.templates_manager import render_and_notify
+            render_and_notify("welcome_signup", user["id"], {
+                "user_name": (payload.full_name or payload.email.split("@")[0]),
+                "user_email": payload.email,
+            })
+        except Exception as _ne:
+            logger.warning(f"welcome notification skipped: {_ne}")
+
         token = create_session_token(user["id"], user.get("role", "user"), user["email"])
         resp = JSONResponse({"status": "success", "role": user.get("role", "user")})
         _set_session_cookie(resp, token)

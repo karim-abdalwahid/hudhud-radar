@@ -5,7 +5,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-# TEMP DIAGNOSTIC (bisect step 2): full app import with traceback surfacing.
+# Bisect-2 (live): full app import; /health surfaces any boot traceback.
 from fastapi import FastAPI
 
 try:
@@ -15,15 +15,12 @@ except Exception as _boot_error:  # pragma: no cover
 
     _tb = traceback.format_exc()
 
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    _fallback = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
-    @app.get("/health")
+    @_fallback.get("/health")
     async def _boot_failure():
+        from fastapi.responses import HTMLResponse
         safe = _tb.replace("<", "&lt;").replace(">", "&gt;")
-        return HTMLResponseSafe(safe)
+        return HTMLResponse(content=f"<h2>boot failure</h2><pre>{safe}</pre>", status_code=500)
 
-    from fastapi.responses import HTMLResponse as _HR
-
-    def HTMLResponseSafe(safe):
-        return _HR(content=f"<h2>boot failure</h2><pre>{safe}</pre>", status_code=500)
-# rebuild tick 1914707098
+    app = _fallback
