@@ -1341,3 +1341,21 @@ TOOLS: scripts/purge_production_data.py (dry-run/--apply) + truncate_remaining.p
 
 ### 5. Rules Added
 - **R16**: Platform code contains ZERO personal/business identity (owner names, emails, pages, personas). scan_identity.py enforces (CI-style). The platform belongs to its USERS.
+
+---
+
+## [Entry 036] Meta Tech Provider VERIFIED ✅ — Phase 9 Legally Unblocked
+- **Timestamp**: 2026-09-09T11:00:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: VERIFIED — business approved as Tech Provider (SaaS Platform)
+
+### 1. Access Verification ACCEPTED
+Meta approved the owner's business as a Tech Provider (SaaS Platform). The submitted Platform Data usage description (AI replies within 24h window, voluntary contact capture, client-scheduled publishing, per-client stats, no data selling, disconnect/deletion available) was accepted as-is. This was the last legal prerequisite for Phase 9: clients can now authorize the Hudhud app against their OWN accounts.
+
+### 2. What this unlocks
+- App Review submissions (permissions) can proceed → Advanced Access.
+- Phase 9 multi-tenant build is legally unblocked (per-user OAuth connections via the platform app).
+
+### 3. Next Meta-side steps (owner dashboard)
+- OAuth consent screen (Google) → Publish App (if not yet).
+- Meta App Review: submit permission requests (guide ready) for Advanced Access.
