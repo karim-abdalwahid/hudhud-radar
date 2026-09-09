@@ -68,8 +68,7 @@ def test_signup_page_has_consent_checkboxes(anon_client: TestClient):
     assert r.status_code == 200
     # email-path checkbox
     assert 'id="regTerms"' in r.text
-    # google-path checkbox (consent BEFORE the OAuth redirect)
-    assert 'id="googleTerms"' in r.text
-    # both link to the legal pages
-    assert r.text.count('href="/terms"') >= 2
-    assert r.text.count('href="/privacy"') >= 2
+    # single consent checkbox controls BOTH email and Google signup paths
+    assert 'id="googleTerms"' not in r.text
+    assert r.text.count('href="/terms"') >= 1
+    assert r.text.count('href="/privacy"') >= 1
