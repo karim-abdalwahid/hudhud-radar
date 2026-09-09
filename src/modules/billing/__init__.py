@@ -259,7 +259,7 @@ def register(app: FastAPI) -> None:
                 r2 = _hx.post("https://sandbox-api.polar.sh/v1/checkouts/",
                               headers={"Authorization": f"Bearer {token}"},
                               json={"products": products,
-                                    "customer_email": "diag@hudhd.com",
+                                    "customer_email": "admin.test@hudhud.test",
                                     "success_url": _ret,
                                     "metadata": {"user_id": "diag",
                                                  "platforms": "facebook,instagram,threads"}},
