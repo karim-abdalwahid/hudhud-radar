@@ -203,3 +203,14 @@ def render_sidebar_nav(current_path: str, is_admin: bool) -> str:
         )
     parts.append("</nav>")
     return "\n".join(parts)
+
+
+def platform_icon_svg(platform: str, size: int = 20, radius: int = 6) -> str:
+    """Official brand SVG for a connected platform (facebook/instagram/...).
+    Implemented in src/platforms/brand_icons.py — keeps this file import-light."""
+    try:
+        from src.platforms.brand_icons import platform_icon_svg as _impl
+        return _impl(platform, size, radius)
+    except Exception:
+        return (f'<span style="display:inline-flex;width:{size}px;height:{size}px;'
+                f'border-radius:{radius}px;background:#64748b;"></span>')

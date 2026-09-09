@@ -444,7 +444,7 @@
                 item.innerHTML = `
                     <div class="conv-avatar">
                         ${c.name[0]}
-                        <span class="channel-dot ${c.channel}">${c.channel === 'instagram' ? '📸' : c.channel === 'messenger' ? '💬' : '📱'}</span>
+                        <span class="channel-dot ${c.channel}" style="display:inline-flex;overflow:hidden;border-radius:6px;">${window.platformIcon(c.channel, 18)}</span><span style="display:none;">${c.channel === 'instagram' ? '📸' : c.channel === 'messenger' ? '💬' : '📱'}</span>
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
