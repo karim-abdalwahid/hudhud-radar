@@ -483,6 +483,7 @@
 
             <div class="bottom-actions" style="justify-content: flex-end;">
                 <button class="btn-submit" onclick="nextStep(2)" data-i18n="onboard.btn_next">Next Step →</button>
+                <button class="btn-back" onclick="nextStep(2)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
             </div>
         </div>
 
@@ -494,11 +495,14 @@
             <div class="two-col-grid">
                 <div>
                     <label class="form-label" data-i18n="onboard.role_label">Agent Role</label>
-                    <select id="agent-role" class="rad-select">
+                    <select id="agent-role" class="rad-select" onchange="toggleCustomRole(this.value)">
                         <option value="sales" selected data-i18n="onboard.role_opt_sales">Sales & Closing Specialist</option>
                         <option value="support" data-i18n="onboard.role_opt_support">Customer Care & Support</option>
                         <option value="assistant" data-i18n="onboard.role_opt_assistant">Executive Booking Assistant</option>
+                        <option value="custom" data-i18n="onboard.role_opt_other">Other (write your own)</option>
                     </select>
+                    <input type="text" id="agent-role-custom" placeholder="Describe the agent's role…" data-i18n-ph="onboard.role_custom_ph"
+                           style="display:none;margin-top:8px;width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:9px;font-family:inherit;font-size:13px;">
                 </div>
 
                 <div>
@@ -506,6 +510,7 @@
                     <select id="agent-brain" class="rad-select">
                         <option value="gemini" selected>✨ Google Gemini 2.5 Flash</option>
                     </select>
+                    <div class="hint" style="font-size:11px;color:var(--text-muted);margin-top:4px;" data-i18n="onboard.brain_admin_note">Models listed are the ones enabled by the platform admin</div>
                 </div>
             </div>
 
@@ -526,6 +531,7 @@
             <div class="bottom-actions">
                 <button class="btn-back" onclick="nextStep(1)" data-i18n="onboard.btn_back">← Back</button>
                 <button class="btn-submit" onclick="nextStep(3)" data-i18n="onboard.btn_next">Next Step →</button>
+                <button class="btn-back" onclick="nextStep(3)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
             </div>
         </div>
 
@@ -534,13 +540,25 @@
             <h1 class="step-heading" data-i18n="onboard.step3_title">Connect your messaging channels</h1>
             <p class="step-subheading" data-i18n="onboard.step3_desc">Connect where your customers message you. Your AI agent will be active immediately upon connection.</p>
 
+            <!-- Subscription wall (owner spec): connect buttons stay DISABLED until a plan is active -->
+            <div id="sub-wall" style="background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+                <div>
+                    <div style="font-weight:800;font-size:14.5px;color:#92400e;" data-i18n="onboard.no_sub_title">No active subscription</div>
+                    <div style="font-size:12.5px;color:#a16207;" data-i18n="onboard.no_sub_desc">You don't have an active subscription or trial. Start a free trial or subscribe to a plan to connect messaging channels.</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn-submit" style="padding:9px 18px;font-size:13px;" onclick="window.location.href='/billing/success?trial=1'" data-i18n="onboard.start_trial">Start Free Trial (3 days)</button>
+                    <button class="btn-back" style="padding:9px 18px;font-size:13px;" onclick="window.location.href='/billing/checkout-page'" data-i18n="onboard.subscribe">Subscribe to a plan</button>
+                </div>
+            </div>
+
             <div class="platforms-deck">
                 <!-- Instagram -->
                 <div class="platform-tile">
                     <div class="platform-icon-circle"><svg viewBox="0 0 24 24" width="100%" height="100%"><defs><radialGradient id="igL" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect x="1.5" y="1.5" width="21" height="21" rx="5.5" fill="url(#igL)"/><circle cx="12" cy="12" r="4.7" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="17.6" cy="6.4" r="1.35" fill="#fff"/></svg></div>
                     <div class="platform-title" data-i18n="onboard.platform_ig_title">Instagram Direct & Comments</div>
                     <div class="platform-caption" data-i18n="onboard.platform_ig_desc">Turn Reels comments and DMs into qualified sales meetings instantly.</div>
-                    <button class="btn-connect" id="btn-connect-ig" onclick="triggerConnect('instagram')" data-i18n="onboard.btn_connect">Connect Channel</button>
+                    <button class="btn-connect" id="btn-connect-ig" onclick="triggerConnect('instagram')" data-i18n="onboard.btn_connect" disabled style="opacity:.45;cursor:not-allowed;">Connect Channel</button>
                 </div>
 
                 <!-- Messenger -->
@@ -548,13 +566,17 @@
                     <div class="platform-icon-circle"><svg viewBox="0 0 24 24" width="100%" height="100%"><path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg></div>
                     <div class="platform-title" data-i18n="onboard.platform_fb_title">Facebook Messenger</div>
                     <div class="platform-caption" data-i18n="onboard.platform_fb_desc">Engage ad inquiries and Page messages with zero wait time.</div>
-                    <button class="btn-connect" id="btn-connect-fb" onclick="triggerConnect('messenger')" data-i18n="onboard.btn_connect">Connect Channel</button>
+                    <button class="btn-connect" id="btn-connect-fb" onclick="triggerConnect('messenger')" data-i18n="onboard.btn_connect" disabled style="opacity:.45;cursor:not-allowed;">Connect Channel</button>
                 </div>
+            </div>
+
+            <div style="text-align:center;margin-top:14px;">
+                <button class="btn-back" onclick="finalizeSetup(true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip_all">Skip for now — finish setup without connecting</button>
             </div>
 
             <div id="save-status" style="text-align: center; font-size: 13.5px; margin: 16px 0;"></div>
 
-            <div class="bottom-actions">
+            <div class="bottom-actions" style="display:none;">
                 <button class="btn-back" onclick="nextStep(2)" data-i18n="onboard.btn_back">← Back</button>
                 <button class="btn-submit" onclick="finalizeSetup()" data-i18n="onboard.btn_finish">
                     Launch AI Agent & Open Inbox 🚀
@@ -584,6 +606,11 @@
             const titles = isAr ? stepTitlesAr : stepTitlesEn;
             const el = document.getElementById('step-counter');
             if (el) el.textContent = titles[step - 1];
+        }
+
+        function toggleCustomRole(v) {
+            const box = document.getElementById('agent-role-custom');
+            if (box) box.style.display = v === 'custom' ? 'block' : 'none';
         }
 
         function toggleTip() {
@@ -660,8 +687,22 @@
         }
 
         async function triggerConnect(platform) {
-            const btn = document.getElementById(`btn-connect-${platform === 'instagram' ? 'ig' : 'fb'}`);
+            // Subscription gate (owner spec): connect only when a plan/trial is active
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            try {
+                const subRes = await fetch('/api/billing/subscription');
+                const sub = await subRes.json();
+                if (!sub.can_connect) {
+                    const wall = document.getElementById('sub-wall');
+                    if (wall) wall.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    wall && (wall.style.boxShadow = '0 0 0 3px rgba(217,119,6,0.45)');
+                    setTimeout(() => wall && (wall.style.boxShadow = ''), 1600);
+                    alert(isAr ? 'ابدأ التجربة المجانية أو اشترك في خطة لربط القنوات.' : 'Start a free trial or subscribe to a plan before connecting channels.');
+                    return;
+                }
+            } catch (e) { /* fall through to platform check */ }
+
+            const btn = document.getElementById(`btn-connect-${platform === 'instagram' ? 'ig' : 'fb'}`);
             const res = await fetch('/api/meta/status');
             const data = await res.json();
 
@@ -692,9 +733,11 @@
             }
         }
 
-        async function finalizeSetup() {
+        async function finalizeSetup(skip = false) {
             const kbText = document.getElementById('kb-text').value.trim();
-            const role = document.getElementById('agent-role').value;
+            const roleSel = document.getElementById('agent-role').value;
+            const roleCustom = (document.getElementById('agent-role-custom') || {}).value || '';
+            const role = roleSel === 'custom' ? (roleCustom.trim() || 'custom') : roleSel;
             const brain = document.getElementById('agent-brain').value;
             const tone = document.getElementById('agent-tone').value;
             const booking = document.getElementById('agent-booking-link').value.trim();
@@ -709,7 +752,7 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        knowledge_text: kbText,
+                        knowledge_text: skip ? '' : kbText,
                         role: role,
                         brain: brain,
                         tone: tone,
@@ -734,6 +777,12 @@
 
         // Check platform state on load
         document.addEventListener('DOMContentLoaded', async () => {
+            // honor paid/trial return from checkout
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('trial') === '1') {
+                localStorage.setItem('hudhud_trial_started', '1');
+            }
+
             const urlStep = new URLSearchParams(window.location.search).get('step');
             if (urlStep) {
                 nextStep(parseInt(urlStep));
@@ -751,6 +800,20 @@
                     if (fb) { fb.className = 'btn-connect connected'; fb.textContent = isAr ? '✓ متصل' : '✓ Connected'; }
                 }
             } catch (e) {}
+            // Subscription wall (owner spec): fetch live subscription; unlock connect
+            try {
+                const subRes = await fetch('/api/billing/subscription');
+                const sub = await subRes.json();
+                const canConnect = sub.can_connect === true;
+                const wall = document.getElementById('sub-wall');
+                const ig = document.getElementById('btn-connect-ig');
+                const fb = document.getElementById('btn-connect-fb');
+                if (canConnect) {
+                    if (wall) wall.style.display = 'none';
+                    if (ig) { ig.disabled = false; ig.style.opacity = '1'; ig.style.cursor = 'pointer'; }
+                    if (fb) { fb.disabled = false; fb.style.opacity = '1'; fb.style.cursor = 'pointer'; }
+                }
+            } catch (e) { /* stay locked — fail-closed */ }
         });
 
         window.addEventListener('hudhud_lang_change', () => {
