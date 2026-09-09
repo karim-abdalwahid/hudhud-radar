@@ -99,8 +99,94 @@ def register(app: FastAPI) -> None:
         return {"status": "success"}
 
 
+    @app.post("/api/payments/webhook/{provider}", tags=["Payments"])
+    async def payment_webhook(provider: str, request: Request):
+        """Payment gateway webhooks — VERIFIED, IDEMPOTENT, fail-closed.
+        Flow: signature check → dedup (payment_events) → normalize → sync
+        entitlements from payment truth. Any failure = 400/500 (provider
+        retries automatically per its own policy)."""
+        import json as _json
+
+        from src.core.event_dedup import event_deduplicator
+        from src.core.logger import logger
+        from src.payments.registry import get_gateway
+
+        gateway = get_gateway(provider)
+        if not gateway:
+            raise HTTPException(status_code=404, detail="Unknown payment provider")
+
+        raw = await request.body()
+        headers = dict(request.headers)
+        if not gateway.verify_webhook(headers, raw):
+            logger.warning(f"{provider} webhook signature INVALID — rejected")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+
+        try:
+            payload = _json.loads(raw.decode("utf-8"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid payload")
+
+        event = gateway.parse_event(headers, payload)
+        event_id = f"{provider}:{event['event_id']}" if event.get("event_id") else ""
+        if not event_id or not event_deduplicator.claim(event_id, f"payment:{provider}"):
+            return {"status": "duplicate_ignored"}
+
+        # Audit log FIRST (idempotent record even if later steps fail)
+        supabase_db.insert("payment_events", {
+            "provider": provider, "event_id": event["event_id"] or "unknown",
+            "event_type": event["event_type"], "user_id": None,
+            "payload": event.get("raw", {}),
+        })
+
+        # Resolve local user by email (Google/Email accounts share the table)
+        user_email = (event.get("user_email") or "").strip().lower()
+        target_user = None
+        if user_email:
+            try:
+                from src.core.auth import user_store
+                target_user = user_store.get_by_email(user_email)
+            except Exception:
+                target_user = None
+
+        # Apply payment truth
+        from src.modules.billing.services import entitlement_service
+        kind = event.get("kind")
+        if kind == "subscription_activated" and target_user:
+            platforms = event.get("platforms") or []
+            if platforms:
+                entitlement_service.sync_from_platforms(target_user["id"], platforms,
+                                                        source="subscription")
+            entitlement_service.upsert_subscription(
+                target_user["id"], status="active",
+                payment_provider=provider,
+                provider_subscription_id=event.get("subscription_ref"))
+            try:
+                from src.modules.notifications.service import notification_service
+                notification_service.create(target_user["id"],
+                    "✅ تم تفعيل اشتراكك",
+                    f"المنصات المفعلة: {', '.join(platforms) if platforms else 'أصبحت نشطة'}",
+                    "success", {"job": "payment"})
+            except Exception:
+                pass
+        elif kind == "subscription_canceled" and target_user:
+            entitlement_service.upsert_subscription(target_user["id"], status="canceled")
+            entitlement_service.sync_from_platforms(target_user["id"], [],
+                                                    source="subscription")
+            try:
+                from src.modules.notifications.service import notification_service
+                notification_service.create(target_user["id"],
+                    "⚠️ تم إلغاء اشتراكك",
+                    "المنصات المتوقفة — فعّل اشتراكاً لاستئناف الخدمة",
+                    "warning", {"job": "payment"})
+            except Exception:
+                pass
+
+        logger.info(f"{provider} webhook processed: {event['event_type']} kind={kind}")
+        return {"status": "received", "kind": kind}
+
+
 module_registry.register_module(
     name="billing",
-    description="Entitlements & composable pricing: quote, subscription status, admin catalog/settings",
+    description="Entitlements & composable pricing: quote, subscription status, admin catalog/settings, payment webhooks",
     register_router=register,
 )

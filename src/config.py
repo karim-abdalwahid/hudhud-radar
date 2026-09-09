@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: Optional[str] = Field(default=None, description="Google OAuth 2.0 Client ID")
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None, description="Google OAuth 2.0 Client Secret")
 
+    # Payments (Polar.sh first — gateway registry allows more later)
+    POLAR_ACCESS_TOKEN: Optional[str] = Field(default=None, description="Polar API access token (sandbox or live)")
+    POLAR_WEBHOOK_SECRET: Optional[str] = Field(default=None, description="Polar webhook signing secret (whsec_...)")
+    POLAR_ORGANIZATION_ID: Optional[str] = Field(default=None, description="Polar organization id")
+
     # Threads App (separate from the main Meta app — Threads uses its own OAuth)
     THREADS_APP_ID: Optional[str] = Field(default=None, description="Threads App ID")
     THREADS_APP_SECRET: Optional[str] = Field(default=None, description="Threads App Secret")
