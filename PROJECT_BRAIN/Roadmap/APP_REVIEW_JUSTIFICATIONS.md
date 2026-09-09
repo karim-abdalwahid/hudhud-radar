@@ -328,3 +328,23 @@ https://www.hudhd.com
 - instagram_shopping_tag_products
 - instagram_manage_upcoming_events
 - threads_keyword_search / location_tagging / profile_discovery / share_to_instagram
+
+## 🟫 إضافات (المراجعة الثانية — catalog_management + branded content brand/creator)
+
+### catalog_management
+```
+Hudhud does not use catalog management. This permission was included in the initial app configuration and is not exercised by our platform's current feature set. We recommend removing it from the review request.
+```
+> ⚠️ **شيلها من الطلب** — مش بنستخدمها.
+
+### instagram_branded_content_brand
+```
+Hudhud does not use Instagram branded content brand permissions. Included in the initial app configuration, not exercised by our platform. We recommend removing it from the review request.
+```
+> ⚠️ **شيلها من الطلب**.
+
+### instagram_branded_content_creator
+```
+Hudhud does not use Instagram branded content creator permissions. Included in the initial app configuration, not exercised by our platform. We recommend removing it from the review request.
+```
+> ⚠️ **شيلها من الطلب**.
