@@ -1308,3 +1308,36 @@ Owner created a NEW Google Cloud project/client (old leaked-secret client retire
 - Phase 9 multi-tenant plan (owner review before code)
 - Google consent 'Publish App' + Meta App Review submissions (owner dashboard)
 - Owner to-dos from Entry 028/030 (rotate Google secret still pending probe confirmation)
+
+---
+
+## [Entry 035] S-Purge: Platform De-Personalization — Owner Vision Correction Executed
+- **Timestamp**: 2026-09-09T10:00:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: EXECUTED & VERIFIED — production is now a neutral SaaS platform
+
+### 1. Owner Vision Correction (critical, foundational)
+Owner challenged why 'Ebd'a Marketing / Karim Abdalwahid' identity, personal emails, and his OWN social accounts/pages appear anywhere in the platform. Honest root cause: Entry 001 originally commissioned a single-tenant agent for the owner's own pages; the vision later evolved to a neutral SaaS (hudhd.com) where USERS connect THEIR OWN accounts — but the single-tenant identity/seed/data was carried along, and the agent's recent legal/footer work CONTINUED it instead of catching it. The correct model (owner-stated): Admin = platform owner (manages users/settings, owns NO social accounts in the product); Users = connect their own accounts (Phase 9); Platform = neutral Hudhud on hudhd.com; Agent serves each user's business from THAT user's knowledge.
+
+### 2. S1 — Code De-Personalization (commit 3f49ccb)
+- Legal pages: operator = 'Hudhud (hudhd.com)' + support@hudhd.com (owner decision #2; support email via Hostinger free forwarding — instructions provided).
+- Landing footer: Ebd'a/Karim/ebdamarketing removed → support@hudhd.com.
+- meta_analyzer SYSTEM_PROMPT: account-scoped (was 'لصفحة إبدأ ماركتينج / كريم عبد الواحد').
+- meta_crawler synthesis: generic prompt + deterministic profile built ONLY from scraped content (was 'نبذة عن كريم عبد الواحد').
+- conversation_engine fallbacks: neutral helpful replies (was agency sales scripts); Gemini system prompt account-scoped.
+- content_engine: topic-driven hashtags (was #إبدأ_ماركتينج presets), neutral copy.
+- auth demo: 'مع كريم/with Karim' removed.
+- **scripts/scan_identity.py + tests/test_identity_scan.py (R16)**: permanent guard — any personal/business identity in src fails the suite.
+
+### 3. S2 — Production Data Purge (commits ab1a079; owner-approved list)
+DELETED: app_settings{meta_credentials (owner's real page token 'إبدأ ماركتينج - Karim Abdalwahid' + IG karim__abdalwahid), threads_credentials, meta_cached_posts, system_alerts_cache, oauth states}; kb_documents (business_profile.md); TRUNCATE content_posts(189), activity_logs(189), notifications, site_traffic(2023), page_performance_metrics(14); automations_workflows reset to empty; users: 5 deleted (incl. owner personal emails karim@ebdamarketing.com, kareemabdelwahid@gmail.com, karimabdalwahid1w@gmail.com) — KEPT: admin.test + user.test (testing per owner).
+KEPT: platform apps (META/THREADS/GOOGLE app ids+secrets), Supabase, Gemini, CRON_SECRET.
+Post-purge live verification: app healthy (200), threads 'connected:false' (honest), admin overview users_total=2, plan_distribution {free:2}, no fabricated data anywhere.
+TOOLS: scripts/purge_production_data.py (dry-run/--apply) + truncate_remaining.py.
+
+### 4. Remaining Disconnect
+- Vercel env (hudhud2) still holds META_PAGE_ACCESS_TOKEN/PAGE_ID/INSTAGRAM_ACCOUNT_ID (owner's pages) — to be removed after the Vercel CLI switch to hudhud2 (owner will run vercel login interactively; agent then verifies whoami/project and updates env). Meta/Threads/Google APPS remain platform-owned assets.
+- Phase 9 will introduce per-user connections: users click FB/IG/Threads icons, OAuth to THEIR accounts, per-user credentials + RLS (architecture ready via platform adapters).
+
+### 5. Rules Added
+- **R16**: Platform code contains ZERO personal/business identity (owner names, emails, pages, personas). scan_identity.py enforces (CI-style). The platform belongs to its USERS.
