@@ -235,13 +235,13 @@ def register(app: FastAPI) -> None:
             "token_set": bool(token),
             "token_prefix": (token[:12] + "...") if token else None,
             "org_id_set": bool(org),
-            "mode": "sandbox" if "sandbox-api" in (getattr(gateway_api := None, "__str__", lambda: "")() or "") or True else None,
         }
-        # live API probe
+        # live API probe (follow_redirects — Polar 307s unauthenticated probes)
         try:
             import httpx as _hx
-            r = _hx.get("https://sandbox-api.polar.sh/v1/products?limit=1",
-                        headers={"Authorization": f"Bearer {token}"}, timeout=20)
+            r = _hx.get("https://sandbox-api.polar.sh/v1/products/?limit=1",
+                        headers={"Authorization": f"Bearer {token}"}, timeout=20,
+                        follow_redirects=True)
             out["sandbox_api_status"] = r.status_code
             out["sandbox_reachable"] = r.status_code == 200
             if r.status_code == 401:

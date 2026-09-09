@@ -90,7 +90,7 @@ class PolarGateway(PaymentProvider):
         if quote.get("coupon_discount_usd"):
             payload["discount_id"] = quote.get("coupon_polar_id")
         with httpx.Client(timeout=30, follow_redirects=True) as c:
-            r = c.post(f"{self.api}/v1/checkouts", headers=self._headers(), json=payload)
+            r = c.post(f"{self.api}/v1/checkouts/", headers=self._headers(), json=payload)
             if r.status_code not in (200, 201):
                 logger.error(f"Polar checkout failed: {r.status_code} {r.text[:300]}")
                 raise RuntimeError("تعذر إنشاء عملية الدفع — حاول مجدداً أو تواصل معنا")
@@ -118,7 +118,7 @@ class PolarGateway(PaymentProvider):
                          "trial": True},
         }
         with httpx.Client(timeout=30, follow_redirects=True) as c:
-            r = c.post(f"{self.api}/v1/checkouts", headers=self._headers(), json=payload)
+            r = c.post(f"{self.api}/v1/checkouts/", headers=self._headers(), json=payload)
             if r.status_code not in (200, 201):
                 logger.error(f"Polar trial checkout failed: {r.status_code} {r.text[:300]}")
                 raise RuntimeError("تعذر إنشاء تجربة الدفع — حاول مجدداً")
