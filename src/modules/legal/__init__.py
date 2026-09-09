@@ -14,12 +14,15 @@ from fastapi.responses import HTMLResponse
 
 from src.core.modules import module_registry
 
-LEGAL_VERSION = "2026-09-08"
+LEGAL_VERSION = "2026-09-09"
 
+# Platform operator identity — the PLATFORM (Hudhud), never a person or an
+# external business. Legal operator details live with the platform owner
+# outside the codebase (S-Purge decision, Entry 035).
 _ABOUT = {
-    "company_en": "Ebd'a Marketing (Hudhud) — Karim Abdalwahid",
-    "company_ar": "إبدأ ماركتينج (هدهد) — كريم عبد الواحد",
-    "email": "karim@ebdamarketing.com",
+    "company_en": "Hudhud (hudhd.com)",
+    "company_ar": "هدهد (hudhd.com)",
+    "email": "support@hudhd.com",
     "site": "https://www.hudhd.com",
 }
 

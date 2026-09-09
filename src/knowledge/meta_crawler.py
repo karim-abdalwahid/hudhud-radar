@@ -228,12 +228,13 @@ class BusinessKnowledgeSynthesizer:
         
         prompt = (
             "أنت خبير استراتيجي في دراسة وتحليل الشركات وصياغة قواعد المعرفة الذكية لـ AI Agents.\n"
-            "قم بتحليل المنشورات والريلز وتعليقات العملاء التالية لحسابات فيسبوك وإنستغرام الخاصة بـ كريم عبد الواحد / إبدأ ماركتينج.\n"
+            "قم بتحليل المنشورات والريلز وتعليقات العملاء التالية لحسابات التواصل الاجتماعي المتصلة بهذا المستخدم على المنصة.\n"
             "استخرج وصغ بدقة متناهية المعلومات في 4 أقسام رئيسية بصيغة JSON تحوي المفاتيح التالية:\n"
             "1. 'business_profile': من هو صاحب النشاط، ما هي رسالته، رؤيته، والقيمة التنافسية المضافة.\n"
             "2. 'products_and_services': قائمة تفصيلية بالخدمات، الباقات، استراتيجيات التسويق والذكاء الاصطناعي المقدمة، والنتائج المتوقعة.\n"
             "3. 'sales_scripts_and_closing': تكتيكات إغلاق المبيعات، كيفية الرد على استفسار السعر، كيفية معالجة التردد والاعتراضات، وكيفية توجيه العميل لمشاركة هاتفه أو حجز استشارة.\n"
             "4. 'audience_insights': أهم الأسئلة الشائعة ونقاط الألم والاهتمامات المتكررة من واقع تعليقات المتابعين.\n\n"
+            "مهم: اعتمد حصرياً على ما ورد في المنشورات والتعليقات أدناه — لا تخترع أي حقائق عن النشاط.\n\n"
             f"--- منشورات وكابشن الحسابات ---\n{captions}\n\n"
             f"--- تعليقات واستفسارات العملاء ---\n{comments}\n\n"
             "أخرج الرد كـ JSON صالح فقط بالمفاتيح المذكورة أعلاه بدون أي كود إضافي."
@@ -271,14 +272,17 @@ class BusinessKnowledgeSynthesizer:
             return True
 
     def _synthesize_deterministic(self, raw_data: Dict[str, Any]):
-        """Generates comprehensive, robust knowledge base files based on extracted social data."""
+        """Generates knowledge base files from extracted social data.
+        ZERO-FABRICATION: profile facts come ONLY from the scraped content —
+        never invented, never platform-branded."""
         # 1. business_profile.md
+        captions = raw_data.get("all_captions", [])
         bp_content = f"""# ملف النشاط التجاري (Business Profile)
-- **اسم النشاط / المسؤول**: كريم عبد الواحد (@karim__abdalwahid) / إبدأ ماركتينج.
-- **تاريخ آخر مزامنة**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
-- **طبيعة البيزنس**: وكالة وحلول رقمية متقدمة متخصصة في التسويق الرقمي، إدارة وتنمية الحسابات (Instagram & Facebook)، وصناعة المحتوى الإبداعي (Reels & Posts)، وأنظمة الأتمتة والذكاء الاصطناعي لإغلاق المبيعات.
-- **الهدف والرؤية**: تمكين أصحاب الأعمال ورواد المشاريع من مضاعفة مبيعاتهم وتحويل المتابعين إلى عملاء فعليين بدون هدر ميزانيات الإعلانات.
-- **القيمة المضافة**: الجمع بين الأداء التسويقي المعتمد على البيانات (Data-Driven Marketing) والأنظمة الذكية التي ترد على العملاء فورياً وتقفل الصفقات 24/7.
+- **المصدر**: بيانات الحساب المتصل — آخر مزامنة: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
+- **عدد المنشورات المسحوبة**: {raw_data.get('facebook_posts_count', 0)} فيسبوك / {raw_data.get('instagram_media_count', 0)} إنستغرام
+
+## المحتوى المستخرج من الحساب:
+{chr(10).join('- ' + c[:200] for c in captions[:10]) if captions else '- (لم يتم سحب منشورات بعد)'}
 """
         (self.kb_dir / "business_profile.md").write_text(bp_content, encoding="utf-8")
 

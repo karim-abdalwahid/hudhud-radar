@@ -15,11 +15,12 @@ def test_terms_en_public(anon_client: TestClient):
     assert "Terms of Service" in r.text
     assert "Arab Republic of Egypt" in r.text          # governing law (owner decision)
     assert "Cairo Economic Courts" in r.text
-    assert "karim@ebdamarketing.com" in r.text          # real operator contact
+    assert "support@hudhd.com" in r.text                # platform contact (S-Purge)
     assert "www.hudhd.com" in r.text                    # our real site
     assert "Gemini" in r.text                           # honest AI disclosure
     assert "24-hour standard messaging window" in r.text  # real enforced rule
     assert "14-day trial" in r.text                     # matches landing promise
+    assert "Ebd'a" not in r.text and "ebdamarketing" not in r.text
 
 
 def test_terms_ar_toggle(anon_client: TestClient):

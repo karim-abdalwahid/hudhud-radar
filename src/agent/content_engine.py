@@ -97,7 +97,7 @@ class ContentEngine:
         
         system_instruction = (
             "أنت خبير محتوى تسويقي وCopywriter رقمي محترف متخصص في السوشيال ميديا المصرية والعربية.\n"
-            "مهمتك هي كتابة محتوى يحقق أعلى نسبة تفاعل (Engagement) وتحويلات (Conversions) لصالح صفحة 'إبدأ ماركتينج - Karim Abdalwahid'.\n"
+            "مهمتك هي كتابة محتوى يحقق أعلى نسبة تفاعل (Engagement) وتحويلات (Conversions) لصالح الحساب المتصل على المنصة.\n"
             "أسلوب الكتابة: مصري راقي، محفز، عملي، بدون حشو، مليء بالطاقة الإيجابية.\n"
             f"الجمهور المستهدف: {audience}.\n"
             f"كلمة الـ CTA المطلوبة للرد التلقائي: [{cta_word}].\n\n"
@@ -170,7 +170,7 @@ class ContentEngine:
                 platform=req.platform,
                 generated_text=raw_text,
                 suggested_hook=raw_text.split("\n")[0] if raw_text else None,
-                suggested_hashtags=["#إبدأ_ماركتينج", "#تسويق_رقمي", "#ريادة_أعمال"],
+                suggested_hashtags=[f"#{(req.topic or 'عام').replace(' ', '_')}"],
                 cta=f"اكتب {req.cta_keyword or 'ابدأ'} في الكومنتات",
                 model_used=f"Gemini ({settings.LLM_MODEL})",
             )
@@ -213,7 +213,7 @@ class ContentEngine:
                 "Frame 1 (Interactive)": f"سؤال سريع للناس الطموحة: هل بتواجه صعوبة في {topic} الفترة دي؟ (نعم جداً / محتاج خطة)",
                 "Frame 2 (Pain Point)": f"الحقيقة إن معظم الناس بتضيع مجهود وميزانيات ضخمة بسبب تكرار نفس الأخطاء الشائعة في {topic}.",
                 "Frame 3 (Solution)": f"السر مش في المجهود الزائد.. السر في بناء نظام ذكي بيشتغل لصالحك ويوفر وقتك بنسبة 80%!",
-                "Frame 4 (Call To Action)": f"جاهز تبدأ صح؟ رد على الستوري دي بكلمة [{cta_word}] وهبعتلك أهم الأدوات اللي بنستخدمها في إبدأ ماركتينج 📩✨"
+                "Frame 4 (Call To Action)": f"جاهز تبدأ صح؟ رد على الستوري دي بكلمة [{cta_word}] وهبعتلك أهم الأدوات والتفاصيل 📩✨"
             }
             full_text = (
                 "📱 تسلسل ستوري تفاعلي مقترح (4 فريمات):\n\n"
@@ -228,7 +228,7 @@ class ContentEngine:
                 platform=req.platform,
                 generated_text=full_text,
                 suggested_hook=breakdown["Frame 1 (Interactive)"],
-                suggested_hashtags=["#ستوري", "#إبدأ_ماركتينج"],
+                suggested_hashtags=[f"#{topic.replace(' ', '_')}"],
                 script_breakdown=breakdown,
                 cta=f"رد على الستوري بكلمة [{cta_word}]",
                 model_used="HudhudRadar Stories Copywriter Pro",
@@ -244,11 +244,11 @@ class ContentEngine:
                 f"1️⃣ فهم احتياج عميلك الحقيقي وتقديم حل مباشر لمشكلته بدون لف ودوران.\n"
                 f"2️⃣ التواجد المستمر بمحتوى يقدم قيمة حقيقية تبني الثقة قبل البيع.\n"
                 f"3️⃣ أتمتة الردود والمتابعة الذكية عشان متخسرش أي عميل مهتم بيبعتلك في أي وقت من اليوم.\n\n"
-                f"💡 في 'إبدأ ماركتينج'، هدفنا نساعدك تحول المتابعين لعملاء فعليين بأقل مجهود وبأحدث تقنيات الـ AI.\n\n"
-                f"👇 شاركنا في الكومنتات: اكتب كلمة [{cta_word}] وهيصلك دليل العملي المجاني مباشرة في رسائل الصفحة! 🚀\n\n"
-                f"#إبدأ_ماركتينج #تسويق_رقمي #سوشيال_ميديا #ريادة_الأعمال #أتمتة_المبيعات #محتوى_هادف"
+                f"💡 الهدف دايماً: نساعدك تحول المتابعين لعملاء فعليين بأقل مجهود وبأحدث تقنيات الـ AI.\n\n"
+                f"👇 شاركنا في الكومنتات: اكتب كلمة [{cta_word}] وهيوصلك الدليل العملي المجاني مباشرة في الرسائل! 🚀\n\n"
+                f"#{topic.replace(' ', '_')} #تسويق_رقمي #سوشيال_ميديا #ريادة_الأعمال #أتمتة_المبيعات #محتوى_هادف"
             )
-            hashtags = ["#إبدأ_ماركتينج", "#تسويق_رقمي", "#سوشيال_ميديا", "#ريادة_الأعمال", "#أتمتة_المبيعات"]
+            hashtags = [f"#{topic.replace(' ', '_')}", "#تسويق_رقمي", "#سوشيال_ميديا", "#ريادة_الأعمال", "#أتمتة_المبيعات"]
             return ContentGenerationResponse(
                 topic=topic,
                 post_type=PostType.POST,

@@ -112,7 +112,9 @@ async def test_meta_crawler_and_synthesizer(tmp_path):
     assert (tmp_path / "synced_meta_history.md").exists()
 
     bp_text = (tmp_path / "business_profile.md").read_text(encoding="utf-8")
-    assert "كريم عبد الواحد" in bp_text
+    # S-Purge: profile is built from SCRAPED content — no platform/person branding
+    assert "بيانات الحساب المتصل" in bp_text
+    assert "كريم عبد الواحد" not in bp_text
 
 
 @pytest.mark.asyncio
@@ -124,13 +126,13 @@ async def test_conversation_engine_sales_closing():
     # 1. Test pricing question
     reply, converted = await engine.generate_response(lead_info, "بكام باقة التسويق وإدارة الحسابات؟")
     assert not converted
-    assert "باقات" in reply or "سعر" in reply
-    assert "رقم" in reply or "تواصل" in reply  # Encourages closing/sharing contact
+    # S-Purge: neutral helpful reply, no invented packages, asks for contact
+    assert "تواصل" in reply or "رقم" in reply
 
     # 2. Test CTA keyword 'ابدأ'
     reply_cta, converted_cta = await engine.generate_response(lead_info, "ابدأ")
     assert not converted_cta
-    assert "الخطة التسويقية" in reply_cta
+    assert "أهلاً" in reply_cta or "تفاعلك" in reply_cta
     assert "رقم" in reply_cta
 
     # 3. Test conversion when customer provides phone
