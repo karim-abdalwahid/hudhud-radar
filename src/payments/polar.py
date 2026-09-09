@@ -95,8 +95,8 @@ class PolarGateway(PaymentProvider):
             r = c.post(f"{self.api}/v1/checkouts/", headers=self._headers(), json=payload)
             if r.status_code not in (200, 201):
                 logger.error(f"Polar checkout failed: {r.status_code} {r.text[:300]}")
-                # TEMP diag: passthrough error body to identify exact API rejection
-                raise RuntimeError(f"Polar {r.status_code}: {r.text[:200]}")
+                # TEMP diag: passthrough error + exact payload sent
+                raise RuntimeError(f"Polar {r.status_code}: {r.text[:150]} | SENT: {json.dumps(payload)[:250]}")
             data = r.json()
         return {"checkout_url": data.get("url"), "provider_ref": data.get("id")}
 
