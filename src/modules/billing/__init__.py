@@ -62,6 +62,11 @@ def register(app: FastAPI) -> None:
                 coupon_row = rows[0]
         return {"status": "success", **pricing_service.quote(plats, coupon_row)}
 
+    @app.get("/api/billing/catalog-public", tags=["Billing"])
+    async def public_catalog():
+        """Public pricing catalog (no secrets — prices only) for the checkout page."""
+        return {"status": "success", "catalog": pricing_service.catalog()}
+
     @app.get("/api/billing/subscription", tags=["Billing"])
     async def my_subscription(request: Request):
         session = _me(request)
