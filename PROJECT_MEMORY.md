@@ -1492,3 +1492,9 @@ Register → consent gate → onboarding wizard (skippable, subscription wall on
 - GET /api/data-deletion was returning 405 (Method Not Allowed) — Meta reviewers and users who visit this URL in a browser got nothing. Fixed: compliance module now serves the deletion instructions page (HTML) on GET. Live-verified: 200 text/html.
 - Language globe 🌐 added to legal pages (/terms, /privacy) and the deletion page — EN/AR toggle via ?lang= links (same ?lang= pattern as the rest of the site).
 - App Review justifications document (APP_REVIEW_JUSTIFICATIONS.md) created with ready-to-paste EN messages for ALL 60+ permissions in the owner's review list, including removal recommendations for unused permissions (branded content, catalog management, keyword search, location tagging, profile discovery, share_to_instagram, live video, shopping tags, upcoming events, creator marketplace) — these MUST be removed from the request to avoid rejections.
+
+### 5. Post-Entry Fix (same session)
+- Admin.test login was broken (user deleted by TRUNCATE CASCADE side-effect during S2 purge). Recreated with correct hash. user.test also recreated.
+- Consent checkbox DUPLICATED on register page (owner reported). Fixed: single consent checkbox (regTerms) gates BOTH email signup AND Google signup. googleTerms checkbox removed. googleSignIn() checks regTerms when register tab is visible. Login page has NO consent (owner: consent only on signup).
+- Language globe 🌐 added to /terms and /privacy (EN/AR toggle via ?lang= links).
+- GET /api/data-deletion now serves deletion page HTML (was 405 — Meta reviewers visit GET).
