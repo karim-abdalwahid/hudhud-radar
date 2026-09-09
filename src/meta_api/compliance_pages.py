@@ -117,6 +117,12 @@ def register_compliance_routes(app: FastAPI):
         """Data deletion instructions page (Meta App Review requirement)."""
         return HTMLResponse(content=_DELETION_HTML)
 
+    @app.get("/api/data-deletion", response_class=HTMLResponse, include_in_schema=False)
+    async def data_deletion_api_info():
+        """GET handler so Meta reviewers and users who visit this URL in a
+        browser see the deletion instructions page instead of 405."""
+        return HTMLResponse(content=_DELETION_HTML)
+
     @app.post("/api/data-deletion", tags=["Compliance"])
     async def data_deletion_callback(request: Request):
         """
