@@ -297,6 +297,7 @@ def register(app: FastAPI) -> None:
     ALLOWED_SETTING_KEYS = (
         "payment_gateway", "payment_mode", "multi_platform_discounts",
         "pricing_usd", "currency_table", "theme_default", "registration_cap",
+        "polar_product_ids",
     )
 
     class SiteSettingsPayload(BaseModel):
