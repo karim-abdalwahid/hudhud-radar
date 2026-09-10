@@ -480,6 +480,8 @@ const HUDHUD_TRANSLATIONS = {
         "st.filter_type_label": "Type:",
         "st.filter_platform_label": "Platform:",
         "nav.automations": "Automations & Workflows",
+        "nav.users_admin": "Users & Admin Console",
+        "nav.templates_admin": "Message Templates",
         "auto.title": "Visual Automation & Workflows Builder",
         "auto.subtitle": "Build drag-and-drop conversational workflows and Meta triggers for Instagram & Facebook",
         "auto.new_workflow": "+ New Automation",
