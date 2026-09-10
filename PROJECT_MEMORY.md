@@ -1599,3 +1599,44 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - قاعدة UTF-8 للتوثيق العربي (منع PowerShell Add-Content للنصوص).
 - Golden Upsell: الاكتشاف المجاني = فرصة بيع مقفولة بـ entitlements (معتمد من المالك).
 - localhost redirect URLs تُحذف من تطبيقات الإنتاج بعد انتهاء الحاجة (least privilege).
+
+### 10. Post-Entry Addition (2026-09-10 late) — Screencast scripts for App Review
+- docs/APP_REVIEW/SCREENCAST_SCRIPTS.md: 31 video scripts (one per permission needing a screencast) — universal rules (one take, URL bar visible, English narration, real data, live proof outside the app) + per-permission click-by-click flows on hudhd.com with ready English narration + owner-runbook checklist. Prepared for the recording model per owner directive.
+
+---
+
+## [Entry 045] 2026-09-11 (جلسة) — تشخيص حي أثبت سلامة البايبلاين + إثراء بروفايل العميل الحقيقي (اسم+صورة) + حذف worktree
+- **Timestamp**: 2026-09-11T02:30:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **السجل الكامل لحظة-بلحظة**: docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-11_session.md
+- **الحافز**: المالك ظن أن العمليات الحية لا تعمل (أرسل رسائل من حسابه الشخصي ولم تظهر له).
+
+### 1. تشخيص منهجي (diagnose_webhook.py + check_ownership.py + test_inbox_dom.py)
+- كل الحلقات خضراء: توكن PAGE صالح بكل الـ scopes · subscribed_apps بالحقول الأربعة · POST موقّع HMAC → events_queued=1 · صفوف messages/leads في Supabase · **الـ DOM على الإنتاج يعرض المحادثة الحقيقية وردّي AI أُرسلا لماسنجر فعليًا**. الخلاصة: البايبلايب يعمل 100%؛ وهم الفراغ = مشاهدة localhost/بلا refresh/قبل اكتمال الاشتراك.
+- اكتشافات جانبية: حسابات اختبار مكررة (admin.test ×2، user.test ×2) · خطأ dashboard `loadOverviewData: Failed to fetch` (مفتوح).
+- قرار معتمد: تسجيلات Playwright الآلية placeholder لا تُرفع لميتا — مطلوب بيانات حقيقية أولًا (رسالة/تعليق/بوست/ليد) + تأجيل صلاحيات ads بلا استخدام + انتظار عدادات Threads.
+
+### 2. ميزة: إثراء بروفايل العميل الحقيقي (إصلاح "Lead") — TDD
+- الجذر: get_profile() موجودة بلا مستدعٍ — الـ orchestrator كان يكتفِ بالـ PSID.
+- التنفيذ: orchestrator يستدعي Profile API قبل الحفظ (FB: first/last/name/profile_pic · IG: username/name/profile_pic) مع fallback آمن وصفر اختلاق · avatar_url على LeadBase/LeadUpdate/extractor/resolver · inbox API + واجهة تعرض الصورة الحقيقية في 3 مواضع · migration 012 (طبقت حيًا 201) · backfill_lead_profiles.py للقائمين.
+- النتيجة الحية: lead حقيقي = "Kareem Abdelwahid" + صورته الرسمية؛ /api/inbox/conversations يرجع name+avatar. حُذف الـ lead التشخيصي المزيف لإبقاء الإنبوكس نظيفًا للمراجعة.
+- درس: PostgREST PATCH مع return=minimal → **204 = نجاح**.
+- ملاحظة ميتا: PSID لا يكشف username (طبيعي)؛ username متاح لعملاء IG.
+- Threads: لا DM في الـ API أصلًا — العملاء = ردود بوستات؛ تحويل ردود→leads مؤجل ضمن Wave 9.8 (نمط المستقبل: GET /{threads-user-id}?fields=username,name,thread_profile_picture_url بتوكن لكل مستخدم).
+
+### 3. صيانة المستودع
+- `hudhud_diag` = git worktree قديم (detached عند 1e37ae9، سلف في main، صفر فريد) — حُذف بـ `git worktree remove` بأمر المالك ("خلينا شغالين عالأصلي").
+- إصلاح بنائي: **src/main.py كان بلا كتلة تشغيل** — أُضيف `if __name__ == "__main__"` + uvicorn.run (سبب فشل التشغيل المحلي) + pip install -r requirements.txt (pypdf وغيرها).
+
+### 5. Post-Entry Addition (same session) — Platform Bridges (Instagram Comments + Threads Replies → CRM)
+- **أمر المالك**: "ابني جسر threads وانستجرام". الفجوتان: تعليقات IG/FB كانت تُشغّل الأتمتة بلا إنشاء leads؛ ردود Threads قراءة pull فقط بلا التقاط.
+- **IG/FB Comments bridge** (`src/leads/comment_bridge.py` جديد): `capture_comment_lead(event)` — كل تعليق → lead حتمي (IG: username من الويبهوك · FB: from.name) + التعليق = أول رسالة دخول؛ idempotent بـ platform_message_id؛ مسجل كـ background task مستقل عن الأتمتة في ويبهوك راوت.
+- **Threads Replies bridge** (`ThreadsLeadsSync` في extended_api.py): `sync_account_replies()` يسحب ردود أحدث الثريدز → إثراء رسمي `GET /{author_id}?fields=username,name,thread_profile_picture_url` → lead + رسالة؛ **POST /api/threads/sync-replies** (session-aware، لكل مستخدم). فلسفة موثقة: Threads لا يملك DM API — العملاء = ردود بوستات؛ جسر pull-based الآن، ويبهوك receiver يبقى بند Wave 9.8.
+- **نماذج/هوية**: `PlatformSource.THREADS` + `threads_account_id` (LeadBase/LeadUpdate) · `extract_from_threads()` (صفر اختلاق) · فرع حتمي في resolver للمطابقة بـ threads_account_id · migration 013 (عمود+index، طبقت حيًا 201) · قناة threads في الـ inbox API (`🧵 Threads`).
+- **حوكمة**: مطابقة username عبر المنصات تظل احتمالية 0.70 → طابور المراجعة البشري (Zero-Assumption لم يُخترق).
+- **دروس تقنية**: (1) الاستيراد المحلي داخل الميثود يتجاوز monkeypatch — DI constructor هو النمط الصحيح للخدمات القابلة للاختبار. (2) PostgREST PATCH return=minimal → 204 = نجاح (من القسم 2 أعلاه).
+- **اختبارات**: 12 جديدة (test_platform_bridges.py) — **السويت 265/265**. التفاصيل الكاملة: SESSION_LOGS/2026-09-11_session.md قسم 7.
+
+### 6. الحالة النهائية للجلسة
+- الاختبارات: **265/265** (6 إثراء بروفايل + 12 جسر منصات) · /health ✅ · migrations 012+013 مطبقتان حيًا ✅.
+- **غير مُعمّم (بانتظار أمر المالك)**: كل تعديلات الجلسة + سجل الجلسة + هذا الإدخال. قائمة الملفات كاملة في سجل الجلسة.

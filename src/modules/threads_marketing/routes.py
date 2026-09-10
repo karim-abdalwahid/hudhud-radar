@@ -126,6 +126,21 @@ async def get_threads_insights(request: Request = None,
         metric, user_id=_session_user_id(request) if request else None)
 
 
+@router.post("/api/threads/sync-replies", tags=["Threads"])
+async def sync_threads_replies(request: Request = None,
+                               limit_threads: int = Query(10, ge=1, le=50),
+                               limit_replies: int = Query(20, ge=1, le=100)):
+    """
+    Threads Replies → CRM bridge (pull-based): fetches recent replies to the
+    account's published threads and captures each author as a lead with
+    official profile data (threads_basic). Idempotent per reply id.
+    """
+    from src.meta_api.extended_api import threads_leads_sync
+    return await threads_leads_sync.sync_account_replies(
+        limit_threads=limit_threads, limit_replies=limit_replies,
+        user_id=_session_user_id(request) if request else None)
+
+
 @router.post("/api/marketing/sync-leads", tags=["Marketing API"])
 async def sync_marketing_leads(form_id: Optional[str] = None):
     """Imports Meta Lead Ads leads into the CRM with full provenance."""

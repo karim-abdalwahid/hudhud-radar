@@ -36,6 +36,10 @@ class IdentityResolver:
             matches = self.db.select("leads", {"instagram_account_id": incoming.instagram_account_id})
             if matches:
                 existing_lead = matches[0]
+        elif incoming.source == PlatformSource.THREADS and incoming.threads_account_id:
+            matches = self.db.select("leads", {"threads_account_id": incoming.threads_account_id})
+            if matches:
+                existing_lead = matches[0]
 
         if existing_lead:
             # Deterministic existing lead found. Update any newly available verified info.
@@ -141,7 +145,7 @@ class IdentityResolver:
         """Enriches existing lead record with newly surfaced non-null fields."""
         existing = self.db.select("leads", {"id": lead_id})[0]
         updates = {}
-        for field in ["full_name", "username", "profile_url", "bio", "location", "contact_email", "contact_phone", "facebook_account_id", "instagram_account_id"]:
+        for field in ["full_name", "username", "avatar_url", "profile_url", "bio", "location", "contact_email", "contact_phone", "facebook_account_id", "instagram_account_id", "threads_account_id"]:
             new_val = getattr(incoming, field, None)
             if new_val and not existing.get(field):
                 updates[field] = new_val

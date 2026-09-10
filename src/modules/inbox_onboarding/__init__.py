@@ -102,9 +102,15 @@ async def get_inbox_conversations():
             "id": f"conv_{lead_id}",
             "lead_id": lead_id,
             "name": display_name,
+            "avatar": lead.get("avatar_url"),
             "handle": f"@{lead.get('username')}" if lead.get("username") else "",
-            "channel": platform if platform in ("instagram", "facebook") else "instagram",
-            "platformText": "📸 Instagram Direct" if platform == "instagram" else ("💬 Messenger" if platform == "facebook" else "💬 Direct"),
+            "channel": platform if platform in ("instagram", "facebook", "threads") else "instagram",
+            "platformText": (
+                "📸 Instagram Direct" if platform == "instagram"
+                else "💬 Messenger" if platform == "facebook"
+                else "🧵 Threads" if platform == "threads"
+                else "💬 Direct"
+            ),
             "lastTime": (message_items[-1]["time"] or "Active"),
             "leadStage": "new",
             "contactCaptured": bool(lead.get("contact_phone") or lead.get("contact_email")),

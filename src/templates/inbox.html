@@ -330,7 +330,7 @@
                         <div>
                             <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;" data-i18n="inbox.dossier_title">Customer Dossier & Deal</div>
                             <div style="text-align: center; padding: 16px; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-default);">
-                                <div style="font-size: 32px; margin-bottom: 6px;">👤</div>
+                                <div id="lead-panel-avatar" style="width:56px;height:56px;margin:0 auto 6px;border-radius:50%;background:var(--bg-subtle);border:1px solid var(--border-default);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;position:relative;">👤</div>
                                 <div style="font-weight: 700; font-size: 15px; color: var(--text-primary);" id="lead-panel-name"></div>
                                 <div style="font-size: 12px; color: var(--text-muted);" id="lead-panel-handle"></div>
                                 <div style="margin-top: 10px;">
@@ -443,7 +443,9 @@
 
                 item.innerHTML = `
                     <div class="conv-avatar">
-                        ${c.name[0]}
+                        ${c.avatar
+                            ? `<img src="${c.avatar}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+                            : (c.name ? c.name[0] : '·')}
                         <span class="channel-dot ${c.channel}" style="display:inline-flex;overflow:hidden;border-radius:6px;">${window.platformIcon(c.channel, 18)}</span><span style="display:none;">${c.channel === 'instagram' ? '📸' : c.channel === 'messenger' ? '💬' : '📱'}</span>
                     </div>
                     <div style="flex: 1; min-width: 0;">
@@ -462,7 +464,9 @@
 
         function renderEmptyChat() {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-            document.getElementById('active-chat-avatar').textContent = '🤖';
+            const emptyAvatar = document.getElementById('active-chat-avatar');
+            emptyAvatar.innerHTML = '';
+            emptyAvatar.textContent = '🤖';
             document.getElementById('active-chat-name').textContent = isAr ? 'صندوق الوارد المباشر' : 'Autonomous Live Inbox';
             document.getElementById('active-chat-channel').textContent = isAr ? 'جاهز لاستقبال الرسائل عبر القنوات المتصلة' : 'Ready for incoming messages on connected channels';
             
@@ -498,11 +502,27 @@
 
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
 
-            document.getElementById('active-chat-avatar').textContent = conv.name[0];
+            const avatarEl = document.getElementById('active-chat-avatar');
+            avatarEl.textContent = '';
+            if (conv.avatar) {
+                avatarEl.style.position = 'relative';
+                avatarEl.style.overflow = 'hidden';
+                avatarEl.innerHTML = `<img src="${conv.avatar}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">`;
+            } else {
+                avatarEl.innerHTML = (conv.name ? conv.name[0] : '·');
+            }
             document.getElementById('active-chat-name').textContent = conv.name;
             document.getElementById('active-chat-channel').textContent = `${conv.platformText} · ${conv.lastTime}`;
 
             document.getElementById('lead-panel-name').textContent = conv.name;
+            const panelAvatar = document.getElementById('lead-panel-avatar');
+            if (panelAvatar) {
+                if (conv.avatar) {
+                    panelAvatar.innerHTML = `<img src="${conv.avatar}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">`;
+                } else {
+                    panelAvatar.innerHTML = '👤';
+                }
+            }
             document.getElementById('lead-panel-handle').textContent = conv.handle;
             // Honest dossier: no "buying need" source exists yet — show placeholder, never invent
             const needEl = document.getElementById('lead-panel-need');

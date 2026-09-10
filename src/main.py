@@ -231,3 +231,8 @@ billing_module.register(app)
 register_compliance_routes(app)
 _legal.register(app)
 connections_module.register(app)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=False)

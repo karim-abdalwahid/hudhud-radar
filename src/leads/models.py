@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, EmailStr, HttpUrl, field_validator
 class PlatformSource(str, Enum):
     FACEBOOK = "facebook"
     INSTAGRAM = "instagram"
+    THREADS = "threads"
     MANUAL = "manual"
     OTHER = "other"
 
@@ -40,6 +41,7 @@ class LeadBase(BaseModel):
     source: PlatformSource = PlatformSource.OTHER
     full_name: Optional[str] = None
     username: Optional[str] = None
+    avatar_url: Optional[str] = None
     profile_url: Optional[str] = None
     bio: Optional[str] = None
     location: Optional[str] = None
@@ -47,6 +49,7 @@ class LeadBase(BaseModel):
     contact_phone: Optional[str] = None
     facebook_account_id: Optional[str] = None
     instagram_account_id: Optional[str] = None
+    threads_account_id: Optional[str] = None
     linked_account_id: Optional[str] = None
     is_verified_link: bool = False
     data_provenance: DataProvenance = Field(default_factory=DataProvenance)
@@ -59,6 +62,7 @@ class LeadCreate(LeadBase):
 class LeadUpdate(BaseModel):
     full_name: Optional[str] = None
     username: Optional[str] = None
+    avatar_url: Optional[str] = None
     profile_url: Optional[str] = None
     bio: Optional[str] = None
     location: Optional[str] = None
@@ -66,6 +70,7 @@ class LeadUpdate(BaseModel):
     contact_phone: Optional[str] = None
     facebook_account_id: Optional[str] = None
     instagram_account_id: Optional[str] = None
+    threads_account_id: Optional[str] = None
     linked_account_id: Optional[str] = None
     is_verified_link: Optional[bool] = None
     data_provenance: Optional[DataProvenance] = None

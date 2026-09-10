@@ -27,6 +27,7 @@ class ProfileDataExtractor:
         username = raw_data.get("username")
         profile_url = raw_data.get("link") or (f"https://www.facebook.com/{fb_id}" if fb_id else None)
         bio = raw_data.get("about") or raw_data.get("bio")
+        avatar_url = raw_data.get("profile_pic") or raw_data.get("avatar_url")
         
         # Location handling: Meta often returns a dict with 'name'
         location_raw = raw_data.get("location")
@@ -52,6 +53,7 @@ class ProfileDataExtractor:
             source=PlatformSource.FACEBOOK,
             full_name=full_name,
             username=username,
+            avatar_url=avatar_url,
             profile_url=profile_url,
             bio=bio,
             location=location,
@@ -73,6 +75,7 @@ class ProfileDataExtractor:
         full_name = raw_data.get("name")
         bio = raw_data.get("biography") or raw_data.get("bio")
         profile_url = f"https://www.instagram.com/{username}/" if username else None
+        avatar_url = raw_data.get("profile_pic") or raw_data.get("profile_picture_url") or raw_data.get("avatar_url")
         
         # Contact info if publicly exposed by business profile
         contact_email = raw_data.get("public_email") or raw_data.get("email")
@@ -93,6 +96,7 @@ class ProfileDataExtractor:
             source=PlatformSource.INSTAGRAM,
             full_name=full_name,
             username=username,
+            avatar_url=avatar_url,
             profile_url=profile_url,
             bio=bio,
             location=None,  # Not fabricated if not present
@@ -100,5 +104,35 @@ class ProfileDataExtractor:
             contact_phone=contact_phone,
             facebook_account_id=fb_page_id,
             instagram_account_id=ig_id or username,
+            data_provenance=provenance
+        )
+
+    @staticmethod
+    def extract_from_threads(raw_data: Dict[str, Any]) -> LeadCreate:
+        """
+        Extract profile info from a Threads API payload (reply author or profile lookup).
+        Official fields: username, name, thread_profile_picture_url. Zero fabrication.
+        """
+        th_id = str(raw_data.get("id")) if raw_data.get("id") else None
+        username = raw_data.get("username")
+        full_name = raw_data.get("name")
+        avatar_url = raw_data.get("thread_profile_picture_url") or raw_data.get("profile_pic")
+        profile_url = f"https://www.threads.net/@{username}" if username else None
+
+        provenance = DataProvenance(
+            collected_at=datetime.now(timezone.utc),
+            source_platform=PlatformSource.THREADS,
+            verification_method=VerificationMethod.DIRECT,
+            source_account_id=th_id or username,
+            provenance_notes=["Directly extracted from Threads API payload"]
+        )
+
+        return LeadCreate(
+            source=PlatformSource.THREADS,
+            full_name=full_name,
+            username=username,
+            avatar_url=avatar_url,
+            profile_url=profile_url,
+            threads_account_id=th_id,
             data_provenance=provenance
         )

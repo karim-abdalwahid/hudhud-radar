@@ -77,6 +77,10 @@ async def receive_meta_webhook(request: Request, background_tasks: BackgroundTas
     for cev in comment_events:
         if not event_deduplicator.claim(f"comment:{cev.get('comment_id')}", "comment"):
             continue
+        # Bridge: every comment becomes (or appends to) a CRM lead — independent
+        # of automations so lead capture never depends on workflow config.
+        from src.leads.comment_bridge import capture_comment_lead
+        background_tasks.add_task(capture_comment_lead, cev)
         background_tasks.add_task(automations_service.process_comment_event, cev)
         queued += 1
 

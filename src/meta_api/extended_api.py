@@ -380,6 +380,156 @@ class MarketingLeadsSync:
         return True
 
 
+class ThreadsLeadsSync:
+    """
+    Threads Replies → CRM Bridge (pull-based, Wave 9.8 step 1).
+    Threads has no DM API — customers arrive as REPLIES to published threads.
+    This sync pulls recent replies, resolves/creates a lead per author
+    (deterministic by threads_account_id, username-keyed fallback), enriches
+    the profile via the official Threads API, and stores each reply as a message.
+    Zero fabrication: only API-returned fields are stored.
+    """
+
+    def __init__(self, db=None, resolver=None, lead_svc=None):
+        """Optional dependency injection (defaults resolve lazily — testable)."""
+        self._db = db
+        self._resolver = resolver
+        self._lead_svc = lead_svc
+
+    def _deps(self):
+        if self._db is None:
+            from src.core.supabase_client import supabase_db
+            self._db = supabase_db
+        if self._resolver is None:
+            from src.identity.resolver import identity_resolver
+            self._resolver = identity_resolver
+        if self._lead_svc is None:
+            from src.leads.service import lead_service
+            self._lead_svc = lead_service
+        return self._db, self._resolver, self._lead_svc
+
+    @staticmethod
+    def _resolve_token(user_id: Optional[str] = None) -> Optional[str]:
+        """Per-user Threads token resolution (delegates to the publisher's resolver)."""
+        return ThreadsPublisher._resolve_token(user_id)
+
+    @staticmethod
+    async def _fetch_threads_profile(author_id: str, token: str) -> Dict[str, Any]:
+        """Official Threads user lookup (threads_basic). Any error → empty dict."""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    f"{settings.THREADS_BASE_URL}/{author_id}",
+                    params={
+                        "fields": "username,name,thread_profile_picture_url",
+                        "access_token": token,
+                    },
+                )
+                if resp.status_code == 200:
+                    return resp.json()
+                logger.warning(f"Threads profile lookup failed for {author_id}: HTTP {resp.status_code}")
+        except Exception as e:
+            logger.warning(f"Threads profile lookup error for {author_id}: {e}")
+        return {}
+
+    async def capture_thread_reply(self, reply: Dict[str, Any], token: str,
+                                   thread_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Turns one Threads reply into (or appends to) a lead with its message."""
+        from datetime import datetime, timezone as tz
+        from src.leads.models import MessageCreate, PlatformSource, SenderType
+        from src.identity.extractor import ProfileDataExtractor
+
+        db, resolver, lead_svc = self._deps()
+
+        reply_id = reply.get("id")
+        username = reply.get("username")
+        author_id = (reply.get("from_user") or {}).get("id") or reply.get("from_user_id")
+
+        if not reply_id or (not username and not author_id):
+            logger.warning("Threads reply bridge skipped: no id/author identity.")
+            return None
+
+        # Idempotency: one reply → one message ever
+        existing_msg = db.select("messages", {"platform_message_id": reply_id})
+        if existing_msg:
+            return {"lead_id": existing_msg[0].get("lead_id"), "duplicate": True}
+
+        # Official profile enrichment when the author id is available
+        profile = {}
+        if author_id:
+            profile = await self._fetch_threads_profile(author_id, token) or {}
+
+        lead_in = ProfileDataExtractor.extract_from_threads({
+            "id": author_id,
+            "username": username or profile.get("username"),
+            "name": profile.get("name"),
+            "thread_profile_picture_url": profile.get("thread_profile_picture_url"),
+        })
+        lead_record, is_new, queue_id = resolver.resolve_and_save_lead(lead_in)
+        lead_id = lead_record["id"]
+
+        sent_at = datetime.now(tz.utc)
+        if reply.get("timestamp"):
+            try:
+                sent_at = datetime.fromisoformat(reply["timestamp"].replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                pass
+
+        message = MessageCreate(
+            lead_id=lead_id,
+            platform=PlatformSource.THREADS,
+            platform_message_id=reply_id,
+            sender_type=SenderType.LEAD,
+            content=reply.get("text") or "",
+            sent_at=sent_at,
+            metadata={"type": "thread_reply", "thread_id": thread_id},
+        )
+        lead_svc.add_message(message)
+
+        logger.info(
+            f"Threads reply captured: reply {reply_id} → lead {lead_id} "
+            f"(new={is_new}, queue_id={queue_id})"
+        )
+        return {"lead_id": lead_id, "is_new": is_new, "queue_id": queue_id}
+
+    async def sync_account_replies(self, limit_threads: int = 10, limit_replies: int = 20,
+                                   user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Pulls recent replies across the account's latest published threads."""
+        token = self._resolve_token(user_id)
+        if not token:
+            return {"status": "skipped", "reason": "Threads غير مربوط"}
+
+        captured, skipped, duplicate = 0, 0, 0
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            threads_resp = await client.get(
+                f"{settings.THREADS_BASE_URL}/me/threads",
+                params={"fields": "id,text,timestamp", "limit": limit_threads, "access_token": token},
+            )
+            if threads_resp.status_code != 200:
+                return {"status": "error", "detail": threads_resp.text[:300]}
+
+            for thread in threads_resp.json().get("data", []):
+                replies_resp = await client.get(
+                    f"{settings.THREADS_BASE_URL}/{thread['id']}/replies",
+                    params={"fields": "id,text,timestamp,username", "limit": limit_replies,
+                            "access_token": token},
+                )
+                if replies_resp.status_code != 200:
+                    continue
+                for reply in replies_resp.json().get("data", []):
+                    result = await self.capture_thread_reply(
+                        reply, token=token, thread_id=thread["id"])
+                    if result is None:
+                        skipped += 1
+                    elif result.get("duplicate"):
+                        duplicate += 1
+                    else:
+                        captured += 1
+
+        return {"status": "success", "captured": captured, "duplicates": duplicate, "skipped": skipped}
+
+
 meta_insights_sync = MetaInsightsSync()
 threads_publisher = ThreadsPublisher()
+threads_leads_sync = ThreadsLeadsSync()
 marketing_leads_sync = MarketingLeadsSync()

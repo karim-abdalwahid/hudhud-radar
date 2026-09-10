@@ -36,12 +36,29 @@ class AgentOrchestrator:
 
         logger.info(f"Processing incoming {platform} message from {sender_id}: mid={message_id}")
 
-        # 1. Zero-Assumption Profile Extraction
+        # 1. Zero-Assumption Profile Extraction — enrich with the REAL profile
+        # (name + photo) from the Messenger/Instagram Profile API before storing.
         if platform == PlatformSource.FACEBOOK:
             profile_payload = {"id": sender_id}
+            try:
+                fb_profile = await self.client.get_profile(
+                    sender_id, fields="id,first_name,last_name,name,profile_pic"
+                )
+                if isinstance(fb_profile, dict) and not fb_profile.get("error"):
+                    profile_payload.update(fb_profile)
+            except Exception as e:
+                logger.warning(f"Profile enrichment skipped for Facebook sender {sender_id}: {e}")
             lead_in = ProfileDataExtractor.extract_from_facebook(profile_payload)
         else:
             profile_payload = {"id": sender_id, "username": raw_event.get("sender", {}).get("username")}
+            try:
+                ig_profile = await self.client.get_profile(
+                    sender_id, fields="id,username,name,profile_pic"
+                )
+                if isinstance(ig_profile, dict) and not ig_profile.get("error"):
+                    profile_payload.update(ig_profile)
+            except Exception as e:
+                logger.warning(f"Profile enrichment skipped for Instagram sender {sender_id}: {e}")
             lead_in = ProfileDataExtractor.extract_from_instagram(profile_payload)
 
         # 2. Identity Resolution & Linking
