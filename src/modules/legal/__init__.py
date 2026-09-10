@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse
 
 from src.core.modules import module_registry
 
-LEGAL_VERSION = "2026-09-09"
+LEGAL_VERSION = "2026-09-10"
 
 # Platform operator identity — the PLATFORM (Hudhud), never a person or an
 # external business. Legal operator details live with the platform owner
@@ -336,12 +336,19 @@ data, and object to or restrict certain processing. Use the
 <a href="mailto:{email}">{email}</a>. We respond within a reasonable timeframe
 and in any case within the period required by applicable law.</p>
 
-<h2>9. Cookies</h2>
+<h2>9. Cookies &amp; Product Analytics</h2>
 <p>We use a small number of strictly necessary cookies: a signed session
 cookie (to keep you logged in) and a language preference cookie. We may use
 privacy-respecting internal traffic statistics to understand aggregate usage;
 when third-party analytics (such as Google Analytics) are enabled, they load
 only after you consent, where consent is required.</p>
+<p>When enabled, we also use <strong>PostHog</strong> (hosted in the European
+Union) to understand how the Service is used and to improve the user
+experience: product analytics, aggregate web traffic, and — in anonymized
+form — session replays in which input fields are masked. Analytics is
+disabled by default and only activated by us; it does not include advertising
+or cross-site tracking, and you can opt out at any time by contacting
+<a href="mailto:support@hudhd.com">support@hudhd.com</a>.</p>
 
 <h2>10. Data deletion</h2>
 <p>You can delete your account and associated data at any time via the
@@ -447,11 +454,17 @@ Google. عند صياغة الرد على أحد عملائك قد تُعالج 
 البيانات</a> أو راسلنا على <a href="mailto:{email}">{email}</a>. نرد خلال
 مدة معقولة وداخل المهلة التي يحددها القانون المطبق.</p>
 
-<h2>9. الكوكيز</h2>
+<h2>9. الكوكيز وتحليلات المنتج</h2>
 <p>نستخدم عدداً صغيراً من الكوكيز الضرورية فقط: كوكي جلسة موقّعة (لإبقائك
 مسجلاً) وكوكي تفضيل اللغة. وقد نستخدم إحصاءات زيارات داخلية تحترم الخصوصية
 لفهم الاستخدام الإجمالي؛ وعند تفعيل أدوات تحليلات خارجية (مثل Google
 Analytics) لا تُحمّل إلا بعد موافقتك حيث تكون الموافقة مطلوبة.</p>
+<p>عند التفعيل، نستخدم أيضاً <strong>PostHog</strong> (مستضافاً في الاتحاد
+الأوروبي) لفهم كيفية استخدام الخدمة وتحسين تجربة الاستخدام: تحليلات المنتج،
+وزيارات الموقع الإجمالية، وتسجيلات جلسات مجهولة الهوية يُخفى فيها حقول
+الإدخال. التحليلات معطّلة افتراضياً ولا تُفعَّل إلا منا، ولا تتضمن إعلانات أو
+تتبعاً عبر المواقع، ويمكنك إلغاؤها في أي وقت بالتواصل مع
+<a href="mailto:support@hudhd.com">support@hudhd.com</a>.</p>
 
 <h2>10. حذف البيانات</h2>
 <p>يمكنك حذف حسابك وبياناته في أي وقت عبر <a href="/data-deletion">صفحة حذف
