@@ -35,8 +35,7 @@ REDIRECT_URI = f"{'https' if USE_HTTPS else 'http'}://localhost:{PORT}/settings"
 
 THREADS_CORE = ("threads_basic,threads_content_publish,threads_manage_replies,"
                 "threads_manage_insights,threads_read_replies")
-THREADS_EXTRA = ("threads_delete,threads_profile_discovery,threads_keyword_search,"
-                 "threads_manage_mentions,threads_location_tagging,threads_share_to_instagram")
+THREADS_EXTRA = "threads_delete"
 IG_SCOPES = ("instagram_business_basic,instagram_business_manage_insights,"
              "instagram_business_content_publish,instagram_business_manage_comments,"
              "instagram_business_manage_messages")
@@ -137,14 +136,20 @@ def main():
         print(f"✅ Threads token saved ({me.get('username')} / {me.get('id')})")
 
     elif mode == "ig":
-        app_id = env("META_APP_ID")
+        # child Instagram app (Meta creates a SEPARATE app id for the Instagram
+        # product) — "Invalid platform app" if you use the main app id here
+        app_id = env("IG_APP_ID")
+        secret = env("IG_APP_SECRET") or env("META_APP_SECRET")
+        if not app_id:
+            print("IG_APP_ID missing in .env — set it from dashboard → Instagram API → App information")
+            sys.exit(1)
         authorize = ("https://www.instagram.com/oauth/authorize?"
                      + urlencode({"client_id": app_id, "redirect_uri": REDIRECT_URI,
                                   "response_type": "code", "scope": IG_SCOPES}))
         print(f"app_id: {app_id} | scopes: {IG_SCOPES}")
         code = catch_code(authorize)
         r = httpx.post("https://api.instagram.com/oauth/access_token", data={
-            "client_id": app_id, "client_secret": env("META_APP_SECRET"),
+            "client_id": app_id, "client_secret": secret,
             "grant_type": "authorization_code", "redirect_uri": REDIRECT_URI,
             "code": code}, timeout=30)
         j = r.json()
@@ -155,7 +160,7 @@ def main():
         uid = j.get("user_id", "me")
         # long-lived
         r = httpx.get("https://graph.instagram.com/access_token", params={
-            "grant_type": "ig_exchange_token", "client_secret": env("META_APP_SECRET"),
+            "grant_type": "ig_exchange_token", "client_secret": secret,
             "access_token": short}, timeout=30)
         tok = r.json().get("access_token") or short
         r = httpx.get(f"https://graph.instagram.com/v23.0/{uid}",
