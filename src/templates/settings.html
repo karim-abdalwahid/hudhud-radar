@@ -68,6 +68,7 @@
                     <button type="button" class="set-tab" onclick="switchSettingsTab('threads')" id="set-tab-threads" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--text-secondary);">🧵 Threads</button>
                     <button type="button" class="set-tab" onclick="switchSettingsTab('ai')" id="set-tab-ai" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--text-secondary);">🧠 عقول الذكاء الاصطناعي</button>
                     <button type="button" class="set-tab" onclick="switchSettingsTab('webhooks')" id="set-tab-webhooks" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--text-secondary);">📡 Webhooks & السياسات</button>
+                    <button type="button" class="set-tab" onclick="switchSettingsTab('security')" id="set-tab-security" style="padding:9px 18px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; color:var(--text-secondary);">🔐 الحساب والأمان</button>
                 </div>
 
                 <div id="set-tab-page-meta">
@@ -323,6 +324,33 @@
                     </div>
                 </div>
                 </div><!-- /set-tab-page-webhooks -->
+
+                <div id="set-tab-page-security" style="display:none">
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title">🔐 <span data-i18n="set.security_title">تغيير كلمة المرور — Change Password</span></h3>
+                                <div class="panel-desc" data-i18n="set.security_desc">حدّث كلمة مرور حسابك في أي وقت — التغيير فوري ويتطلب كلمة المرور الحالية / Update your account password anytime — change is instant and requires your current password.</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:12px; max-width:420px;">
+                            <div>
+                                <label style="font-size:12.5px; font-weight:600; color:var(--text-secondary);">كلمة المرور الحالية / Current password</label>
+                                <input type="password" id="sec-current" autocomplete="current-password" style="width:100%; margin-top:4px; padding:10px 12px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); color:var(--text-primary); font-family:inherit;">
+                            </div>
+                            <div>
+                                <label style="font-size:12.5px; font-weight:600; color:var(--text-secondary);">كلمة المرور الجديدة / New password (8+)</label>
+                                <input type="password" id="sec-new" autocomplete="new-password" style="width:100%; margin-top:4px; padding:10px 12px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); color:var(--text-primary); font-family:inherit;">
+                            </div>
+                            <div>
+                                <label style="font-size:12.5px; font-weight:600; color:var(--text-secondary);">تأكيد الجديدة / Confirm new password</label>
+                                <input type="password" id="sec-confirm" autocomplete="new-password" style="width:100%; margin-top:4px; padding:10px 12px; border-radius:10px; border:1px solid var(--border-default); background:var(--bg-subtle); color:var(--text-primary); font-family:inherit;">
+                            </div>
+                            <button type="button" class="btn-submit" style="padding:10px 18px; font-size:13.5px;" onclick="changeMyPassword()">💾 حفظ كلمة المرور الجديدة / Save new password</button>
+                            <div id="sec-status" style="font-size:13px; min-height:18px;"></div>
+                        </div>
+                    </div>
+                </div><!-- /set-tab-page-security -->
             </div>
         </main>
     </div>
@@ -336,7 +364,7 @@
 
         // ==================== Settings Tabs (owner feedback #6: reduce clutter) ====================
         function switchSettingsTab(tab) {
-            ['meta', 'threads', 'ai', 'webhooks'].forEach(t_ => {
+            ['meta', 'threads', 'ai', 'webhooks', 'security'].forEach(t_ => {
                 const page = document.getElementById(`set-tab-page-${t_}`);
                 const btn = document.getElementById(`set-tab-${t_}`);
                 if (page) page.style.display = t_ === tab ? 'block' : 'none';
@@ -347,6 +375,38 @@
                     btn.style.color = active ? 'var(--text-primary)' : 'var(--text-secondary)';
                 }
             });
+        }
+
+        // ==================== Change password (Phase 9.9 — account security) ====================
+        async function changeMyPassword() {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const status = document.getElementById('sec-status');
+            const cur = document.getElementById('sec-current').value;
+            const nw = document.getElementById('sec-new').value;
+            const cf = document.getElementById('sec-confirm').value;
+            if (!cur || !nw) { status.textContent = '❌ ' + (isAr ? 'املأ كل الحقول.' : 'Fill in all fields.'); status.style.color = '#ef4444'; return; }
+            if (nw.length < 8) { status.textContent = '❌ ' + (isAr ? 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل.' : 'New password must be at least 8 characters.'); status.style.color = '#ef4444'; return; }
+            if (nw !== cf) { status.textContent = '❌ ' + (isAr ? 'كلمتا المرور غير متطابقتين.' : 'Passwords do not match.'); status.style.color = '#ef4444'; return; }
+            try {
+                const res = await fetch('/auth/change-password', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ current_password: cur, new_password: nw })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    status.textContent = '✅ ' + (isAr ? 'تم تغيير كلمة المرور بنجاح.' : 'Password changed successfully.');
+                    status.style.color = '#10b981';
+                    document.getElementById('sec-current').value = '';
+                    document.getElementById('sec-new').value = '';
+                    document.getElementById('sec-confirm').value = '';
+                } else {
+                    status.textContent = '❌ ' + (data.detail || (isAr ? 'فشل التغيير.' : 'Change failed.'));
+                    status.style.color = '#ef4444';
+                }
+            } catch (e) {
+                status.textContent = '❌ ' + (isAr ? 'فشل الاتصال بالخادم.' : 'Failed to reach the server.');
+                status.style.color = '#ef4444';
+            }
         }
 
         async function loadSettingsStatus() {
