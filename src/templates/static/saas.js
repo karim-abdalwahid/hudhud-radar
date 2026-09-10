@@ -481,7 +481,7 @@ window.platformIcon = function (platform, size = 20) {
 };
 
 // --------------------------------------------------------------------
-// Phase 9.6 — toggle-gated product analytics (PostHog), admin-controlled.
+// Phase 9.6 ï¿½ toggle-gated product analytics (PostHog), admin-controlled.
 // Disabled by default: /api/analytics/config returns {enabled:false} until
 // an admin saves analytics_config in site settings. Explicit events only
 // (autocapture OFF) + public pageview. window.hudhudTrack(event, props).
@@ -500,6 +500,7 @@ window.platformIcon = function (platform, size = 20) {
                         api_host: cfg.posthog_host || 'https://us.i.posthog.com',
                         autocapture: false,
                         capture_pageview: true,
+                        capture_performance: true,
                         persistence: 'localStorage+cookie'
                     });
                     window.hudhudTrack = function (event, props) {
