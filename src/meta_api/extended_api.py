@@ -159,16 +159,24 @@ class MetaInsightsSync:
 
 
 class ThreadsPublisher:
-    """Basic Meta Threads API integration (publish + read replies).
+    """Basic Meta Threads API integration (publish + read replies + delete + insights).
 
-    Uses the dedicated Threads OAuth token (threads_oauth.get_active_threads_token),
-    NOT the Facebook Page token — Threads requires its own app authorization.
+    Token resolution (Phase 9.7): per-user connections (entitlement-gated)
+    when user_id is provided; legacy global token otherwise (compat path).
     """
 
-    async def publish_thread(self, text: str, link: Optional[str] = None) -> Dict[str, Any]:
+    @staticmethod
+    def _resolve_token(user_id: Optional[str] = None) -> Optional[str]:
+        """Per-user token (fail-closed entitlement gate) or legacy global."""
+        if user_id:
+            from src.modules.connections.service import connection_service
+            return connection_service.get_active_token(user_id, "threads")
         from src.meta_api.threads_oauth import get_active_threads_token
+        return get_active_threads_token()
 
-        token = get_active_threads_token()
+    async def publish_thread(self, text: str, link: Optional[str] = None,
+                             user_id: Optional[str] = None) -> Dict[str, Any]:
+        token = self._resolve_token(user_id)
         if not token:
             return {
                 "status": "skipped",
@@ -179,7 +187,7 @@ class ThreadsPublisher:
         async with httpx.AsyncClient(timeout=15.0) as client:
             # 1. Create container
             create = await client.post(
-                f"{settings.THREADS_BASE_URL}/{self._threads_user_id(token)}/threads",
+                f"{settings.THREADS_BASE_URL}/me/threads",
                 data={"media_type": "TEXT", "text": full_text[:500], "access_token": token},
             )
             if create.status_code != 200:
@@ -188,7 +196,7 @@ class ThreadsPublisher:
 
             # 2. Publish container
             publish = await client.post(
-                f"{settings.THREADS_BASE_URL}/{self._threads_user_id(token)}/threads_publish",
+                f"{settings.THREADS_BASE_URL}/me/threads_publish",
                 data={"creation_id": container_id, "access_token": token},
             )
             if publish.status_code != 200:
@@ -198,42 +206,16 @@ class ThreadsPublisher:
             supabase_db.insert("activity_logs", {
                 "action_type": "threads_publish",
                 "platform": "system",
+                "user_id": user_id,
                 "target_id": thread_id or "",
                 "status": "success",
                 "details": {"text_preview": full_text[:120]},
             })
             return {"status": "success", "thread_id": thread_id}
 
-    def _threads_user_id(self, token: str) -> str:
-        """Resolves the connected Threads user id (stored or via /me)."""
-        try:
-            creds = supabase_db.get_setting("threads_credentials") or {}
-            if creds.get("threads_user_id"):
-                return creds["threads_user_id"]
-        except Exception:
-            pass
-        return "me"
-
-    async def get_thread_replies(self, thread_id: str, limit: int = 20) -> Dict[str, Any]:
-        from src.meta_api.threads_oauth import get_active_threads_token
-
-        token = get_active_threads_token()
-        if not token:
-            return {"status": "skipped", "reason": "Threads غير مربوط"}
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
-                f"{settings.THREADS_BASE_URL}/{thread_id}/replies",
-                params={"fields": "id,text,timestamp,username", "limit": limit, "access_token": token},
-            )
-            if resp.status_code != 200:
-                return {"status": "error", "detail": resp.text[:300]}
-            return {"status": "success", "replies": resp.json().get("data", [])}
-
-    async def delete_thread(self, thread_id: str) -> Dict[str, Any]:
+    async def delete_thread(self, thread_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Deletes a published Threads post (requires threads_delete scope)."""
-        from src.meta_api.threads_oauth import get_active_threads_token
-
-        token = get_active_threads_token()
+        token = self._resolve_token(user_id)
         if not token:
             return {"status": "skipped", "reason": "Threads غير مربوط"}
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -246,17 +228,17 @@ class ThreadsPublisher:
             supabase_db.insert("activity_logs", {
                 "action_type": "threads_delete",
                 "platform": "system",
+                "user_id": user_id,
                 "target_id": thread_id,
                 "status": "success",
                 "details": {},
             })
             return {"status": "success", "deleted_id": resp.json().get("deleted_id", thread_id)}
 
-    async def get_account_insights(self, metric: str = "views,likes,replies") -> Dict[str, Any]:
+    async def get_account_insights(self, metric: str = "views,likes,replies",
+                                   user_id: Optional[str] = None) -> Dict[str, Any]:
         """Account-level Threads insights (requires threads_manage_insights)."""
-        from src.meta_api.threads_oauth import get_active_threads_token
-
-        token = get_active_threads_token()
+        token = self._resolve_token(user_id)
         if not token:
             return {"status": "skipped", "reason": "Threads غير مربوط"}
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -267,6 +249,20 @@ class ThreadsPublisher:
             if resp.status_code != 200:
                 return {"status": "error", "detail": resp.text[:300]}
             return {"status": "success", "insights": resp.json().get("data", [])}
+
+    async def get_thread_replies(self, thread_id: str, limit: int = 20,
+                                 user_id: Optional[str] = None) -> Dict[str, Any]:
+        token = self._resolve_token(user_id)
+        if not token:
+            return {"status": "skipped", "reason": "Threads غير مربوط"}
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{settings.THREADS_BASE_URL}/{thread_id}/replies",
+                params={"fields": "id,text,timestamp,username", "limit": limit, "access_token": token},
+            )
+            if resp.status_code != 200:
+                return {"status": "error", "detail": resp.text[:300]}
+            return {"status": "success", "replies": resp.json().get("data", [])}
 
 
 class MarketingLeadsSync:

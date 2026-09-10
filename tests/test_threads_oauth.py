@@ -132,9 +132,8 @@ async def test_publish_flow_with_mocked_graph(monkeypatch):
     monkeypatch.setattr(
         "src.meta_api.extended_api.supabase_db.insert", lambda *a, **kw: None
     )
-    monkeypatch.setattr(
-        threads_publisher, "_threads_user_id", lambda token: "th-user-1"
-    )
+    # Phase 9.7: publisher posts to /me/threads (token-bound identity) — the
+    # legacy _threads_user_id shim was removed.
 
     class FakeResp:
         def __init__(self, status_code, json_data):

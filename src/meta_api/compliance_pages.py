@@ -255,8 +255,18 @@ def register_compliance_routes(app: FastAPI):
                 return JSONResponse(status_code=403, content={"error": "invalid signature"})
 
             # Deauthorized → stored tokens for the platform connection are dead.
-            # Current architecture stores one platform connection globally —
-            # clear it honestly (per-user revocation arrives with user_connections).
+            # Phase 9.7: revoke per-user connections matching the platform user
+            # id; legacy global cache cleared as well (compat until 9.8 cutover).
+            try:
+                from src.modules.connections.service import connection_service
+                pid = str(data.get("user_id", ""))
+                revoked = 0
+                for p in ("facebook", "instagram", "threads"):
+                    revoked += connection_service.revoke_by_platform_user(p, pid)
+                if not pid:
+                    connection_service.revoke_by_platform_user("facebook", "")
+            except Exception as rev_err:
+                logger.warning(f"per-user revoke skipped: {rev_err}")
             try:
                 supabase_db.set_setting("meta_credentials", {})
             except Exception:
@@ -269,9 +279,10 @@ def register_compliance_routes(app: FastAPI):
             supabase_db.insert("activity_logs", {
                 "action_type": "app_deauthorized",
                 "platform": "system",
+                "user_id": None,
                 "target_id": str(data.get("user_id", "")),
                 "status": "success",
-                "details": {"note": "Deauthorization callback — stored platform credentials cleared"},
+                "details": {"note": "Deauthorization callback — platform connections revoked"},
             })
             return {"success": True, "revoked": True}
         except Exception as e:
@@ -312,7 +323,13 @@ def register_compliance_routes(app: FastAPI):
             if not verified:
                 return JSONResponse(status_code=403, content={"error": "invalid signature"})
 
-            # The user uninstalled → revoke stored Threads token (security)
+            # The user uninstalled → revoke their Threads connection (Phase 9.7)
+            # + legacy global cache (compat until 9.8 cutover).
+            try:
+                from src.modules.connections.service import connection_service
+                connection_service.revoke_by_platform_user("threads", str(data.get("user_id", "")))
+            except Exception:
+                pass
             try:
                 supabase_db.set_setting("threads_credentials", {})
             except Exception:
@@ -321,6 +338,7 @@ def register_compliance_routes(app: FastAPI):
             supabase_db.insert("activity_logs", {
                 "action_type": "threads_app_uninstalled",
                 "platform": "system",
+                "user_id": None,
                 "target_id": str(data.get("user_id", "")),
                 "status": "success",
                 "details": {"note": "Threads credentials cleared"},

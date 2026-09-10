@@ -123,7 +123,7 @@ class ThreadsOAuthManager:
     # ------------------------------------------------------------------
     # Step 2+3: exchange code -> short token -> long-lived token
     # ------------------------------------------------------------------
-    async def exchange_code(self, code: str) -> Dict[str, Any]:
+    async def exchange_code(self, code: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         app_id = settings.THREADS_APP_ID
         app_secret = settings.THREADS_APP_SECRET
         if not app_id or not app_secret:
@@ -158,16 +158,22 @@ class ThreadsOAuthManager:
             if long_resp.status_code != 200:
                 # Fall back to the short token if exchange fails
                 logger.warning(f"Threads long-token exchange failed: {long_resp.text[:200]}")
-                return await self._finalize_credentials(short_token, expires_in=short_data.get("expires_in", 3600))
+                return await self._finalize_credentials(short_token,
+                                                        expires_in=short_data.get("expires_in", 3600),
+                                                        user_id=user_id)
 
             long_data = long_resp.json()
             return await self._finalize_credentials(
                 long_data.get("access_token"),
                 expires_in=long_data.get("expires_in", 5184000),
+                user_id=user_id,
             )
 
-    async def _finalize_credentials(self, token: str, expires_in: int) -> Dict[str, Any]:
-        """Fetches the Threads profile and persists credentials."""
+    async def _finalize_credentials(self, token: str, expires_in: int,
+                                    user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Fetches the Threads profile and persists credentials.
+        user_id given → per-user connection (platform_connections, encrypted);
+        user_id None  → legacy global app_settings (admin/compat path)."""
         profile: Dict[str, Any] = {}
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
@@ -179,6 +185,29 @@ class ThreadsOAuthManager:
                     profile = me.json()
         except Exception as e:
             logger.warning(f"Threads profile fetch failed: {e}")
+
+        if user_id:
+            from src.modules.connections.service import connection_service
+            from datetime import datetime, timedelta, timezone
+            expires_at = (datetime.now(timezone.utc)
+                          + timedelta(seconds=expires_in)).isoformat()
+            saved = connection_service.store(
+                user_id=user_id, platform="threads", access_token=token,
+                account_id=str(profile.get("id") or ""),
+                account_name=f"@{profile.get('username')}" if profile.get("username") else None,
+                scopes=[s for s in THREADS_SCOPES.split(",") if s],
+                token_expires_at=expires_at,
+                metadata={"platform_user_id": str(profile.get("id") or "")})
+            logger.info(f"Threads connected (per-user): user={user_id} "
+                        f"@{profile.get('username')} (persisted={bool(saved)})")
+            return {
+                "status": "success",
+                "username": profile.get("username"),
+                "threads_user_id": profile.get("id"),
+                "expires_in_days": round(expires_in / 86400, 1),
+                "persisted": bool(saved),
+                "per_user": True,
+            }
 
         creds = {
             "access_token": token,
@@ -248,7 +277,29 @@ class ThreadsOAuthManager:
 # Token accessor for the publisher (live credentials with freshness check)
 # ------------------------------------------------------------------
 def get_active_threads_token() -> Optional[str]:
-    """Returns a valid Threads token or None (checks expiry)."""
+    """Returns a valid Threads token or None (checks expiry).
+    Resolution order: per-user platform_connections (first active) → legacy
+    global app_settings (compat shim — removed at Wave 9.8 cutover)."""
+    try:
+        from datetime import datetime, timedelta, timezone
+        from src.core.crypto import decrypt_token
+        rows = supabase_db.select("platform_connections",
+                                  {"platform": "threads", "status": "active"}) or []
+        for r in rows:
+            exp = r.get("token_expires_at")
+            if exp:
+                try:
+                    if datetime.fromisoformat(str(exp).replace("Z", "+00:00")) \
+                            <= datetime.now(timezone.utc) + timedelta(seconds=300):
+                        continue  # expired / expiring within the 5-min buffer
+                except Exception:
+                    pass
+            try:
+                return decrypt_token(r.get("access_token_encrypted") or "")
+            except Exception:
+                continue
+    except Exception:
+        pass
     creds = _get_stored_creds()
     token = creds.get("access_token")
     if not token:

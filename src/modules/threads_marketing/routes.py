@@ -23,6 +23,13 @@ from src.modules.context import (  # explicit for readability
 
 router = APIRouter()
 
+
+def _session_user_id(request: Request) -> Optional[str]:
+    """Session user id (Phase 9.7 per-user connections) — None for legacy paths."""
+    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    return (session or {}).get("sub")
+
 # --------------------------------------------------------------------
 # Extended Meta APIs: Threads & Marketing (spec v2.1 scopes)
 # --------------------------------------------------------------------
@@ -50,11 +57,17 @@ async def threads_oauth_authorize():
 async def threads_oauth_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
     """
     OAuth redirect target. Validates the CSRF state, exchanges the code for a
-    60-day token, persists it, then redirects to /settings with a result flag.
+    60-day token, persists it (per-user when a session rides along — the
+    normal path; legacy global for the admin flow), then redirects to
+    /settings with a result flag.
     """
     if not code or not threads_oauth_manager.validate_state(state):
         return RedirectResponse(url="/settings?threads=error", status_code=303)
-    result = await threads_oauth_manager.exchange_code(code)
+    # session-aware: logged-in user → per-user connection (Phase 9.7)
+    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    user_id = (session or {}).get("sub")
+    result = await threads_oauth_manager.exchange_code(code, user_id=user_id)
     if result.get("status") != "success":
         return RedirectResponse(url="/settings?threads=error", status_code=303)
     return RedirectResponse(url=f"/settings?threads=connected&username={result.get('username', '')}", status_code=303)
@@ -76,35 +89,41 @@ async def threads_disconnect():
 
 
 @router.post("/api/threads/publish", tags=["Threads"])
-async def publish_threads_post(payload: ThreadsPublishPayload):
+async def publish_threads_post(payload: ThreadsPublishPayload, request: Request = None):
     """Publishes a text thread via the official Threads API (own OAuth app)."""
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="نص الثريد فارغ")
-    result = await threads_publisher.publish_thread(payload.text, payload.link)
+    result = await threads_publisher.publish_thread(
+        payload.text, payload.link, user_id=_session_user_id(request) if request else None)
     if result.get("status") == "error":
         raise HTTPException(status_code=502, detail=result.get("detail", "Threads publish failed"))
     return result
 
 
 @router.get("/api/threads/{thread_id}/replies", tags=["Threads"])
-async def get_threads_replies(thread_id: str, limit: int = Query(20, ge=1, le=100)):
+async def get_threads_replies(thread_id: str, limit: int = Query(20, ge=1, le=100),
+                              request: Request = None):
     """Reads replies of a published thread."""
-    return await threads_publisher.get_thread_replies(thread_id, limit)
+    return await threads_publisher.get_thread_replies(
+        thread_id, limit, user_id=_session_user_id(request) if request else None)
 
 
 @router.delete("/api/threads/{thread_id}", tags=["Threads"])
-async def delete_threads_post(thread_id: str):
+async def delete_threads_post(thread_id: str, request: Request = None):
     """Deletes a published Threads post (threads_delete scope)."""
-    result = await threads_publisher.delete_thread(thread_id)
+    result = await threads_publisher.delete_thread(
+        thread_id, user_id=_session_user_id(request) if request else None)
     if result.get("status") == "error":
         raise HTTPException(status_code=502, detail=result.get("detail", "Threads delete failed"))
     return result
 
 
 @router.get("/api/threads/insights", tags=["Threads"])
-async def get_threads_insights(metric: str = Query("views,likes,replies")):
+async def get_threads_insights(request: Request = None,
+                               metric: str = Query("views,likes,replies")):
     """Account-level Threads insights (threads_manage_insights scope)."""
-    return await threads_publisher.get_account_insights(metric)
+    return await threads_publisher.get_account_insights(
+        metric, user_id=_session_user_id(request) if request else None)
 
 
 @router.post("/api/marketing/sync-leads", tags=["Marketing API"])

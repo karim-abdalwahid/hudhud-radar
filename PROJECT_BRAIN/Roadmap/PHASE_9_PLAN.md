@@ -82,3 +82,70 @@
 2. **تجربة 14 يوم**: هل التسجيل الجديد يبدأ بـ trial تلقائياً (مفعّل كامل) أم plan=free محدود؟
 3. **حدود الـ credits لكل خطة**: اقتراحي — free: 100/شهر، starter: 1,000، growth: 5,000، scale: 25,000 — موافق؟
 4. **حساباتك الحالية**: تظل غير مربوطة لحد ما تعمل يوزر جديد وتربطها بنفسك (زي ما قلت) — تأكيد؟
+
+---
+
+# 🧩 Wave 9.7 — platform_connections (استكمال 9.1 المؤجلة)
+> **أُضيفت**: 2026-09-10 · **الحالة**: ✅ **منفذة ومعتمدة من المالك** (2026-09-10) — migration 011 مطبقة حية، 244/244 اختبار
+> **السياق**: موجة 9.1 الأصلية اتحولت لأساس الفوترة (migration 009) واتأجّل جزء الاتصالات — الاتصالات لسه Global قديم. التدقيق الحي 2026-09-10: **24 جدول حي، `platform_connections` غير موجود، `app_settings` نظيف تماماً (صفر توكنات) → القطع النظيف مجاني بلا هجرة بيانات**.
+
+## 7.1 القاعدة التجارية الذهبية (Entitlement ≠ Capability)
+- التوكن التقني قد يلمس منصات أكثر مما دفع العميل فيه (مثال: توكن صفحة فيسبوك يصل للـ IG المربوط بها).
+- **الفحص server-side على كل عملية حساسة = `user_entitlements` فقط، fail-closed** (403) — لا علاقة لقدرة التوكن بالسماح.
+- الاكتشاف المجاني (IG مربوط بصفحة عميل اشترى FB فقط) = metadata upsell مقفولة الواجهة + CTA ترقية بخصم المنصات المتعددة — **عامل بيع مش تسريب**.
+
+## 7.2 أبواب الربط الثلاثة (حسب ما اشتراه العميل — الـ wizard يقرا entitlements)
+| الباب | التدفق | يغطي |
+|---|---|---|
+| 📘 Facebook | Facebook Login (scopes: pages_show_list + messaging + pages_utility_messaging...) → توكن الصفحة | FB + الـ IG المربوط بالصفحة ( عبر FB-based IG APIs) |
+| 📸 Instagram | Instagram Login (التطبيق الابن IG_APP_ID — scopes: instagram_business_*) → graph.instagram.com | IG-only بدون فيسبوك خالص |
+| 🧵 Threads | threads.net OAuth (موجود — يُعمم لكل مستخدم) | Threads |
+
+- الـ wizard يقترح باب فيسبوك أولاً لمن عنده صفحة (يجيب الاتنين بضغطة) ويسيب باب IG-only لمن لا يملك/يحب فيسبوك.
+- كل باب يخزن اتصاله الخاص: platform = facebook / instagram / threads.
+
+## 7.3 Migration 011 — `platform_connections`
+| العمود | النوع | الغرض |
+|---|---|---|
+| id | UUID PK | |
+| user_id | UUID FK→users ON DELETE CASCADE | المالك |
+| platform | TEXT (facebook/instagram/threads) | الباب |
+| account_id / account_name | TEXT | معرف الحسل المتصل باسمه |
+| access_token_encrypted | TEXT | **مشفر** (Fernet مشتق من SECRET_KEY — إضافة وحدة تشفير صغيرة لـ src/core) |
+| token_expires_at | TIMESTAMPTZ NULL | للتوكنات المؤقتة |
+| scopes | TEXT[] | الممنوحة فعلياً |
+| metadata | JSONB | linked_ig_id / page_id / discovery (المرشح للـ upsell) |
+| status | TEXT (active/revoked/expired) | |
+| connected_at / created_at / updated_at | TIMESTAMPTZ | قاعدة SOP-03 + trigger updated_at |
+- UNIQUE(user_id, platform, account_id) · فهرس user_id · RLS بنمط المنصة الموثق (منع anon، الفلترة بـ user_id في طبقة الخدمة) · REVOKE من anon.
+
+## 7.4 ConnectionService (src/connections/)
+- `store(user_id, platform, ...)` (تشفير شفاف) · `get_active_token(user_id, platform)` (فك شفاف) · `revoke(user_id, platform)` · `list(user_id)`.
+- استبدال كامل لمسار app_settings القديم (meta_credentials/threads_credentials يُحذف كوده بعد القطع — لا fallback: السحابة نظيفة أصلاً).
+- callbacks الموجودة (/api/meta/configure، threads callback) تُحوَّل تخزن للاتصال لكل مستخدم + deauthorize/uninstall callbacks تُلغي اتصال المستخدم.
+
+## 7.5 الـ Feature Gate
+- طبقة رقيقة فوق ConnectionService: `assert_entitled(user_id, platform)` — يقرا user_entitlements (موجودة من 009) وترفض fail-closed قبل أي Graph call.
+- توكل على: publishing / inbox replies / insights / automations لكل منصة.
+
+## 7.6 الاختبارات (~15)
+نماذج Pydantic · تشفير/فك دوري · عزل user-to-user (403/empty) · gate: بدون entitlement → 403 · gate: مع entitlement → 200 (mock Graph) · callbacks تخزن/تلغي لكل مستخدم · wizard branches حسب entitlements.
+
+## 7.7 تسلسل التنفيذ
+1. migration 011 + تحديث database/schema.sql + [[Supabase_Database_Schema]] (SOP-03)
+2. وحدة التشفير + ConnectionService + اختباراتها
+3. تحويل الـ callbacks الثلاثة + deauthorize لكل مستخدم
+4. Feature gate على الـ APIs الحساسة
+5. Wizard: تفرع الأبواب + حالة الـ upsell المقفول
+6. حذف مسار app_settings القديم + تحديث التوثيق (SOP-01 خطوة 6: Memory + Brain + Activity Log)
+
+---
+
+# ?? Wave 9.8 � ????? ?????? ??? ?????? (????? ???????) � ?????? ??? ?????
+> **??????**: 2026-09-10 � **??????**: ????? � ??????? ?????? ??????
+
+1. **????? ????? ??????? ???????** (agent orchestrator / webhook processing / meta_feed_sync / insights cron) ????? ???? ???????? ?? `platform_connections` ??? ConnectionService ??? `settings.META_*` ????? � ?? ?????? ????? ??????? ?? ?????? ???? ?????? ??.
+2. **????? ???? app_settings ?????? ?????**: meta_credentials/threads_credentials + get_active_threads_token shim (?????? shim ??? ???? ????).
+3. **???? ?????????**: ???? ????????? ?? /settings (??? ???? ??? wizard: ??????? ??????? + upsell) � ??? wizard ???? ?? 9.7.
+4. **????? ?????? ????????**: cron refresh ??????? instagram/threads (60 ???) ??? ????????.
+5. **Embedded Signup / Tech Provider flow**: ????? OAuth ??? ????? ?????? ?????? ??????? (??? ??????? Advanced Access ??? App Review).

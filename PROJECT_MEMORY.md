@@ -1498,3 +1498,78 @@ Register → consent gate → onboarding wizard (skippable, subscription wall on
 - Consent checkbox DUPLICATED on register page (owner reported). Fixed: single consent checkbox (regTerms) gates BOTH email signup AND Google signup. googleTerms checkbox removed. googleSignIn() checks regTerms when register tab is visible. Login page has NO consent (owner: consent only on signup).
 - Language globe 🌐 added to /terms and /privacy (EN/AR toggle via ?lang= links).
 - GET /api/data-deletion now serves deletion page HTML (was 405 — Meta reviewers visit GET).
+
+---
+
+## [Entry 042] Meta App Review Test Calls COMPLETE — All Zero-Count Permissions Exercised (Clean Local-Only Method)
+- **Timestamp**: 2026-09-10T16:27:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: ALL EXERCISABLE PERMISSIONS EXERCISED — awaiting dashboard refresh (24-48h) → owner submits App Review
+
+### 1. Task Origin
+Owner sent Meta App Review dashboard screenshots: several permissions showed "0 API test call(s)" or "0 of 1 API call(s) required" while others showed counts (pages_show_list 5007, public_profile 711, email 147, instagram_manage_messages 157, BUPA 35). Meta rejects permissions with no usage.
+
+### 2. Root Cause Discovery (Wave 1)
+- **OAuth scope gap**: settings.html:492 connect-flow scope list did NOT include `pages_utility_messaging`/`human_agent` → tokens could NEVER carry them → qualifying calls impossible → counters stuck at 0. FIXED (scopes added).
+- **human_agent is NOT dialog-requestable**: Facebook authorize rejects it ("Invalid Scope") — it is a restricted permission granted app-level via App Review only. Removed from scopes (keeping it would break EVERY user connect). Its dashboard counter stays 0 pre-approval — expected; Meta tests it during review.
+- **Token scope inspection** (debug_token): page token lacked both scopes → owner re-fetched a fully-scoped page token.
+- **Official qualifying endpoint found**: GET/POST `/{page-id}/message_templates` — Meta error #200 literally names "Requires pages_utility_messaging permission to manage the object". v26 template creation REQUIRES language + components (BODY with {{1}} + example) → created `hudhud_test_utility_template` (auto-APPROVED, UTILITY) → SENT it (message[template].language MUST be `{"code":"en_US"}` object; string → #100). The approved-template send **bypassed the 24h window** (delivered 200) = full pages_utility_messaging usage.
+
+### 3. Clean Multi-Tenant State PRESERVED (owner's explicit requirement)
+Owner refused to connect their page via the site (it writes GLOBAL meta_credentials to Supabase — contradicts S2b purge). Solution: **local-only token fetchers** — OAuth dialog → localhost catcher → token exchanged → saved to LOCAL .env ONLY. Zero writes to Supabase/platform. Scripts: `fetch_scoped_token.py` (FB page), `fetch_platform_tokens.py` (Threads + IG).
+- threads.net REJECTS http redirects (error 1349187 Insecure Login Blocked) → local HTTPS with self-signed cert (openssl, gitignored) — cert warning expected.
+- Instagram OAuth with MAIN app id → "Invalid platform app": Meta's Instagram product creates a **child app** with its own ID/secret (IG_APP_ID/IG_APP_SECRET in .env, child id 28519101284379868).
+- Local catcher timeout root cause: single-threaded HTTPServer hangs on Chrome's TLS pre-connect during the cert warning → **ThreadingHTTPServer** fix (code capture worked afterwards).
+
+### 4. Owner Removals from Review (per recommendations)
+Owner REMOVED: Marketing API Access Tier (0/500 — product has no ads), Page Mentions, Live Video API, threads_share_to_instagram/location_tagging/manage_mentions/keyword_search/profile_discovery. KEPT: Human Agent (expected 0).
+
+### 5. Execution Results (Wave 2 — all LIVE)
+- **Threads** (8/11, account karim__abdalwahid): threads_basic ✅, content_publish ✅✅ (container→publish, live test post), read_replies ✅, manage_replies ✅ (GET /me/threads), manage_insights ✅✅ (account + media), profile_discovery ✅. keyword_search/mentions ❌ (removed from review). **Full lifecycle completed after re-auth with `--extra` (threads_delete scope): test post 18024106916859830 created → published → insights → DELETED 200** — threads_delete exercised AND nothing left on the account.
+- **IG Business** (6/6, graph.instagram.com, child-app token): basic ✅, insights ✅, content_publish ✅ (media CONTAINER only — never published, nothing visible), comments ✅✅, messages ✅ (conversations?platform=instagram). Container image: /static/icon-512.png (icon-1024 404s on prod; 192px too small → "media download failed").
+- **Instagram Public Content Access**: ig_hashtag_search 200 + top_media 200 (top_media needs minimal fields — heavy fields → 500).
+- **Messenger**: BUPA (participants reads), IG conversations, public_profile/page identity — fresh qualifying calls each run via `test_missing_meta_permissions.py`.
+
+### 6. Commits
+30e12f5 (scopes root cause + test scripts), 757b331 (drop human_agent from dialog scopes), 53af231 (final message_templates protocol), e511f4c (wave-2 tooling), e1d48f1 (local HTTPS), 2d3b5cb (IG child-app credentials + threads --extra=delete only), 2f023eb (ThreadingHTTPServer + icon-512). Tests 225/225 pass. Tokens in local .env ONLY (THREADS_ACCESS_TOKEN, IG_BUSINESS_ACCESS_TOKEN + user ids).
+
+### 7. Next
+- Owner: wait 24-48h for dashboard counters → submit App Review (justifications ready in APP_REVIEW_JUSTIFICATIONS.md).
+- If Meta asks about human_agent: it enables human replies beyond the 24h window for platform clients; the HUMAN_AGENT tag is #100-gated until approval — exactly why it's requested.
+- Deauthorize callback URL still empty on the IG child-app business-login settings — endpoint does not exist in codebase yet; Data deletion = /api/data-deletion (exists, verified).
+
+### 8. Post-Entry Reconciliation (same session) — App Review learnings merged into the CORE codebase
+Owner correctly challenged: session knowledge lived in test scripts only — product path had gaps. Fixed (commit fe8a1ad, tests 225/225):
+- **/api/deauthorize callback** added (compliance module): signed_request verified against THREADS/META/IG secrets, clears stored meta+threads credentials, logs `app_deauthorized`. This is the Meta business-login "Deauthorize callback URL" requirement (was missing entirely). public_prefixes updated.
+- **threads_delete added to product THREADS_SCOPES** + ThreadsPublisher.delete_thread() + DELETE /api/threads/{thread_id} route + ThreadsPublisher.get_account_insights() + GET /api/threads/insights route (product could publish/read but never delete or read insights).
+- **IG child-app credentials formalized in config.py** (IG_APP_ID/IG_APP_SECRET — Meta's Instagram product creates a separate app; main app id fails with "Invalid platform app").
+- **static/icon-1024.png added** (was never tracked → 404 on prod; icon-512/192 worked — container publish needs 512+ size).
+- STILL OPEN (owner decisions pending): (a) connections are GLOBAL (meta_credentials/threads_credentials in app_settings) vs per-user `user_connections` architecture required by the SaaS multi-tenant model — the true Phase 9 completion item; (b) instagram_business_* family: integrate the new graph.instagram.com API into the product OR keep removed from review (product currently uses FB-based IG APIs).
+
+---
+
+## [Entry 043] Wave 9.7 IMPLEMENTED — platform_connections: Per-User Encrypted Connections + Entitlement Gates + Golden Upsell
+- **Timestamp**: 2026-09-10T17:45:00+03:00
+- **Actor**: User (Owner) & AI Agent (opencode/GLM)
+- **Status**: ✅ IMPLEMENTED & TESTED — 244/244 · migration 011 applied LIVE · plan recorded FIRST in PHASE_9_PLAN.md (owner governance: no code before plan + approval)
+
+### 1. Governance Correction (owner directive)
+Owner stopped a hasty implementation: "اقرأ ملفات المشروع كويس… كل خطة بتتسجل في ملفات الخطط". Lesson institutionalized: READ plans/brain/schema BEFORE designing — the plan already existed (`PHASE_9_PLAN.md` wave 9.1, table `platform_connections`, flow `/api/connections/{platform}/authorize`) and 9.1 had been repurposed to billing (migration 009) leaving connections legacy-global. Live DB audit (management API): 24 tables, `platform_connections` absent, `app_settings` CLEAN (zero tokens — S2b purge held) → clean cut, zero migration of data.
+
+### 2. The Golden Commercial Rule (owner-approved)
+**Entitlement ≠ Capability**: a facebook page token technically reaches the linked Instagram — service is granted ONLY by `user_entitlements` (Polar webhook truth). `assert_entitled()` = fail-closed 403 on every sensitive action, server-side; UI hiding is never the gate. The discovery itself became the **Golden Upsell**: connecting FB finds the linked IG → locked upsell card ("فعّل خدمة الإنستجرام واحصل على خصم المنصات المتعددة") → checkout with multi-platform discount. Leak converted to a sales moment.
+
+### 3. Implemented
+- **Migration 011** (applied live, 201): `platform_connections` — id/user_id FK/platform(facebook|instagram|threads)/account_id/account_name/**access_token_encrypted**/token_expires_at/scopes[]/metadata JSONB/status/connected_at + created/updated; UNIQUE(user_id,platform,account_id); indexes; updated_at trigger; house RLS (service_role only). schema.sql + Supabase_Database_Schema.md updated (SOP-03).
+- **src/core/crypto.py**: Fernet key derived from SECRET_KEY (SHA-256) — encrypt_token/decrypt_token; plaintext tokens NEVER in DB or logs. requirements.txt += cryptography.
+- **src/modules/connections/** (registered in main.py like other modules): ConnectionService (store upsert-encrypted / list / get_active_token with embedded gate / revoke / revoke_by_platform_user / assert_entitled / overview) + routes: GET /api/connections (overview: entitlements+connections+can_connect+upsell), GET /api/connections/{facebook|instagram}/authorize (server-built OAuth, stateless HMAC state = b64(user_id.platform.ts.sig) — fresh ≤15min), callbacks (code→exchange→long-lived→store per-user; FB resolves /me/accounts + linked IG discovery; IG child-app graph.instagram.com 60-day), DELETE /api/connections/{platform}.
+- **Threads door per-user**: threads_oauth exchange_code/_finalize_credentials accept user_id (session-aware callback → per-user encrypted store; no-session = legacy global compat); get_active_threads_token now resolves per-user connections FIRST (bridge shim); ThreadsPublisher (publish/delete/replies/insights) accepts user_id → per-user token, /me/threads endpoints, _threads_user_id shim removed; routes pass session user.
+- **Gates applied**: threads publish/delete/insights (per-user token resolution = gated), inbox send-message (non-admin requires the lead's platform entitlement — admins operate workspace), authorize doors require entitlement.
+- **Wizard step 3 rewritten to the doors**: connect buttons open OAuth popups via the new API (token never touches the client — replaces the paste-token flow), polling refresh, per-tile connected states, locked upsell cards with checkout CTA. Subscription wall unchanged (can_connect gate kept).
+- **Compliance per-user**: deauthorize + threads uninstall callbacks now revoke matching per-user connections (by platform_user_id) in addition to legacy cache clearing.
+
+### 4. Testing — 244/244 (19 new in tests/test_platform_connections.py)
+crypto roundtrip/tamper · store encrypts-at-rest (plaintext never stored) · upsert-not-duplicate · revoke · **gate denies token with connection but no payment** (the golden rule, enforced) · gate passes with payment · 403 shape · overview upsell present/absent by entitlement · state roundtrip/wrong-platform/tampered/expired · overview 401 unauth · authorize 403 unpaid · authorize URL happy path. Legacy threads tests updated to new architecture (2 fixed).
+
+### 5. Registered for the Future (owner: "شوف اللي متنفذش")
+**Wave 9.8 recorded in PHASE_9_PLAN.md** (planned, awaiting approval): backend services rewiring (agent/webhook/cron → per-user tokens), full legacy app_settings cutover removal, /settings connections panel, token auto-refresh cron, Embedded Signup (post-Advanced-Access). Owner-approved upsell + doors design recorded in brain.

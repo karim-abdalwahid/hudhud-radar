@@ -566,9 +566,12 @@
                     <div class="platform-icon-circle"><svg viewBox="0 0 24 24" width="100%" height="100%"><path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg></div>
                     <div class="platform-title" data-i18n="onboard.platform_fb_title">Facebook Messenger</div>
                     <div class="platform-caption" data-i18n="onboard.platform_fb_desc">Engage ad inquiries and Page messages with zero wait time.</div>
-                    <button class="btn-connect" id="btn-connect-fb" onclick="triggerConnect('messenger')" data-i18n="onboard.btn_connect" disabled style="opacity:.45;cursor:not-allowed;">Connect Channel</button>
+                    <button class="btn-connect" id="btn-connect-fb" onclick="triggerConnect('facebook')" data-i18n="onboard.btn_connect" disabled style="opacity:.45;cursor:not-allowed;">Connect Channel</button>
                 </div>
             </div>
+
+            <!-- Phase 9.7: discovered-but-locked upsell cards (entitlement-gated) -->
+            <div id="connections-upsell"></div>
 
             <div style="text-align:center;margin-top:14px;">
                 <button class="btn-back" onclick="finalizeSetup(true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip_all">Skip for now — finish setup without connecting</button>
@@ -686,6 +689,8 @@
             }
         }
 
+        let pollTimer = null;
+
         async function triggerConnect(platform) {
             // Subscription gate (owner spec): connect only when a plan/trial is active
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
@@ -700,37 +705,72 @@
                     alert(isAr ? 'ابدأ التجربة المجانية أو اشترك في خطة لربط القنوات.' : 'Start a free trial or subscribe to a plan before connecting channels.');
                     return;
                 }
-            } catch (e) { /* fall through to platform check */ }
+            } catch (e) { /* fall through to door check */ }
 
+            // Phase 9.7: per-user connect doors (OAuth popup — token never touches the client)
             const btn = document.getElementById(`btn-connect-${platform === 'instagram' ? 'ig' : 'fb'}`);
-            const res = await fetch('/api/meta/status');
-            const data = await res.json();
-
-            if (data.token_valid) {
-                btn.className = 'btn-connect connected';
-                btn.textContent = isAr ? '✓ متصل' : '✓ Connected';
-                alert(isAr ? `قناة ${platform} متصلة ومعتمدة بنجاح ومربوطة بصفحتك!` : `${platform} is connected and verified successfully!`);
-            } else {
-                const promptMsg = isAr ? 'لربط القناة بضغطة زر، ضع التوكن المعتمد هنا:' : 'Paste your permanent Page Access Token here to connect:';
-                const token = prompt(promptMsg);
-                if (token && token.trim()) {
-                    btn.textContent = isAr ? 'جاري الاتصال...' : 'Connecting...';
-                    const exRes = await fetch('/api/meta/exchange-token', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ user_token: token.trim() })
-                    });
-                    const exData = await exRes.json();
-                    if (exRes.ok) {
-                        btn.className = 'btn-connect connected';
-                        btn.textContent = isAr ? '✓ متصل' : '✓ Connected';
-                        alert(isAr ? `تم ربط ${platform} بنجاح! صفحة: ${exData.page_name || ''}` : `${platform} connected successfully! Page: ${exData.page_name || ''}`);
-                    } else {
-                        btn.textContent = isAr ? 'ربط القناة' : 'Connect Channel';
-                        alert((isAr ? 'فشل الربط: ' : 'Connection failed: ') + (exData.detail || 'Token invalid'));
-                    }
+            try {
+                const res = await fetch(`/api/connections/${platform}/authorize`);
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.detail || (isAr ? 'الربط غير متاح حاليًا.' : 'Connection is unavailable.'));
+                    return;
                 }
+                const orig = btn.textContent;
+                btn.textContent = isAr ? '⏳ أكمل الموافقة في النافذة...' : '⏳ Approve in the popup...';
+                window.open(data.authorize_url, 'hudhud_connect_' + platform, 'width=650,height=750,status=yes,scrollbars=yes');
+                let tries = 0;
+                clearInterval(pollTimer);
+                pollTimer = setInterval(async () => {
+                    tries++;
+                    const done = await refreshConnections();
+                    if (done || tries > 60) { clearInterval(pollTimer); btn.textContent = orig; }
+                }, 2500);
+            } catch (e) {
+                alert(isAr ? 'فشل فتح نافذة الربط.' : 'Failed to open the connect window.');
             }
+        }
+
+        // Phase 9.7: per-user connections overview — tile states + locked upsell cards
+        async function refreshConnections() {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            let data;
+            try {
+                const res = await fetch('/api/connections');
+                data = await res.json();
+            } catch (e) { return false; }
+            const conns = data.connected_platforms || [];
+            const setTile = (btnId, connected) => {
+                const b = document.getElementById(btnId);
+                if (!b) return connected;
+                if (connected) {
+                    b.className = 'btn-connect connected';
+                    b.textContent = isAr ? '✓ متصل' : '✓ Connected';
+                    b.disabled = true; b.style.opacity = '1'; b.style.cursor = 'default';
+                } else {
+                    b.className = 'btn-connect';
+                    b.textContent = isAr ? 'ربط القناة' : 'Connect Channel';
+                    b.disabled = !data.can_connect; b.style.opacity = data.can_connect ? '1' : '.45';
+                    b.style.cursor = data.can_connect ? 'pointer' : 'not-allowed';
+                }
+                return connected;
+            };
+            const fbDone = setTile('btn-connect-fb', conns.includes('facebook'));
+            const igDone = setTile('btn-connect-ig', conns.includes('instagram'));
+
+            // golden upsell: discovered accounts on platforms the user hasn't paid for
+            const box = document.getElementById('connections-upsell');
+            if (box) {
+                box.innerHTML = (data.upsell || []).map(u => `
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:14px 18px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+                        <div>
+                            <div style="font-weight:800;font-size:13.5px;color:#1e40af;">🎁 ${isAr ? u.message : ('Found @' + (u.account || '').replace('@', '') + ' on your connected account — unlock Instagram service to activate it')}</div>
+                            <div style="font-size:12px;color:#3b82f6;">${isAr ? 'الربط تم اكتشافه تلقائيًا — الخدمة تحتاج تفعيل الاشتراك.' : 'Auto-discovered during connect — activate the subscription to enable the service.'}</div>
+                        </div>
+                        <a href="${u.checkout_url}" style="background:#2563eb;color:#fff;border-radius:10px;padding:9px 16px;font-size:13px;text-decoration:none;font-weight:700;">${isAr ? 'تفعيل الخدمة' : 'Activate service'}</a>
+                    </div>`).join('');
+            }
+            return fbDone && igDone;
         }
 
         async function finalizeSetup(skip = false) {
@@ -800,6 +840,8 @@
                     if (fb) { fb.className = 'btn-connect connected'; fb.textContent = isAr ? '✓ متصل' : '✓ Connected'; }
                 }
             } catch (e) {}
+            // Phase 9.7: per-user connections (authoritative) + upsell cards
+            try { await refreshConnections(); } catch (e) {}
             // Subscription wall (owner spec): fetch live subscription; unlock connect
             try {
                 const subRes = await fetch('/api/billing/subscription');
@@ -810,8 +852,8 @@
                 const fb = document.getElementById('btn-connect-fb');
                 if (canConnect) {
                     if (wall) wall.style.display = 'none';
-                    if (ig) { ig.disabled = false; ig.style.opacity = '1'; ig.style.cursor = 'pointer'; }
-                    if (fb) { fb.disabled = false; fb.style.opacity = '1'; fb.style.cursor = 'pointer'; }
+                    if (ig && ig.className !== 'btn-connect connected') { ig.disabled = false; ig.style.opacity = '1'; ig.style.cursor = 'pointer'; }
+                    if (fb && fb.className !== 'btn-connect connected') { fb.disabled = false; fb.style.opacity = '1'; fb.style.cursor = 'pointer'; }
                 }
             } catch (e) { /* stay locked — fail-closed */ }
         });

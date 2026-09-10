@@ -181,14 +181,29 @@ async def set_human_takeover(lead_id: str, payload: TakeoverPayload):
 
 
 @router.post("/api/inbox/conversations/{lead_id}/send-message", tags=["Live Inbox"])
-async def send_manual_inbox_message(lead_id: str, payload: ManualMessagePayload):
+async def send_manual_inbox_message(lead_id: str, payload: ManualMessagePayload,
+                                    request: Request = None):
     """
     Sends a REAL human message to the lead (Human Takeover chat) and stores it.
     Also enables takeover automatically so the AI does not double-reply.
+    Entitlement gate (Phase 9.7): non-admin senders need the lead's platform
+    service in their subscription — fail-closed regardless of token capability.
     """
     lead = lead_service.get_lead_by_id(lead_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
+    # entitlement gate — admins operate the workspace and bypass
+    try:
+        from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+        session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") \
+            if request else None
+        if session and session.get("role") != "admin":
+            from src.modules.connections.service import connection_service
+            connection_service.assert_entitled(session["sub"], lead.get("platform") or "facebook")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
     text = (payload.text or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="نص الرسالة فارغ")

@@ -129,7 +129,7 @@ async def sync_live_meta_posts():
 
 
 @router.post("/api/meta/configure", tags=["Meta Integration"])
-async def configure_meta_credentials(payload: MetaConfigPayload):
+async def configure_meta_credentials(payload: MetaConfigPayload, request: Request = None):
     """Updates and validates Meta Facebook & Instagram credentials in runtime and .env."""
     page_name = None
     if payload.page_access_token:
@@ -188,6 +188,25 @@ async def configure_meta_credentials(payload: MetaConfigPayload):
     # Invalidate status cache so the next poll reflects new credentials immediately
     _meta_status_cache["ts"] = 0.0
     _meta_status_cache["data"] = None
+
+    # Phase 9.7: ALSO store as the calling user's per-user connection
+    # (encrypted at rest in platform_connections). Session user when present.
+    try:
+        from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+        from src.modules.connections.service import connection_service
+        session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") \
+            if request else None
+        if session:
+            ig_meta = None
+            if payload.instagram_account_id:
+                ig_meta = {"linked_ig_id": payload.instagram_account_id}
+            connection_service.store(
+                user_id=session["sub"], platform="facebook",
+                access_token=payload.page_access_token,
+                account_id=payload.page_id, account_name=page_name,
+                scopes=[], metadata=ig_meta or {})
+    except Exception as e:
+        logger.warning(f"per-user connection store skipped: {e}")
 
     return {
         "status": "success",
