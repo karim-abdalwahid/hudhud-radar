@@ -489,7 +489,7 @@
             const statusMsg = document.getElementById('fb-login-status-msg');
             const appId = (document.getElementById('input-app-id') && document.getElementById('input-app-id').value.trim()) || '2092880431308591';
             const redirectUri = window.location.origin + '/settings';
-            const scopes = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,pages_read_user_content,read_insights,instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish';
+            const scopes = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,pages_read_user_content,read_insights,instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish,pages_utility_messaging,human_agent';
             let oauthUrl = `https://www.facebook.com/v26.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
             
             if (forceSwitch) {
