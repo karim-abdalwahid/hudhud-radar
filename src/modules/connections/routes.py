@@ -105,7 +105,8 @@ async def disconnect_platform(platform: str, request: Request):
 @router.get("/api/connections/facebook/authorize", tags=["Connections"])
 async def facebook_authorize(request: Request):
     s = _require_user(request)
-    if not connection_service.assert_entitled(s["sub"], "facebook"):
+    # admins operate the workspace (owner) — customers pay the entitlement
+    if s.get("role") != "admin" and not connection_service.assert_entitled(s["sub"], "facebook"):
         raise HTTPException(status_code=403, detail="facebook service not in subscription")
     from urllib.parse import urlencode
     params = urlencode({
@@ -180,7 +181,7 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
 @router.get("/api/connections/instagram/authorize", tags=["Connections"])
 async def instagram_authorize(request: Request):
     s = _require_user(request)
-    if not connection_service.assert_entitled(s["sub"], "instagram"):
+    if s.get("role") != "admin" and not connection_service.assert_entitled(s["sub"], "instagram"):
         raise HTTPException(status_code=403, detail="instagram service not in subscription")
     if not settings.IG_APP_ID:
         raise HTTPException(status_code=503, detail="Instagram app not configured")

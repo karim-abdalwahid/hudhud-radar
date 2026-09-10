@@ -42,6 +42,26 @@ async def get_page_performance_report():
     return {"report_markdown": md}
 
 
+@router.get("/api/analytics/config", tags=["Analytics"])
+async def get_product_analytics_config():
+    """
+    Phase 9.6 — toggle-gated product analytics config for the frontend loader
+    (saas.js). Returns the config ONLY when an admin enabled it; otherwise
+    disabled by default (privacy-safe). The PostHog project key is a
+    public client token by design (write-only ingestion).
+    """
+    cfg = supabase_db.get_setting("analytics_config") or {}
+    enabled = bool(cfg.get("enabled")) and bool(cfg.get("posthog_key"))
+    if not enabled:
+        return {"enabled": False}
+    return {
+        "enabled": True,
+        "provider": "posthog",
+        "posthog_key": cfg.get("posthog_key"),
+        "posthog_host": cfg.get("posthog_host") or "https://us.i.posthog.com",
+    }
+
+
 @router.get("/api/reports/activity-execution", tags=["Reports"])
 async def get_activity_execution_report():
     """Returns rendered activity execution and failure root-cause report in Markdown."""

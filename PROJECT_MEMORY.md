@@ -1573,3 +1573,6 @@ crypto roundtrip/tamper · store encrypts-at-rest (plaintext never stored) · up
 
 ### 5. Registered for the Future (owner: "شوف اللي متنفذش")
 **Wave 9.8 recorded in PHASE_9_PLAN.md** (planned, awaiting approval): backend services rewiring (agent/webhook/cron → per-user tokens), full legacy app_settings cutover removal, /settings connections panel, token auto-refresh cron, Embedded Signup (post-Advanced-Access). Owner-approved upsell + doors design recorded in brain.
+
+### 9. Post-Entry Addition (same session) � Phase 9.6 infrastructure implemented
+Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimplemented Phase 9 item) built toggle-gated: `/api/analytics/config` (returns config only when admin-enabled � privacy-safe default OFF), admin site-settings whitelist += `analytics_config`, shared saas.js loader (autocapture OFF, explicit events via `window.hudhudTrack`), onboarding_completed tracked. Connection doors: admin (workspace operator) bypasses the entitlement check on authorize � customers never do. 244/244 tests hold.

@@ -589,6 +589,7 @@
     </div>
 
     <!-- i18n Localization Engine Script -->
+    <script src="/static/saas.js"></script>
     <script src="/static/i18n.js"></script>
 
     <script>
@@ -801,6 +802,7 @@
                 });
 
                 if (res.ok) {
+                    if (window.hudhudTrack) window.hudhudTrack('onboarding_completed', { role: role, brain: brain });
                     status.textContent = isAr ? '✅ تم إطلاق الوكيل بنجاح! جاري توجيهك لصندوق الوارد...' : '✅ AI Agent launched successfully! Redirecting to Live Inbox...';
                     status.style.color = '#10b981';
                     setTimeout(() => { window.location.href = '/inbox'; }, 1000);

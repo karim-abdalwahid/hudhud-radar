@@ -479,3 +479,35 @@ window.platformIcon = function (platform, size = 20) {
         'px;height:' + size + 'px;border-radius:6px;overflow:hidden;flex-shrink:0;vertical-align:middle;">' +
         svg + '</span>';
 };
+
+// --------------------------------------------------------------------
+// Phase 9.6 — toggle-gated product analytics (PostHog), admin-controlled.
+// Disabled by default: /api/analytics/config returns {enabled:false} until
+// an admin saves analytics_config in site settings. Explicit events only
+// (autocapture OFF) + public pageview. window.hudhudTrack(event, props).
+// --------------------------------------------------------------------
+(function () {
+    try {
+        fetch('/api/analytics/config').then(function (r) { return r.json(); }).then(function (cfg) {
+            if (!cfg || !cfg.enabled || !cfg.posthog_key) return;
+            var s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/posthog-js@1.257.0/dist/array.js';
+            s.async = true;
+            s.onload = function () {
+                try {
+                    window.posthog = window.posthog || [];
+                    window.posthog.init(cfg.posthog_key, {
+                        api_host: cfg.posthog_host || 'https://us.i.posthog.com',
+                        autocapture: false,
+                        capture_pageview: true,
+                        persistence: 'localStorage+cookie'
+                    });
+                    window.hudhudTrack = function (event, props) {
+                        try { window.posthog.capture(event, props || {}); } catch (e) { /* noop */ }
+                    };
+                } catch (e) { /* analytics must never break the app */ }
+            };
+            document.head.appendChild(s);
+        }).catch(function () { /* noop */ });
+    } catch (e) { /* noop */ }
+})();

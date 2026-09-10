@@ -354,7 +354,7 @@ def register(app: FastAPI) -> None:
     ALLOWED_SETTING_KEYS = (
         "payment_gateway", "payment_mode", "multi_platform_discounts",
         "pricing_usd", "currency_table", "theme_default", "registration_cap",
-        "polar_product_ids",
+        "polar_product_ids", "analytics_config",
     )
 
     class SiteSettingsPayload(BaseModel):
@@ -365,6 +365,7 @@ def register(app: FastAPI) -> None:
         currency_table: Optional[dict] = None       # {EG: {currency, rate, round_to}}
         theme_default: Optional[str] = None
         registration_cap: Optional[int] = None
+        analytics_config: Optional[dict] = None     # Phase 9.6: {enabled, posthog_key, posthog_host}
 
     @app.get("/api/admin/site-settings", tags=["Admin Console"])
     async def get_site_settings(request: Request):
