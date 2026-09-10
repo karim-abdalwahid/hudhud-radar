@@ -13,18 +13,18 @@
 
 ---
 
-## 2026-09-10 � Wave 9.7: platform_connections (per-user encrypted connections)
-- Migration 011 applied live (platform_connections, encrypted tokens, RLS house pattern).
-- ConnectionService + entitlement gates (fail-closed 403) + /api/connections/* doors (FB/IG/threads).
-- Wizard step 3: OAuth popup doors + golden upsell cards (discovered IG on FB-only subscription).
-- Inbox/threads actions gated per user; deauthorize/uninstall revoke per-user connections.
-- Tests 244/244 (19 new). Wave 9.8 (services rewiring + legacy cutover) recorded in PHASE_9_PLAN.md.
-
 ---
 
-## 2026-09-10 (cont.) � Phase 9.6: toggle-gated product analytics (PostHog) � infrastructure
-- GET /api/analytics/config (authed): returns config ONLY when admin enabled it � disabled by default (privacy-safe).
-- Admin site-settings whitelist += analytics_config {enabled, posthog_key, posthog_host}.
-- saas.js loader (shared by 10+ dashboard templates): loads posthog-js from CDN when enabled, autocapture OFF, pageview public, window.hudhudTrack(event, props) for explicit events.
-- onboarding.html: saas.js added + onboarding_completed tracked on agent launch.
-- Owner runbook: PostHog project key ? admin site-settings; privacy policy should disclose analytics when enabled.
+## 2026-09-10 — Wave 9.7: platform_connections (اتصالات لكل مستخدم بتوكنات مشفرة)
+- Migration 011 طبقت حيًا: جدول platform_connections + تشفير Fernet + RLS بنمط المنصة.
+- ConnectionService + بوابات entitlement (fail-closed 403) + مسارات /api/connections/* (أبواب FB/IG/Threads).
+- خطوة 3 في الـ wizard: نوافذ OAuth بدل لصق التوكن + بطاقات upsell مقفولة (اكتشاف IG لاشتراك FB فقط).
+- إجراءات Inbox/Threads محكومة لكل مستخدم؛ deauthorize/uninstall يلغي اتصالات المستخدم المعني.
+- الاختبارات 244/244 (19 جديدة). الموجة 9.8 (إعادة توصيل الخدمات) مسجلة في PHASE_9_PLAN.md.
+
+## 2026-09-10 (تكملة) — Phase 9.6: تحليلات المنتج (PostHog) toggle-gated — البنية التحتية
+- GET /api/analytics/config: يرجع الإعداد فقط عند تفعيل المالك — معطل افتراضيًا (خصوصية أولًا).
+- إعدادات الأدمن: analytics_config {enabled, posthog_key, posthog_host}.
+- محمّل saas.js المشترك: posthog-js من CDN عند التفعيل، autocapture مغلق، أحداث صريحة فقط (hudhudTrack).
+- onboarding.html: تتبع onboarding_completed عند إطلاق الوكيل.
+- سياسة الخصوصية (عربي/إنجليزي): بند PostHog — استضافة أوروبية، تسجيل جلسات مجهول مع إخفاء الحقول، إلغاء اختياري.
