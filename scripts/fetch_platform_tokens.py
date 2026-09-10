@@ -26,7 +26,12 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 PORT = 8000
-REDIRECT_URI = f"http://localhost:{PORT}/settings"
+CERT = ROOT / "scripts" / "local_https_cert.pem"
+KEY = ROOT / "scripts" / "local_https_key.pem"
+# threads.net REJECTS http redirects ("Insecure Login Blocked") — use local HTTPS
+# with the self-signed cert (browser warning: click "Advanced → proceed").
+USE_HTTPS = CERT.exists() and KEY.exists()
+REDIRECT_URI = f"{'https' if USE_HTTPS else 'http'}://localhost:{PORT}/settings"
 
 THREADS_CORE = ("threads_basic,threads_content_publish,threads_manage_replies,"
                 "threads_manage_insights,threads_read_replies")
@@ -76,6 +81,12 @@ class Handler(BaseHTTPRequestHandler):
 
 def catch_code(authorize_url: str) -> str:
     server = HTTPServer(("localhost", PORT), Handler)
+    if USE_HTTPS:
+        import ssl
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(str(CERT), str(KEY))
+        server.socket = ctx.wrap_socket(server.socket, server_side=True)
+        print(f"🔒 local HTTPS catcher on port {PORT} (self-signed cert — browser warning is expected)")
     threading.Thread(target=server.serve_forever, daemon=True).start()
     print(f"\n1. Open this URL and approve:\n\n{authorize_url}\n")
     print(f"2. Redirect lands on {REDIRECT_URI} — this catcher reads ?code=")
