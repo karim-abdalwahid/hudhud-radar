@@ -501,6 +501,7 @@ window.platformIcon = function (platform, size = 20) {
                         autocapture: false,
                         capture_pageview: true,
                         capture_performance: true,
+                        session_recording: { maskAllInputs: true },
                         persistence: 'localStorage+cookie'
                     });
                     window.hudhudTrack = function (event, props) {
