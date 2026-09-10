@@ -53,6 +53,11 @@ class LoginPayload(BaseModel):
     password: str
 
 
+class ChangePasswordPayload(BaseModel):
+    current_password: str
+    new_password: str
+
+
 def _set_session_cookie(resp, token: str):
     resp.set_cookie(
         SESSION_COOKIE_NAME, token,
@@ -136,6 +141,25 @@ def register_router(app: FastAPI) -> None:
         resp = JSONResponse({"status": "success"})
         resp.delete_cookie(SESSION_COOKIE_NAME)
         return resp
+
+    @app.post("/auth/change-password", tags=["Auth"])
+    async def change_password(payload: ChangePasswordPayload, request: Request):
+        """Rotates the session user's password (requires the current one)."""
+        session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+        if not session:
+            raise HTTPException(status_code=401, detail="غير مصرح — سجّل الدخول أولاً")
+        if len(payload.new_password) < 8:
+            raise HTTPException(status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل")
+        user = user_store.get_by_id(session["sub"])
+        if not user:
+            raise HTTPException(status_code=404, detail="المستخدم غير موجود")
+        from src.core.auth import verify_password, hash_password
+        if not verify_password(payload.current_password, user.get("password_hash") or ""):
+            raise HTTPException(status_code=400, detail="كلمة المرور الحالية غير صحيحة")
+        supabase_db.update("users", user["id"], {
+            "password_hash": hash_password(payload.new_password)})
+        logger.info(f"password rotated: user={session['sub']}")
+        return {"status": "success", "message": "تم تغيير كلمة المرور بنجاح"}
 
     # ------------------------------------------------------------------
     # Google Sign-In — DIRECT OAuth from our backend (no Supabase hosted flow).
