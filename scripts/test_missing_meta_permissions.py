@@ -19,6 +19,7 @@ Run:
 
 Requires META_PAGE_ACCESS_TOKEN + META_PAGE_ID (+ META_INSTAGRAM_ACCOUNT_ID) in .env.
 """
+import json
 import sys
 from pathlib import Path
 
@@ -136,25 +137,30 @@ def main():
         note="page_id + platform=instagram (ig_id is invalid here)")
 
     # ── 4. pages_utility_messaging — message_templates edge REQUIRES this
-    #    permission (error #200 names it explicitly). GET list is a qualifying
-    #    call; --send also creates a real utility template (full manage usage).
+    #    permission (error #200 names it explicitly). Usage protocol (v26):
+    #    GET list → POST create (language + components REQUIRED) →
+    #    POST /messages send with language={"code":"en_US"} (bypasses 24h window).
     mt = get("GET /{page}/message_templates", "pages_utility_messaging",
              f"{base}/message_templates",
              {"access_token": token},
              note="endpoint requires pages_utility_messaging (Meta error #200)")
-    if SEND and mt is not None:
-        post("POST /{page}/message_templates (create utility template)",
-             "pages_utility_messaging",
-             f"{base}/message_templates",
-             {"name": "hudhud_test_utility_template",
-              "text": "Hello {{user_name}}, your order {{order_number}} status: {{status}}.",
-              "category": "UTILITY",
-              "access_token": token},
-             note="full manage usage")
+    tmpl_exists = any(t.get("name") == "hudhud_test_utility_template"
+                      for t in (mt or {}).get("data", []))
 
-    # ── 5. Human Agent — beyond-24h replies go through the HUMAN_AGENT tag ──
     if SEND:
-        # Dev mode: only app role-holders are messageable (#551 otherwise).
+        if not tmpl_exists:
+            post("POST /{page}/message_templates (create UTILITY template)",
+                 "pages_utility_messaging",
+                 f"{base}/message_templates",
+                 {"name": "hudhud_test_utility_template",
+                  "language": "en_US",
+                  "category": "UTILITY",
+                  "components": ('[{"type":"BODY","text":"Hello! Your order {{1}} '
+                                 'has been shipped.","example":{"body_text":[["12345"]]}}]'),
+                  "access_token": token},
+                 note="create = full manage usage; auto-APPROVED")
+        # send the approved template — message[template].language MUST be an
+        # object {"code":"en_US"} (string → error #100); body params fill {{1}}.
         candidates = []
         seen = set()
         for c in conv_list:
@@ -163,25 +169,35 @@ def main():
                 if pid and pid != page_id and pid not in seen:
                     seen.add(pid)
                     candidates.append(pid)
-        print(f"\n  candidate PSIDs (newest conversation first): {len(candidates)}")
-
-        psid = None
+        sent = False
         for cand in candidates:
-            r = post(f"POST /messages tag=HUMAN_AGENT → {cand}", "human_agent",
+            r = post(f"POST /messages utility template → {cand}", "pages_utility_messaging",
                      f"{base}/messages",
                      {"recipient": f'{{"id":"{cand}"}}',
-                      "messaging_type": "MESSAGE_TAG",
-                      "tag": "HUMAN_AGENT",
-                      "message": f'{{"text":"Hudhud test — human agent reply check"}}',
+                      "message": json.dumps({"template": {
+                          "name": "hudhud_test_utility_template",
+                          "language": {"code": "en_US"},
+                          "components": [{"type": "body",
+                                          "parameters": [{"type": "text", "text": "12345"}]}]}}),
                       "access_token": token},
-                     note="0-call permission; 7-day tag window")
+                     note="approved UTILITY template send (bypasses 24h window)")
             if r:
-                psid = cand
+                sent = True
                 break
-        if not psid and candidates:
-            print("\n  ⚠️ No messageable PSID / tag approval yet — details above.")
+        # human_agent: beyond-24h replies need the HUMAN_AGENT tag — Meta gates
+        # it (#100 "prior approval") until it approves the permission itself;
+        # the permission is also NOT dialog-requestable ("Invalid Scope").
+        if sent:
+            post(f"POST /messages tag=HUMAN_AGENT → {cand}", "human_agent",
+                 f"{base}/messages",
+                 {"recipient": f'{{"id":"{cand}"}}',
+                  "messaging_type": "MESSAGE_TAG",
+                  "tag": "HUMAN_AGENT",
+                  "message": f'{{"text":"Hudhud test — human agent reply check"}}',
+                  "access_token": token},
+                 note="expected #100 until Meta approves the permission")
     else:
-        print("\n  ℹ️ human_agent needs a real HUMAN_AGENT-tagged send (--send).")
+        print("\n  ℹ️ --send creates/sends the UTILITY template + probes HUMAN_AGENT tag.")
 
     # ── summary ──
     print("\n=== SUMMARY ===")
