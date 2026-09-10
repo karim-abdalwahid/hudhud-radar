@@ -33,7 +33,9 @@ REDIRECT_URI = f"http://localhost:{PORT}/settings"
 SCOPES = ("pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,"
           "pages_manage_posts,pages_read_user_content,read_insights,instagram_basic,"
           "instagram_manage_messages,instagram_manage_comments,instagram_content_publish,"
-          "pages_utility_messaging,human_agent")
+          "pages_utility_messaging")
+# NOTE: human_agent is NOT dialog-requestable ("Invalid Scope") — Meta grants it
+# app-level via App Review; the HUMAN_AGENT tag stays #100-gated until then.
 
 captured = {"token": None}
 
@@ -160,10 +162,10 @@ def main():
     r = httpx.get("https://graph.facebook.com/v26.0/debug_token", params={
         "input_token": page_tok, "access_token": f"{app_id}|{app_secret}"}, timeout=30)
     scopes = r.json().get("data", {}).get("scopes", [])
-    missing = [s for s in ("pages_utility_messaging", "human_agent") if s not in scopes]
+    missing = [s for s in ("pages_utility_messaging",) if s not in scopes]
     print(f"   token scopes: {', '.join(scopes)}")
     print(f"❌ still missing on token: {missing}" if missing
-          else "✅ pages_utility_messaging + human_agent present on token")
+          else "✅ pages_utility_messaging present on token")
     print("\nNext: python scripts/test_missing_meta_permissions.py --send")
 
 
