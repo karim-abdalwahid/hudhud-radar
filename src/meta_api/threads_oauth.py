@@ -25,10 +25,10 @@ from src.config import settings
 from src.core.logger import logger
 from src.core.supabase_client import supabase_db
 
-# Official Threads scopes for publishing + reading replies
+# Official Threads scopes for publishing + reading replies + content lifecycle
 THREADS_SCOPES = (
     "threads_basic,threads_content_publish,threads_manage_replies,"
-    "threads_manage_insights,threads_read_replies"
+    "threads_manage_insights,threads_read_replies,threads_delete"
 )
 
 THREADS_AUTH_URL = "https://threads.net/oauth/authorize"

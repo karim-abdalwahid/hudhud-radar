@@ -229,6 +229,45 @@ class ThreadsPublisher:
                 return {"status": "error", "detail": resp.text[:300]}
             return {"status": "success", "replies": resp.json().get("data", [])}
 
+    async def delete_thread(self, thread_id: str) -> Dict[str, Any]:
+        """Deletes a published Threads post (requires threads_delete scope)."""
+        from src.meta_api.threads_oauth import get_active_threads_token
+
+        token = get_active_threads_token()
+        if not token:
+            return {"status": "skipped", "reason": "Threads غير مربوط"}
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.delete(
+                f"{settings.THREADS_BASE_URL}/{thread_id}",
+                params={"access_token": token},
+            )
+            if resp.status_code != 200:
+                return {"status": "error", "detail": resp.text[:300]}
+            supabase_db.insert("activity_logs", {
+                "action_type": "threads_delete",
+                "platform": "system",
+                "target_id": thread_id,
+                "status": "success",
+                "details": {},
+            })
+            return {"status": "success", "deleted_id": resp.json().get("deleted_id", thread_id)}
+
+    async def get_account_insights(self, metric: str = "views,likes,replies") -> Dict[str, Any]:
+        """Account-level Threads insights (requires threads_manage_insights)."""
+        from src.meta_api.threads_oauth import get_active_threads_token
+
+        token = get_active_threads_token()
+        if not token:
+            return {"status": "skipped", "reason": "Threads غير مربوط"}
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{settings.THREADS_BASE_URL}/me/threads_insights",
+                params={"metric": metric, "access_token": token},
+            )
+            if resp.status_code != 200:
+                return {"status": "error", "detail": resp.text[:300]}
+            return {"status": "success", "insights": resp.json().get("data", [])}
+
 
 class MarketingLeadsSync:
     """Meta Marketing API: Lead Ads retrieval + campaign performance -> campaigns table."""

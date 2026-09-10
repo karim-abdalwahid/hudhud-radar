@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     )
     THREADS_BASE_URL: str = Field(default="https://graph.threads.net/v1.0", description="Threads Graph API base URL")
 
+    # Instagram child app (Meta's "Instagram API with Instagram Login" product
+    # creates a SEPARATE app id/secret — using the main Meta app id fails with
+    # "Invalid platform app" on www.instagram.com/oauth/authorize)
+    IG_APP_ID: Optional[str] = Field(default=None, description="Instagram child App ID")
+    IG_APP_SECRET: Optional[str] = Field(default=None, description="Instagram child App Secret")
+
     @property
     def EFFECTIVE_THREADS_REDIRECT_URI(self) -> str:
         return self.THREADS_REDIRECT_URI or f"{self.APP_BASE_URL.rstrip('/')}/api/threads/oauth/callback"

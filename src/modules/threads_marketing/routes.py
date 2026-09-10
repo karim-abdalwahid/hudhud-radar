@@ -92,6 +92,21 @@ async def get_threads_replies(thread_id: str, limit: int = Query(20, ge=1, le=10
     return await threads_publisher.get_thread_replies(thread_id, limit)
 
 
+@router.delete("/api/threads/{thread_id}", tags=["Threads"])
+async def delete_threads_post(thread_id: str):
+    """Deletes a published Threads post (threads_delete scope)."""
+    result = await threads_publisher.delete_thread(thread_id)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=502, detail=result.get("detail", "Threads delete failed"))
+    return result
+
+
+@router.get("/api/threads/insights", tags=["Threads"])
+async def get_threads_insights(metric: str = Query("views,likes,replies")):
+    """Account-level Threads insights (threads_manage_insights scope)."""
+    return await threads_publisher.get_account_insights(metric)
+
+
 @router.post("/api/marketing/sync-leads", tags=["Marketing API"])
 async def sync_marketing_leads(form_id: Optional[str] = None):
     """Imports Meta Lead Ads leads into the CRM with full provenance."""

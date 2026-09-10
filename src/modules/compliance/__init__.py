@@ -14,11 +14,11 @@ def register(app) -> None:
 
 module_registry.register_module(
     name="compliance",
-    description="Meta data-deletion + Threads uninstall callbacks, privacy & deletion pages",
+    description="Meta data-deletion + deauthorization + Threads uninstall callbacks, privacy & deletion pages",
     register_router=register,
     pages=[
         # pages served inside compliance_pages are public HTML (privacy/deletion)
     ],
     public_exact=["/privacy", "/data-deletion", "/data_deletion"],
-    public_prefixes=["/api/data-deletion", "/api/threads/uninstall"],
+    public_prefixes=["/api/data-deletion", "/api/threads/uninstall", "/api/deauthorize"],
 )

@@ -215,6 +215,69 @@ def register_compliance_routes(app: FastAPI):
             "confirmation_code": confirmation_code,
         })
 
+    @app.post("/api/deauthorize", tags=["Compliance"])
+    async def deauthorize_callback(request: Request):
+        """
+        Meta Deauthorization Callback (App Dashboard → Business login settings /
+        Facebook Login → Deauthorize callback URL). Meta POSTs a signed_request
+        when a user deauthorizes the app from their Facebook/Instagram settings.
+
+        Verifies signature against either app secret, clears stored platform
+        credentials (the deauthorizing identity's tokens are dead), and logs
+        the event. Returns 200 as required.
+        """
+        import base64
+        import hashlib
+        import hmac as hmac_mod
+        import json as json_mod
+
+        from src.config import settings
+
+        try:
+            form = await request.form()
+            signed_request = form.get("signed_request")
+            if not signed_request:
+                return JSONResponse(status_code=400, content={"error": "signed_request required"})
+            enc_sig, enc_payload = str(signed_request).split(".", 1)
+            sig = base64.urlsafe_b64decode(enc_sig + "=" * (-len(enc_sig) % 4))
+            raw = base64.urlsafe_b64decode(enc_payload + "=" * (-len(enc_payload) % 4))
+            data = json_mod.loads(raw)
+            verified = False
+            for secret in (settings.THREADS_APP_SECRET, settings.META_APP_SECRET,
+                           getattr(settings, "IG_APP_SECRET", None)):
+                if not secret:
+                    continue
+                expected = hmac_mod.new(secret.encode(), enc_payload.encode("ascii"), hashlib.sha256).digest()
+                if hmac_mod.compare_digest(sig, expected):
+                    verified = True
+                    break
+            if not verified:
+                return JSONResponse(status_code=403, content={"error": "invalid signature"})
+
+            # Deauthorized → stored tokens for the platform connection are dead.
+            # Current architecture stores one platform connection globally —
+            # clear it honestly (per-user revocation arrives with user_connections).
+            try:
+                supabase_db.set_setting("meta_credentials", {})
+            except Exception:
+                pass
+            try:
+                supabase_db.set_setting("threads_credentials", {})
+            except Exception:
+                pass
+
+            supabase_db.insert("activity_logs", {
+                "action_type": "app_deauthorized",
+                "platform": "system",
+                "target_id": str(data.get("user_id", "")),
+                "status": "success",
+                "details": {"note": "Deauthorization callback — stored platform credentials cleared"},
+            })
+            return {"success": True, "revoked": True}
+        except Exception as e:
+            logger.error(f"Deauthorize callback error: {e}")
+            return JSONResponse(status_code=400, content={"error": "callback failed"})
+
     @app.post("/api/threads/uninstall", tags=["Compliance"])
     async def threads_uninstall_callback(request: Request):
         """
