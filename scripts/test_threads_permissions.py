@@ -64,8 +64,8 @@ def main():
         sys.exit(1)
 
     # token scopes
-    r = httpx.get(f"{BASE}/me", params={"fields": "id,username,threads_profile_description,"
-                                        "threads_profile_picture_url", "access_token": tok}, timeout=30)
+    r = httpx.get(f"{BASE}/me", params={"fields": "id,username",
+                                        "access_token": tok}, timeout=30)
     me = r.json() if r.status_code == 200 else {}
     print(f"\n=== Threads usage — account: {me.get('username')} ({me.get('id')}) ===\n")
     report("GET /me (profile)", "threads_basic", r.status_code == 200,

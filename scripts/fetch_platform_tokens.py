@@ -15,7 +15,7 @@ import json
 import sys
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode
 
@@ -79,7 +79,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def catch_code(authorize_url: str) -> str:
-    server = HTTPServer(("localhost", PORT), Handler)
+    # Threading: single-threaded server hangs on Chrome's pre-connect during the
+    # cert warning — the real request then times out (ERR_TIMED_OUT).
+    server = ThreadingHTTPServer(("localhost", PORT), Handler)
     if USE_HTTPS:
         import ssl
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

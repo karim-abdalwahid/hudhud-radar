@@ -17,7 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 BASE = "https://graph.instagram.com/v23.0"
-CONTAINER_IMAGE = "https://www.hudhd.com/static/icon-1024.png"
+CONTAINER_IMAGE = "https://www.hudhd.com/static/icon-512.png"
 
 
 def env(k, default=""):
