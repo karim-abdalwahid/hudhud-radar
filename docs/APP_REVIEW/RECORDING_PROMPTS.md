@@ -26,7 +26,7 @@ curl -s "https://graph.facebook.com/v21.0/me/threads?fields=id,text,timestamp&li
 curl -s "https://graph.facebook.com/v21.0/{THREAD_ID}/replies?fields=id,text,timestamp,username&access_token=$TOKEN"
 ```
 ✅ النجاح: HTTP 200 + قائمة threads/replies.
-   ⚠️ ملاحظة موثقة: POST الرد الآلي على الثريدز يرجع 400 (missing permissions) قبل الموافقة — هذا طبيعي (advanced access يُمنح بعد اعتماد المراجعة). استدعاءات GET replies الناجحة (منفذة 2026-09-11 ×3) هي التي يراها ميتا، والسكرينكاست يوضح القراءة والتخزين والإدارة في الـ CRM.
+   ✅ **منفذة فعلًا 2026-09-12 بنجاح 200**: الرد تم عبر المسار الرسمي (container + reply_to_id → threads_publish) — reply id: 2750047694351 ظاهر على ثريد كوباية القهوة. (حذف الرد نفسه يتطلب موافقة المراجعة — طبيعي).
 
 **ب. instagram_business_manage_comments**:
 ```bash

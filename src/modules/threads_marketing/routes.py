@@ -146,16 +146,14 @@ async def reply_to_threads_post(thread_id: str, payload: ThreadsPublishPayload,
     if not token:
         raise HTTPException(status_code=400, detail="Threads غير مربوط")
 
-    import httpx as _httpx
-    from src.config import settings as _s
-    async with _httpx.AsyncClient(timeout=20.0) as client:
-        resp = await client.post(
-            f"{_s.THREADS_BASE_URL}/{thread_id}/replies",
-            params={"text": payload.text, "access_token": token},
-        )
-    if resp.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Threads reply failed: {resp.text[:250]}")
-    return {"status": "success", "reply": resp.json()}
+    # Official Threads reply flow: container with reply_to_id -> threads_publish
+    # (POST /{id}/replies is not a valid publish endpoint — THApiException 100/33)
+    from src.meta_api.extended_api import threads_publisher
+    result = await threads_publisher.publish_thread(
+        payload.text, reply_to_id=thread_id, user_id=session_user)
+    if result.get("status") != "success":
+        raise HTTPException(status_code=502, detail=f"Threads reply failed: {result.get('detail', '')[:250]}")
+    return {"status": "success", "reply": result}
 
 @router.get("/api/threads/my-posts", tags=["Threads"])
 async def my_threads_posts(request: Request = None, limit: int = Query(10, ge=1, le=50)):

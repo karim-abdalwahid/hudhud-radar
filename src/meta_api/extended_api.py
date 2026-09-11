@@ -178,7 +178,8 @@ class ThreadsPublisher:
         return get_active_threads_token()
 
     async def publish_thread(self, text: str, link: Optional[str] = None,
-                             user_id: Optional[str] = None) -> Dict[str, Any]:
+                             user_id: Optional[str] = None,
+                             reply_to_id: Optional[str] = None) -> Dict[str, Any]:
         token = self._resolve_token(user_id)
         if not token:
             return {
@@ -189,9 +190,13 @@ class ThreadsPublisher:
         full_text = f"{text}\n{link}" if link else text
         async with httpx.AsyncClient(timeout=15.0) as client:
             # 1. Create container
+            container_data = {"media_type": "TEXT", "text": full_text[:500],
+                              "access_token": token}
+            if reply_to_id:
+                container_data["reply_to_id"] = reply_to_id
             create = await client.post(
                 f"{settings.THREADS_BASE_URL}/me/threads",
-                data={"media_type": "TEXT", "text": full_text[:500], "access_token": token},
+                data=container_data,
             )
             if create.status_code != 200:
                 return {"status": "error", "detail": create.text[:300]}
