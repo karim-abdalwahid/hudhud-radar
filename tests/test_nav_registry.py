@@ -20,7 +20,10 @@ def test_admin_sees_all_nav_with_active_state(client: TestClient):
     nav = _nav_of(client, "/settings")
     assert "/settings" in nav and "/identity" in nav and "/analytics" in nav
     assert 'nav-item active' in nav          # current page highlighted
-    assert nav.count("nav-section-title") == 3
+    # Wave 9.8: admin nav ships pre-separated - client titles (2) + a dev section
+    assert nav.count("nav-section-title") == 2
+    assert "client-nav-section" in nav and "dev-nav-section" in nav
+    assert "dev-badge" in nav
     assert nav.count('class="nav-item') == 12  # /users + /templates admin console entries
 
 
