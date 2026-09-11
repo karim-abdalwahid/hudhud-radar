@@ -30,7 +30,10 @@ def sweep_page(pg, path, lang):
     url = BASE + path
     if lang == "ar":
         url += ("&" if "?" in url else "?") + "lang=ar"
-    pg.goto(url)
+    # skip redundant navigation when already on the target (avoids aborting
+    # in-flight fetches of the just-loaded page - measurement artifact)
+    if not pg.url.split("?")[0].rstrip("/").endswith(path):
+        pg.goto(url)
     try:
         pg.wait_for_load_state("networkidle", timeout=15000)
     except Exception:

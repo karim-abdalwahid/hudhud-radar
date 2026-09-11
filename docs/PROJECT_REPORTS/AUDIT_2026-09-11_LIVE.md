@@ -2,8 +2,7 @@
 
 | Page | Lang | JS errors | Failed requests | KPI placeholders |
 |---|---|---|---|---|
-| /dashboard | en | console: Error loading overview data: TypeError: Failed to fetch
-    at HTMLDocument.loadOverviewData (http://localhost:8000/dashboard:215:40) | http://localhost:8000/api/studio/posts :: net::ERR_ABORTED | 0 |
+| /dashboard | en | — | — | 0 |
 | /inbox | en | — | — | 0 |
 | /leads | en | — | — | 0 |
 | /studio | en | — | — | 0 |
@@ -30,7 +29,7 @@
 | /terms | en | — | — | 0 |
 | /privacy | en | — | — | 0 |
 
-**Pages with issues: 1/26**
+**Pages with issues: 0/26**
 
 ## Tab interaction details
 
@@ -39,11 +38,11 @@
 - tab#1: visible 5->2
 - tab#2: visible 2->2
 - tab#3: visible 2->2
-- tab#4: visible 2->2
+- tab#4: visible 2->3
 
 ### /settings (ar)
 - tab#0: visible 5->5
 - tab#1: visible 5->2
 - tab#2: visible 2->2
 - tab#3: visible 2->2
-- tab#4: visible 2->2
+- tab#4: visible 2->3
