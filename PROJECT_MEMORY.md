@@ -1679,3 +1679,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 11. Post-Entry Addition — تصحيح عملية (شفافية)
 - كوميت 696c99b رفع بادعاء اختبارات خاطئ (5 failed فعلياً بسبب تسرب mocks على singletons في test_ai_pause). الكود الإنتاجي سليم. الإصلاح: monkeypatch hygiene + تصحيح الادعاء موثق (105e1b6). 272/272 حقيقية.
+
+### 12. Post-Entry Addition — توحيد /users و /templates على الهيكل القياسي
+- الصفحتان كانتا HTML مستقل بأسلوب مخصص مخالف — أعيد بناؤهما على shared chrome + saas.css حصرياً (نفس كل الصفحات). الإثبات الحي: styles موحدة + فصل أدوار شغال + وظائف سليمة. commit 75caaf3 لايف.
