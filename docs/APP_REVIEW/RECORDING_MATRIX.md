@@ -1,7 +1,17 @@
 # 🎬 App Review Recording Matrix — الحكم النهائي لكل فيديو (2026-09-11)
 #app-review #recording-matrix #ready #build #remove
 
-> **المرجع**: SCREENCAST_SCRIPTS.md (31 سيناريو) + APP_REVIEW_JUSTIFICATIONS.md. كل سطر تحقق حي خلال جلسة اليوم.
+> **المرجع**: SCREENCAST_SCRIPTS.md (31 سيناريو) + APP_REVIEW_JUSTIFICATIONS.md + **قائمة التقديم الفعلية من داشبورد ميتا (34 صلاحية — 3 لقطات، 2026-09-11)**.
+
+---
+
+## 📋 قائمة التقديم الفعلية (34 — منسوخة من داشبورد ميتا حرفيًا)
+
+**الصورة 1**: Human Agent · Business Asset User Profile Access · pages_show_list · pages_manage_metadata · pages_utility_messaging · pages_messaging · business_management · pages_read_engagement · threads_content_publish · threads_delete
+**الصورة 2**: **threads_manage_insights · threads_manage_replies · threads_manage_mentions** · threads_read_replies · **instagram_business_content_publish · instagram_business_manage_insights · instagram_business_manage_comments** · instagram_manage_engagement · instagram_manage_contents · instagram_manage_insights · **instagram_business_basic** · **instagram_business_manage_messages** · pages_read_user_content
+**الصورة 3**: pages_manage_posts · pages_manage_engagement · instagram_manage_comments · threads_basic · instagram_content_publish · instagram_manage_messages · read_insights · public_profile · leads_retrieval · instagram_basic · email
+
+> ملاحظة حاسمة: نسخ `instagram_business_*` الستة **نفس التنفيذ** عندنا (الـ API بيستخدم page token + IG business id = متغير الـ business الرسمي) — تُصوَّر بنفس الفيديوهات مع ذكر الاسم الرسمي.
 
 ---
 
@@ -41,6 +51,7 @@
 | D1 | business_management | تصوير خارجي: Business Settings في ميتا + تبويب الأدمن عندنا (جاهز) |
 | A4 | pages_utility_messaging | نفس الإنبوكس — ابعت رسالة خدمية نصيًا وصورها |
 | C4 | threads_manage_replies | عرض الردود في الأناليتكس الجديد (لا يوجد ردّ آلي على ثريدز — وضّح في الفيديو أنها قراءة وإدارة) |
+| — | threads_manage_mentions | ✅ **أُضيفت اليوم**: اذكر/تاج الصفحة من حساب آخر → يدخل الإنبوكس كـ mention (parser + bridge + اشتراك `mention` حي كلهم مثبتون) |
 
 ## 🔴 قسم 3 — **احذفها من الطلب** (مش بتستخدمها — إجابات الـ Justifications نفسها بتقول كده)
 
