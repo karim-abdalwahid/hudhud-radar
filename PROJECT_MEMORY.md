@@ -1671,3 +1671,8 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - **Threads webhook receiver** (HMAC fail-closed) موصول بجسر الـ CRM.
 - **مؤجل موثق**: automations DB cutover (app_settings هو المصدر الحالي — الجدول 014 جاهز).
 - النشر dc6d946 ✅ · 265/265 ✅
+
+### 10. Post-Entry Addition — إصلاح Human Takeover (باج حرجة بتقرير المالك)
+- **الجذر**: update_lead (model-only) × takeover يمرر dict → AttributeError 500 → الحفظ صامت فاشل والواجهة تمثل محليًا.
+- **الإصلاح**: update_lead يقبل dict أو model · human_takeover في LeadUpdate · **أتمتة التعليقات تحترم takeover** (كانت الحماية مسار الرسائل فقط).
+- **إثبات حي**: toggle → DB true → orchestrator suppression (reply_sent=None) → restore. commit 6d73587 لايف.
