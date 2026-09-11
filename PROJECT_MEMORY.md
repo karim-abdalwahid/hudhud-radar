@@ -1663,3 +1663,11 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - **مطبق على القاعدة**: migrations 014/015/016. **مطبق في الكود**: self-reply guard لجسر الثريدز (رد المالك على نفسه مش lead) · DEV_ROUTES +client/developer فصل ثنائي.
 - **Wave 9.8 اكتملت متطلباته الموثقة**: automations_workflows جاهز per-user · user_id stamping · فلاتر المستخدم الجاية.
 - الاختبارات 265/265 ✅ · النشر fbb7aa1 متحقق حيًا ✅.
+
+### 9. Post-Entry Addition — Wave 9.8 تنفيذ بدء (جزء 1)
+- **migration 017**: kb_documents تفرد (user_id, filename) + match_kb_chunks RPC بـ p_user_id.
+- **KB scoped CRUD/search + routes بجلسة المستخدم** (list/get/update/create/delete/search).
+- **content_posts**: ختم المالك + فلترة + backfill 64 صف للمالك.
+- **Threads webhook receiver** (HMAC fail-closed) موصول بجسر الـ CRM.
+- **مؤجل موثق**: automations DB cutover (app_settings هو المصدر الحالي — الجدول 014 جاهز).
+- النشر dc6d946 ✅ · 265/265 ✅
