@@ -150,6 +150,34 @@ class WebhookHandler:
                                 "text": text,
                                 "raw_change": change
                             })
+
+                # Facebook Page mentions (threads_manage_mentions / Page mentions):
+                # someone tags or mentions the Page in a post/comment. Meta sends
+                # the `mentions` field with either a comment_id (mention inside a
+                # comment) or a standalone post_id (mention inside a post).
+                elif field == "mentions":
+                    comment_id = val.get("comment_id")
+                    post_id = val.get("post_id")
+                    stable_id = comment_id or post_id
+                    text = val.get("message", "") or val.get("text", "")
+                    from_user = val.get("from", {})
+                    sender_id = from_user.get("id")
+                    sender_name = (from_user.get("name", "")
+                                   or val.get("sender_name", ""))
+
+                    if stable_id and sender_id and sender_id != account_id:
+                        events.append({
+                            "event_type": "comment",
+                            "platform": PlatformSource.FACEBOOK,
+                            "account_id": account_id,
+                            "comment_id": stable_id,
+                            "post_id": post_id,
+                            "sender_id": sender_id,
+                            "sender_name": sender_name,
+                            "text": text,
+                            "is_mention": True,
+                            "raw_change": change
+                        })
         return events
 
 

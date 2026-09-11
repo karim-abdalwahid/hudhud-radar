@@ -62,7 +62,10 @@ async def capture_comment_lead(event: Dict[str, Any]) -> Optional[Dict[str, Any]
         sender_type=SenderType.LEAD,
         content=text,
         sent_at=datetime.now(timezone.utc),
-        metadata={"type": "comment", "media_id": event.get("media_id") or event.get("post_id")},
+        metadata={
+            "type": "mention" if event.get("is_mention") else "comment",
+            "media_id": event.get("media_id") or event.get("post_id"),
+        },
     )
     lead_service.add_message(message)
 

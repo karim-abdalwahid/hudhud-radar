@@ -204,10 +204,13 @@ class MetaTokenManager:
         }
 
     async def auto_subscribe_page_webhook(self, page_id: str, page_token: str) -> bool:
-        """Automatically subscribes page to the app's webhooks."""
+        """Automatically subscribes page to the app's webhooks.
+
+        Fields: feed (posts/comments), messages + postbacks + referrals (DMs),
+        mention (Page tags/mentions — threads_manage_mentions / Page mentions)."""
         url = f"{self.BASE_URL}/{page_id}/subscribed_apps"
         params = {
-            "subscribed_fields": "feed,messages,messaging_postbacks,messaging_referrals",
+            "subscribed_fields": "feed,messages,messaging_postbacks,messaging_referrals,mention",
             "access_token": page_token
         }
         try:
