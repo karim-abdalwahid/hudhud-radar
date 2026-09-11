@@ -180,29 +180,62 @@ SIDEBAR_SECTIONS = {
 
 
 def render_sidebar_nav(current_path: str, is_admin: bool) -> str:
-    """Renders the sidebar <nav> HTML from the registry — role-aware."""
+    """Renders the sidebar <nav> HTML from the registry — role-aware AND
+    structurally separated server-side (Wave 9.8): admins get client
+    workspaces + admin tools in two distinct sections, so the correct
+    grouping exists from the FIRST paint (zero client-side flash)."""
     import html as _html
     entries = module_registry.sorted_nav(is_admin)
-    parts = ['<nav class="sidebar-nav">']
+    client_parts = []
+    admin_parts = []
     last_section = None
     for n in entries:
         if n.section != last_section:
             sec = SIDEBAR_SECTIONS.get(n.section)
             label = _html.escape(sec.fallback if sec else n.section)
-            parts.append(
-                f'<div class="nav-section-title" data-i18n="{n.section}">{label}</div>'
-            )
+            title = (f'<div class="nav-section-title" data-i18n="{n.section}">{label}</div>')
             last_section = n.section
+        else:
+            title = ""
         active = " active" if current_path == n.href else ""
         icon = _html.escape(n.icon, quote=False)
         label_fb = n.href.strip("/") or "home"
-        parts.append(
+        link = (
             f'<a href="{_html.escape(n.href)}" class="nav-item{active}">'
             f'<span class="nav-icon">{icon}</span> '
             f'<span data-i18n="{n.label_key}">{_html.escape(label_fb)}</span></a>'
         )
+        if n.admin_only:
+            admin_parts.append(link)
+        else:
+            client_parts.append(title + link)
+
+    parts = ['<nav class="sidebar-nav">']
+    if is_admin:
+        parts.append('<div class="client-nav-section">')
+        parts.extend(client_parts)
+        parts.append("</div>")
+        parts.append('<div class="dev-nav-section">')
+        parts.append('<div class="dev-nav-title"><span data-i18n="mode.admin_only">Developer Console</span>'
+                     '<span class="dev-badge">ADMIN</span></div>')
+        parts.extend(admin_parts)
+        parts.append("</div>")
+    else:
+        parts.extend(client_parts)
     parts.append("</nav>")
     return "\n".join(parts)
+
+
+def initial_body_class(current_path: str, is_admin: bool, role_mode_cookie: Optional[str] = None) -> str:
+    """Server-side initial role mode (kills the client-side flash): mirrors
+    hudhudRoleManager.getMode() semantics. The cookie mirrors localStorage."""
+    if not is_admin:
+        return "mode-client"
+    if role_mode_cookie in ("client", "developer"):
+        return f"mode-{role_mode_cookie}"
+    is_dev_route = any(current_path == r or current_path.startswith(r + "/")
+                       for r in ("/settings", "/identity", "/analytics", "/users", "/templates"))
+    return "mode-developer" if is_dev_route else "mode-client"
 
 
 def platform_icon_svg(platform: str, size: int = 20, radius: int = 6) -> str:

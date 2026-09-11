@@ -22,6 +22,9 @@ const hudhudRoleManager = {
 
     setMode(mode) {
         localStorage.setItem('hudhud_role_mode', mode);
+        // Mirror to a cookie so the SERVER renders the correct initial mode
+        // (zero flash on next loads — Wave 9.8).
+        document.cookie = `hudhud_role_mode=${mode};path=/;max-age=31536000;SameSite=Lax`;
         this.applyMode(mode);
 
         if (mode === 'client' && this.isDevRoute()) {
@@ -61,12 +64,11 @@ const hudhudRoleManager = {
     },
 
     async init() {
-        // 0. Safe pre-role default: client mode — developer UI stays hidden even
-        //    before the role resolves (CSS also defaults dev sections to hidden).
-        this.applyMode('client');
+        // The SERVER already rendered the correct structure: body carries the
+        // initial mode class and the sidebar ships pre-separated into
+        // .client-nav-section / .dev-nav-section — zero first-paint flash.
 
-        // 1. Resolve the REAL role from the server session — the UI must mirror
-        //    actual permissions, not a client-side toggle the user can flip.
+        // 1. Resolve the REAL role from the server session.
         try {
             const res = await fetch('/auth/me');
             const me = await res.json();
@@ -77,26 +79,22 @@ const hudhudRoleManager = {
 
         this.normalizeBrandLogo();
 
-        // 2. Non-admin users: no role switcher, no developer links at all.
-        //    The server 403s these pages for them anyway — showing them is noise.
+        // 2. Non-admins: no role switcher. The server already excluded admin
+        //    links from their sidebar (registry admin_only filter).
         if (!this._isAdmin) {
-            this.stripDevNav();
+            document.body.classList.remove('mode-developer');
+            document.body.classList.add('mode-client');
             return;
         }
 
-        // 3. Admin on a developer route while in client mode → enforce real
-        //    separation (mirrors setMode's redirect; no mixed-state pages).
+        // 3. Admin: honor the saved/cookie mode; on a dev route in client mode
+        //    → enforce real separation (redirect, same as setMode).
         const saved = localStorage.getItem('hudhud_role_mode');
-        let mode = this.getMode();
         if (this.isDevRoute() && saved === 'client') {
             window.location.href = '/dashboard';
             return;
         }
-        if (this.isDevRoute() && !saved) {
-            mode = 'developer';
-        }
 
-        this.applyMode(mode);
         this.injectRoleSwitcher();
         this.injectDevPageBanner();
     },
@@ -136,8 +134,8 @@ const hudhudRoleManager = {
 
         header.insertAdjacentElement('afterend', switcher);
 
-        // Group developer navigation items
-        this.organizeDevNav(sidebar, isAr);
+        // NOTE: the sidebar ships PRE-SEPARATED from the server
+        // (.client-nav-section / .dev-nav-section) — no client-side grouping.
 
         // NOTE (WS0.4): sidebar nav links are now rendered SERVER-SIDE from the
         // module registry — the old client-side Automations injection is gone.

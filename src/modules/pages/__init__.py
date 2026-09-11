@@ -38,6 +38,14 @@ def render_module_page(html: str, request: "Request") -> HTMLResponse:
     if nav_match:
         rendered = render_sidebar_nav(request.url.path, is_admin)
         html = html[:nav_match.start()] + rendered + html[nav_match.end():]
+    # Server-side initial role mode — zero client-side flash (Wave 9.8)
+    from src.core.modules import initial_body_class
+    mode_cls = initial_body_class(
+        request.url.path if request else "/",
+        is_admin,
+        request.cookies.get("hudhud_role_mode") if request else None,
+    )
+    html = html.replace("<body>", f'<body class="{mode_cls}">', 1)
     return HTMLResponse(content=html)
 
 
@@ -96,6 +104,12 @@ def _render_page_template(filename: str, request: Optional[Request] = None,
         if nav_match:
             rendered = render_sidebar_nav(path, is_admin)
             content = content[:nav_match.start()] + rendered + content[nav_match.end():]
+
+        # Server-side initial role mode — zero client-side flash (Wave 9.8)
+        from src.core.modules import initial_body_class
+        mode_cls = initial_body_class(
+            path, is_admin, request.cookies.get("hudhud_role_mode") if request else None)
+        content = content.replace("<body>", f'<body class="{mode_cls}">', 1)
 
         return HTMLResponse(content=content)
     return HTMLResponse(content=f"<h1>Page template '{filename}' not found</h1>", status_code=404)
