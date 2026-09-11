@@ -2,7 +2,7 @@
 Service layer for Leads and Messages.
 Handles persistence, linking, and provenance updates.
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime, timezone
 from src.core.supabase_client import supabase_db
 from src.core.logger import logger
@@ -46,9 +46,12 @@ class LeadService:
         logger.info(f"Created new lead: id={inserted.get('id')} source={lead_in.source}")
         return inserted
 
-    def update_lead(self, lead_id: str, lead_update: LeadUpdate) -> Optional[Dict[str, Any]]:
-        """Update existing lead fields."""
-        update_data = {k: v for k, v in lead_update.model_dump(mode="json").items() if v is not None}
+    def update_lead(self, lead_id: str, lead_update: Union[LeadUpdate, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Update existing lead fields (accepts LeadUpdate model OR raw dict)."""
+        if hasattr(lead_update, "model_dump"):
+            update_data = {k: v for k, v in lead_update.model_dump(mode="json").items() if v is not None}
+        else:
+            update_data = {k: v for k, v in dict(lead_update).items() if v is not None}
         if not update_data:
             return self.get_lead_by_id(lead_id)
         updated = self.db.update("leads", lead_id, update_data)

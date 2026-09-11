@@ -73,6 +73,7 @@ class LeadUpdate(BaseModel):
     threads_account_id: Optional[str] = None
     linked_account_id: Optional[str] = None
     is_verified_link: Optional[bool] = None
+    human_takeover: Optional[bool] = None
     data_provenance: Optional[DataProvenance] = None
 
 
