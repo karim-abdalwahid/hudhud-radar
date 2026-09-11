@@ -1695,3 +1695,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 16. Post-Entry Addition — الفحص الختامي نظيف بالكامل
 - 26 صفحة × لغتين: صفر أخطاء (بعد guard التنقل في سكربت الفحص). f37553f لايف.
+
+### 17. Post-Entry Addition — مراجعة التقديم الفعلي (34 صلاحية)
+- القائمة الفعلية منسوخة في RECORDING_MATRIX · instagram_business_* = نفس التنفيذ · threads_manage_mentions نفذت بالكامل (parser + اشتراك mention حي + إثبات E2E + تنظيف) + درس اسم الحقل المفرد. 278/278 · bdc9500 + 2f0ed03 لايف.
