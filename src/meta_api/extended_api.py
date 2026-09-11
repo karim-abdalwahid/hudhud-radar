@@ -433,7 +433,8 @@ class ThreadsLeadsSync:
         return {}
 
     async def capture_thread_reply(self, reply: Dict[str, Any], token: str,
-                                   thread_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+                                   thread_id: Optional[str] = None,
+                                   own_username: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Turns one Threads reply into (or appends to) a lead with its message."""
         from datetime import datetime, timezone as tz
         from src.leads.models import MessageCreate, PlatformSource, SenderType
@@ -448,6 +449,10 @@ class ThreadsLeadsSync:
         if not reply_id or (not username and not author_id):
             logger.warning("Threads reply bridge skipped: no id/author identity.")
             return None
+
+        # Self-reply guard: the owner replying from their own account is NOT a lead
+        if username and own_username and username.lower() == str(own_username).lstrip("@").lower():
+            return {"status": "skipped", "reason": "self_reply"}
 
         # Idempotency: one reply → one message ever
         existing_msg = db.select("messages", {"platform_message_id": reply_id})
@@ -499,8 +504,20 @@ class ThreadsLeadsSync:
         if not token:
             return {"status": "skipped", "reason": "Threads غير مربوط"}
 
-        captured, skipped, duplicate = 0, 0, 0
+        captured, skipped, duplicate, self_replies = 0, 0, 0, 0
         async with httpx.AsyncClient(timeout=15.0) as client:
+            # Resolve the connected account's own username once (self-reply guard)
+            own_username = None
+            try:
+                me_resp = await client.get(
+                    f"{settings.THREADS_BASE_URL}/me",
+                    params={"fields": "username", "access_token": token},
+                )
+                if me_resp.status_code == 200:
+                    own_username = me_resp.json().get("username")
+            except Exception:
+                pass
+
             threads_resp = await client.get(
                 f"{settings.THREADS_BASE_URL}/me/threads",
                 params={"fields": "id,text,timestamp", "limit": limit_threads, "access_token": token},
@@ -518,15 +535,19 @@ class ThreadsLeadsSync:
                     continue
                 for reply in replies_resp.json().get("data", []):
                     result = await self.capture_thread_reply(
-                        reply, token=token, thread_id=thread["id"])
+                        reply, token=token, thread_id=thread["id"],
+                        own_username=own_username)
                     if result is None:
                         skipped += 1
                     elif result.get("duplicate"):
                         duplicate += 1
+                    elif result.get("reason") == "self_reply":
+                        self_replies += 1
                     else:
                         captured += 1
 
-        return {"status": "success", "captured": captured, "duplicates": duplicate, "skipped": skipped}
+        return {"status": "success", "captured": captured, "duplicates": duplicate,
+                "skipped": skipped, "self_replies": self_replies}
 
 
 meta_insights_sync = MetaInsightsSync()

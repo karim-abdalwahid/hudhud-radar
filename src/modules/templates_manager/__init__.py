@@ -154,6 +154,7 @@ _ADMIN_TEMPLATES_HTML = """<!DOCTYPE html>
 <title>Admin — Message Templates</title>
 <link rel="icon" href="/static/favicon.ico" sizes="any">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/saas.css">
 <style>
 :root{--bg-page:#f8fafc;--bg-card:#fff;--border-default:#e2e8f0;--text-primary:#0f172a;
 --text-secondary:#475569;--text-muted:#94a3b8;--primary:#2563eb;}

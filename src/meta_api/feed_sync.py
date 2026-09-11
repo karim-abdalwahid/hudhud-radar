@@ -294,13 +294,15 @@ class MetaLiveFeedSync:
 
                 data = resp.json().get("data", [])
                 items = []
+                video_media_ids = []
                 for item in data:
                     mtype = (item.get("media_type") or "VIDEO").upper()
                     product_type = (item.get("media_product_type") or "").upper()
                     permalink = item.get("permalink") or f"https://instagram.com/p/{item['id']}"
-                    
                     is_reel = (product_type == "REELS") or (mtype == "VIDEO") or ("/reel/" in permalink)
                     thumb = item.get("thumbnail_url") or item.get("media_url")
+                    if is_reel:
+                        video_media_ids.append(str(item["id"]))
 
                     items.append({
                         "id": str(item["id"]),
@@ -317,10 +319,49 @@ class MetaLiveFeedSync:
                         "views_count": 0,
                         "is_live_meta": True
                     })
+
+                # Real view counts via the official IG Insights API
+                # (views metric, plays fallback) — Zero-Fabrication: when the
+                # API returns nothing, the count stays 0, never invented.
+                if video_media_ids:
+                    views_by_id = await self._fetch_ig_media_views(
+                        client, token, video_media_ids)
+                    for item in items:
+                        if item["id"] in views_by_id:
+                            item["views_count"] = views_by_id[item["id"]]
                 return items
         except Exception as e:
             logger.error(f"Error querying Instagram Graph API: {e}")
             return []
+
+    async def _fetch_ig_media_views(self, client: httpx.AsyncClient, token: str,
+                                    media_ids: List[str]) -> Dict[str, int]:
+        """Fetches real view counts for IG reels/videos via the Insights API.
+        Primary metric: views. Fallback: plays (older reels). Idempotent + rate-limited."""
+        views: Dict[str, int] = {}
+        for mid in media_ids:
+            try:
+                rate_limiter.check_and_acquire("instagram")
+                for metric in ("views", "plays"):
+                    resp = await client.get(
+                        f"{self.base_url}/{mid}/insights",
+                        params={"metric": metric, "access_token": token},
+                    )
+                    if resp.status_code == 200:
+                        rows = resp.json().get("data", [])
+                        for row in rows:
+                            for v in row.get("values", []):
+                                val = v.get("value", 0) or 0
+                                if val > views.get(mid, 0):
+                                    views[mid] = int(val)
+                        if mid in views:
+                            break
+                    elif resp.status_code == 429:
+                        rate_limiter.update_from_headers("instagram", dict(resp.headers))
+                        break
+            except Exception as e:
+                logger.warning(f"IG insights fetch skipped for {mid}: {e}")
+        return views
 
     async def sync_all_live_content(self, limit_per_platform: int = 100) -> Dict[str, Any]:
         """Fetches from Facebook (all video reels & posts) and Instagram (all reels & media), strictly deduplicates, and caches."""

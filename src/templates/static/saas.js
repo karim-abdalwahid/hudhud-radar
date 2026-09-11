@@ -4,7 +4,9 @@
 let lastMetaData = null;
 
 const hudhudRoleManager = {
-    DEV_ROUTES: ['/settings', '/identity', '/analytics'],
+    // Admin-only surfaces (server 403s non-admins). Client View hides ALL of
+    // them; Dev Console shows them and hides client workspace sections.
+    DEV_ROUTES: ['/settings', '/identity', '/analytics', '/users', '/templates'],
     _isAdmin: false,
 
     isDevRoute() {
@@ -148,10 +150,10 @@ const hudhudRoleManager = {
         // If dev-nav-section already exists, return
         if (nav.querySelector('.dev-nav-section')) return;
 
-        // Find links for /identity, /analytics, /settings
+        // Admin-only links (developer console + owner console pages)
         const devLinks = Array.from(nav.querySelectorAll('a.nav-item')).filter(a => {
             const href = a.getAttribute('href') || '';
-            return href.includes('/identity') || href.includes('/analytics') || href.includes('/settings');
+            return this.DEV_ROUTES.some(r => href === r || href.startsWith(r + '/') || href.includes(r));
         });
 
         // Find section title for Analytics & System if present
@@ -180,6 +182,15 @@ const hudhudRoleManager = {
 
             devLinks.forEach(link => devSection.appendChild(link));
             nav.appendChild(devSection);
+
+            // Wrap everything that remains (client workspaces + their section
+            // titles) so Developer mode can hide it — TRUE two-way separation.
+            const clientWrap = document.createElement('div');
+            clientWrap.className = 'client-nav-section';
+            Array.from(nav.childNodes).forEach(node => {
+                if (node !== devSection) clientWrap.appendChild(node);
+            });
+            nav.insertBefore(clientWrap, devSection);
         }
     },
 
@@ -205,12 +216,6 @@ const hudhudRoleManager = {
         `;
 
         main.insertBefore(banner, main.firstChild);
-    },
-
-    init() {
-        const mode = this.getMode();
-        this.applyMode(mode);
-        this.injectRoleSwitcher();
     }
 };
 

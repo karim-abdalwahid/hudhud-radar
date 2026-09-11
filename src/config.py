@@ -64,6 +64,8 @@ class Settings(BaseSettings):
         default=None,
         description="Threads OAuth redirect URI (defaults to APP_BASE_URL/api/threads/oauth/callback)",
     )
+    THREADS_ACCESS_TOKEN: Optional[str] = Field(default=None, description="Legacy env Threads token (fallback when no OAuth connection exists)")
+    THREADS_USER_ID: Optional[str] = Field(default=None, description="Legacy env Threads user id")
     THREADS_BASE_URL: str = Field(default="https://graph.threads.net/v1.0", description="Threads Graph API base URL")
 
     # Instagram child app (Meta's "Instagram API with Instagram Login" product

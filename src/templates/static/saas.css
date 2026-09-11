@@ -1041,6 +1041,50 @@ body.mode-developer .dev-nav-section {
     display: block !important;
 }
 
+/* Two-way separation: Developer mode hides client workspace navigation */
+.client-nav-section {
+    display: block;
+}
+
+body.mode-developer .client-nav-section {
+    display: none !important;
+}
+
+/* ------------------------------------------------------------------
+   Shared badge platform/status variants (were referenced by 6+ pages
+   without any definition — badges rendered uncolored). Audit 2026-09-11.
+   ------------------------------------------------------------------ */
+.badge-fb { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
+.badge-ig { background: #fdf2f8; color: #be185d; border: 1px solid #fce7f3; }
+.badge-muted { background: var(--bg-subtle, #f1f5f9); color: var(--text-muted, #94a3b8); border: 1px solid var(--border-default, #e2e8f0); }
+.badge-neutral { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.badge-pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.badge-success { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+
+/* Utility class referenced in analytics funnel counters */
+.font-bold { font-weight: 700; }
+
+/* Studio live-filter active state (button had no visual selected state) */
+.btn-action.active-filter {
+    background: var(--accent-blue, #2563eb);
+    color: #ffffff;
+    border-color: var(--accent-blue, #2563eb);
+}
+
+/* Settings dynamic inputs (custom headers / AI model rows) — were unstyled */
+.np-h-name, .np-h-value, .np-model-id, .np-model-name {
+    padding: 8px 10px;
+    border: 1px solid var(--border-default, #e2e8f0);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12.5px;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Red accent used by destructive actions in automations builder */
+:root { --accent-red: #dc2626; }
+
 .dev-console-banner {
     background: #faf5ff;
     border-bottom: 1px solid #e9d5ff;

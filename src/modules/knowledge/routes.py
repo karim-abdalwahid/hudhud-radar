@@ -101,16 +101,25 @@ async def delete_knowledge_document(filename: str):
 
 
 @router.post("/api/knowledge/upload", tags=["Knowledge Base & RAG"])
-async def upload_knowledge_file(file: UploadFile = File(...)):
+async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
     """
     Multi-format file uploader:
     - .md / .txt: Parsed and stored into Knowledge Base.
     - .pdf: Extracted page-by-page and converted to structured Markdown.
     - .png / .jpg / .jpeg / .webp: Analyzed using Gemini Multimodal Vision to extract business facts.
+
+    Audit fix (2026-09-11): the result is ALSO persisted to kb_documents with the
+    uploader's user_id — previously uploads only wrote local files, so the
+    database-backed knowledge base (the one the AI agent reads) never received them.
     """
     # Sanitize base filename to eliminate any directory traversal attempt
     safe_base = Path(file.filename or "upload").name
     ext = Path(safe_base).suffix.lower()
+
+    # Resolve the uploading user (per-user knowledge ownership)
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    user_id = (session or {}).get("sub")
 
     try:
         file_bytes = await file.read()
@@ -119,17 +128,38 @@ async def upload_knowledge_file(file: UploadFile = File(...)):
 
         if ext in [".md", ".txt"]:
             text_content = file_bytes.decode("utf-8", errors="replace")
-            return document_processor.process_text_or_markdown(safe_base, text_content)
+            result = document_processor.process_text_or_markdown(safe_base, text_content)
         elif ext == ".pdf":
-            return document_processor.process_pdf(safe_base, file_bytes)
+            result = document_processor.process_pdf(safe_base, file_bytes)
         elif ext in [".png", ".jpg", ".jpeg", ".webp"]:
             mime = file.content_type or "image/jpeg"
-            return await document_processor.process_image_vision(safe_base, file_bytes, mime_type=mime)
+            result = await document_processor.process_image_vision(safe_base, file_bytes, mime_type=mime)
         else:
             raise HTTPException(
                 status_code=400,
                 detail=f"صيغة الملف غير مدعومة ({ext}). الصيغ المدعومة هي: .md, .txt, .pdf, .png, .jpg, .webp"
             )
+
+        # Persist to the per-user database knowledge base (AI agent source of truth)
+        try:
+            from src.knowledge.db_knowledge_base import db_knowledge_base
+            filename = result.get("filename") or safe_base
+            content = knowledge_base.knowledge_cache.get(filename) or ""
+            if not content and ext in [".md", ".txt"]:
+                content = text_content
+            if not content:
+                doc = db_knowledge_base.get_document_content(filename)
+                content = (doc or {}).get("content", "") if isinstance(doc, dict) else ""
+            if content:
+                db_result = db_knowledge_base.save_document(
+                    filename, content, source="upload", user_id=user_id)
+                result["db_saved"] = db_result.get("status") == "success"
+                result["db_chunks"] = db_result.get("chunks")
+        except Exception as db_err:
+            logger.warning(f"KB DB persist failed for {safe_base}: {db_err}")
+            result["db_saved"] = False
+
+        return result
     except HTTPException:
         raise
     except Exception as e:

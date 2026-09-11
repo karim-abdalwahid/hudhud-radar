@@ -37,9 +37,21 @@ THREADS_GRAPH_BASE = "https://graph.threads.net"
 
 def _get_stored_creds() -> Dict[str, Any]:
     try:
-        return supabase_db.get_setting("threads_credentials") or {}
+        stored = supabase_db.get_setting("threads_credentials") or {}
+        if stored.get("access_token"):
+            return stored
     except Exception:
-        return {}
+        pass
+    # Legacy env fallback (.env THREADS_ACCESS_TOKEN) — used until the owner
+    # connects via the official OAuth flow. Expires_at=0 means never-expiring.
+    if settings.THREADS_ACCESS_TOKEN:
+        return {
+            "access_token": settings.THREADS_ACCESS_TOKEN,
+            "expires_at": 0,
+            "user_id": settings.THREADS_USER_ID,
+            "source": "env_fallback",
+        }
+    return {}
 
 
 def _save_stored_creds(creds: Dict[str, Any]) -> bool:
@@ -304,7 +316,8 @@ def get_active_threads_token() -> Optional[str]:
     token = creds.get("access_token")
     if not token:
         return None
-    if creds.get("expires_at", 0) < time.time() + 300:  # 5-minute safety buffer
+    expires_at = creds.get("expires_at") or 0
+    if expires_at and expires_at < time.time() + 300:  # 5-minute safety buffer (0 = never expires)
         return None
     return token
 
