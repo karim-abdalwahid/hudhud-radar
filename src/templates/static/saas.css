@@ -991,6 +991,10 @@ pre.report-box {
 }
 
 .dev-nav-section {
+    /* Default-hidden BEFORE the role resolves (pre-JS / JS-failure safe):
+       only body.mode-developer reveals it. Prevents the mixed client+dev
+       sidebar the owner reported. */
+    display: none;
     border-top: 1px dashed var(--border-default);
     margin-top: 12px;
     padding-top: 8px;
@@ -1019,6 +1023,11 @@ pre.report-box {
 }
 
 /* Visibility Rules based on active mode */
+.dev-only {
+    /* Default-hidden until the role resolves as developer (fail-safe default). */
+    display: none;
+}
+
 body.mode-client .dev-only,
 body.mode-client .dev-nav-section {
     display: none !important;

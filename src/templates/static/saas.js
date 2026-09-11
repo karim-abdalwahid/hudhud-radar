@@ -5,24 +5,24 @@ let lastMetaData = null;
 
 const hudhudRoleManager = {
     DEV_ROUTES: ['/settings', '/identity', '/analytics'],
+    _isAdmin: false,
+
+    isDevRoute() {
+        const currentPath = window.location.pathname;
+        return this.DEV_ROUTES.some(r => currentPath === r || currentPath.startsWith(r + '/'));
+    },
 
     getMode() {
-        // If current URL is a developer route, default to developer mode
-        const currentPath = window.location.pathname;
-        const isDevRoute = this.DEV_ROUTES.some(r => currentPath.startsWith(r));
         const saved = localStorage.getItem('hudhud_role_mode');
-        if (saved) return saved;
-        return isDevRoute ? 'developer' : 'client';
+        if (saved === 'client' || saved === 'developer') return saved;
+        return this.isDevRoute() ? 'developer' : 'client';
     },
 
     setMode(mode) {
         localStorage.setItem('hudhud_role_mode', mode);
         this.applyMode(mode);
 
-        const currentPath = window.location.pathname;
-        const isDevRoute = this.DEV_ROUTES.some(r => currentPath.startsWith(r));
-
-        if (mode === 'client' && isDevRoute) {
+        if (mode === 'client' && this.isDevRoute()) {
             window.location.href = '/dashboard';
         }
     },
@@ -58,8 +58,60 @@ const hudhudRoleManager = {
         }
     },
 
-    injectRoleSwitcher() {
+    async init() {
+        // 0. Safe pre-role default: client mode — developer UI stays hidden even
+        //    before the role resolves (CSS also defaults dev sections to hidden).
+        this.applyMode('client');
+
+        // 1. Resolve the REAL role from the server session — the UI must mirror
+        //    actual permissions, not a client-side toggle the user can flip.
+        try {
+            const res = await fetch('/auth/me');
+            const me = await res.json();
+            this._isAdmin = !!(me && me.authenticated && me.role === 'admin');
+        } catch (e) {
+            this._isAdmin = false;
+        }
+
         this.normalizeBrandLogo();
+
+        // 2. Non-admin users: no role switcher, no developer links at all.
+        //    The server 403s these pages for them anyway — showing them is noise.
+        if (!this._isAdmin) {
+            this.stripDevNav();
+            return;
+        }
+
+        // 3. Admin on a developer route while in client mode → enforce real
+        //    separation (mirrors setMode's redirect; no mixed-state pages).
+        const saved = localStorage.getItem('hudhud_role_mode');
+        let mode = this.getMode();
+        if (this.isDevRoute() && saved === 'client') {
+            window.location.href = '/dashboard';
+            return;
+        }
+        if (this.isDevRoute() && !saved) {
+            mode = 'developer';
+        }
+
+        this.applyMode(mode);
+        this.injectRoleSwitcher();
+        this.injectDevPageBanner();
+    },
+
+    stripDevNav() {
+        // Removes developer-only links (server returns 403 for non-admins).
+        const nav = document.querySelector('.sidebar-nav');
+        if (!nav) return;
+        nav.querySelectorAll('a.nav-item').forEach(a => {
+            const href = (a.getAttribute('href') || '').split('?')[0];
+            if (this.DEV_ROUTES.some(r => href === r || href.startsWith(r + '/'))) {
+                a.remove();
+            }
+        });
+    },
+
+    injectRoleSwitcher() {
         const sidebar = document.querySelector('.app-sidebar');
         if (!sidebar || document.querySelector('.role-mode-switcher')) return;
 
@@ -87,9 +139,6 @@ const hudhudRoleManager = {
 
         // NOTE (WS0.4): sidebar nav links are now rendered SERVER-SIDE from the
         // module registry — the old client-side Automations injection is gone.
-
-        // Add developer console banner if currently on a dev route
-        this.injectDevPageBanner();
     },
 
     organizeDevNav(sidebar, isAr) {

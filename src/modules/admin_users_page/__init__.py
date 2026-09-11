@@ -45,6 +45,15 @@ td{padding:10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
 .btn-primary{background:var(--primary);color:#fff;} .btn-ghost{background:var(--bg-subtle);color:var(--text-primary);}
 .btn-danger{background:#fee2e2;color:#dc2626;}
 input.search{width:280px;padding:9px 14px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-bottom:14px;}
+.chip{border:1px solid var(--border-default);background:var(--bg-card);color:var(--text-secondary);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+th.sortable{cursor:pointer;user-select:none;} th.sortable:hover{color:var(--primary);}
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:200;}
+.modal{background:var(--bg-card);border-radius:16px;padding:24px;width:min(420px,92vw);box-shadow:0 24px 64px rgba(15,23,42,.25);}
+.modal h4{font-size:15px;margin-bottom:8px;} .modal p{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;}
+.modal input{width:100%;padding:10px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:14px;margin-bottom:6px;}
+.modal .err{color:#dc2626;font-size:12px;min-height:16px;margin-bottom:8px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
 .ai-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
 .traffic-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px;}
 @media(max-width:900px){.app-sidebar{display:none;}}
@@ -78,13 +87,35 @@ input.search{width:280px;padding:9px 14px;border:1px solid var(--border-default)
 
         <div class="panel">
             <h3>Users Management</h3>
-            <input class="search" id="searchBox" placeholder="Search by email or name…" oninput="loadUsers(this.value)">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+                <input class="search" id="searchBox" placeholder="Search by email or name…" style="margin-bottom:0;" oninput="usersView.apply()">
+                <div id="role-chips" style="display:flex;gap:6px;">
+                    <button class="chip active" data-role="all" onclick="usersView.setRole('all')">All</button>
+                    <button class="chip" data-role="admin" onclick="usersView.setRole('admin')">Admins</button>
+                    <button class="chip" data-role="user" onclick="usersView.setRole('user')">Users</button>
+                </div>
+                <select id="status-filter" onchange="usersView.apply()" style="padding:8px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;">
+                    <option value="all">Any status</option>
+                    <option value="active">Active only</option>
+                    <option value="disabled">Disabled only</option>
+                </select>
+            </div>
             <div style="overflow-x:auto;">
             <table>
-                <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Plan</th><th>AI Credits</th><th>Leads</th><th>Joined</th><th>Actions</th></tr></thead>
+                <thead><tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Plan</th>
+                    <th class="sortable" onclick="usersView.setSort('ai_credits')">AI Credits <span id="sort-ai_credits"></span></th>
+                    <th class="sortable" onclick="usersView.setSort('leads_count')">Leads <span id="sort-leads_count"></span></th>
+                    <th class="sortable" onclick="usersView.setSort('created_at')">Joined <span id="sort-created_at"></span></th>
+                    <th>Actions</th>
+                </tr></thead>
                 <tbody id="users-body"><tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">Loading…</td></tr></tbody>
             </table>
             </div>
+            <div id="pager" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:12.5px;color:var(--text-secondary);"></div>
         </div>
 
         <div class="panel">
@@ -132,62 +163,191 @@ async function loadOverview() {
     } catch (e) { console.error(e); }
 }
 
-async function loadUsers(search = '') {
-    try {
-        const r = await fetch('/api/admin/users?search=' + encodeURIComponent(search));
-        const d = await r.json();
+// ------------------------------------------------------------------
+// Users view: load once, then filter/sort/paginate client-side.
+// Replaces per-keystroke API calls + native prompt()/confirm() dialogs.
+// ------------------------------------------------------------------
+const usersView = {
+    all: [],
+    role: 'all',
+    sortKey: 'created_at',
+    sortDir: -1,          // -1 = newest/highest first
+    page: 1,
+    pageSize: 10,
+
+    async load() {
         const body = document.getElementById('users-body');
-        if (!d.users || !d.users.length) { body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">No users found</td></tr>'; return; }
-        body.innerHTML = d.users.map(u => `
-            <tr>
-                <td><strong>${escapeHtml(u.email)}</strong><br><span style="color:var(--text-muted);font-size:11.5px;">${escapeHtml(u.full_name || '')}</span></td>
-                <td>${u.role === 'admin' ? '<span class="badge badge-plan">ADMIN</span>' : 'user'}</td>
-                <td><span class="badge ${u.is_active ? 'badge-ok' : 'badge-off'}">${u.is_active ? 'Active' : 'Disabled'}</span></td>
-                <td><span class="badge badge-plan">${escapeHtml(u.plan || 'free')}</span></td>
-                <td id="credits-${u.id}">${u.ai_credits}</td>
-                <td>${u.leads_count}</td>
-                <td style="font-size:11.5px;color:var(--text-muted);">${String(u.created_at || '').slice(0, 10)}</td>
-                <td>
-                    <button class="btn btn-ghost" onclick="grantCredits('${u.id}')">+ Credits</button>
-                    <button class="btn btn-ghost" onclick="cyclePlan('${u.id}', '${u.plan || 'free'}')">Plan ▸</button>
-                    ${u.role !== 'admin' ? `<button class="btn ${u.is_active ? 'btn-danger' : 'btn-primary'}" onclick="toggleActive('${u.id}', ${u.is_active})">${u.is_active ? 'Disable' : 'Enable'}</button>` : ''}
-                </td>
-            </tr>`).join('');
-    } catch (e) { console.error(e); }
+        try {
+            const r = await fetch('/api/admin/users?search=');
+            const d = await r.json();
+            this.all = d.users || [];
+            this.page = 1;
+            this.render();
+        } catch (e) {
+            body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#dc2626;padding:24px;">Failed to load users</td></tr>';
+        }
+    },
+
+    setRole(role) {
+        this.role = role;
+        document.querySelectorAll('#role-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.role === role));
+        this.page = 1;
+        this.render();
+    },
+
+    setSort(key) {
+        if (this.sortKey === key) { this.sortDir = -this.sortDir; }
+        else { this.sortKey = key; this.sortDir = -1; }
+        document.querySelectorAll('th.sortable span').forEach(s => s.textContent = '');
+        const arrow = document.getElementById('sort-' + key);
+        if (arrow) arrow.textContent = this.sortDir === -1 ? '▾' : '▴';
+        this.render();
+    },
+
+    filtered() {
+        const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
+        const status = document.getElementById('status-filter').value;
+        return this.all.filter(u => {
+            if (this.role !== 'all' && u.role !== this.role) return false;
+            if (status === 'active' && !u.is_active) return false;
+            if (status === 'disabled' && u.is_active) return false;
+            if (q && !((u.email || '') + ' ' + (u.full_name || '')).toLowerCase().includes(q)) return false;
+            return true;
+        }).sort((a, b) => {
+            const va = a[this.sortKey] ?? '';
+            const vb = b[this.sortKey] ?? '';
+            if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * -this.sortDir;
+            return String(va).localeCompare(String(vb)) * -this.sortDir;
+        });
+    },
+
+    render() {
+        const rows = this.filtered();
+        const body = document.getElementById('users-body');
+        const pages = Math.max(1, Math.ceil(rows.length / this.pageSize));
+        if (this.page > pages) this.page = pages;
+
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">No users match the filters</td></tr>';
+        } else {
+            const slice = rows.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
+            body.innerHTML = slice.map(u => `
+                <tr>
+                    <td><strong>${escapeHtml(u.email)}</strong><br><span style="color:var(--text-muted);font-size:11.5px;">${escapeHtml(u.full_name || '')}</span></td>
+                    <td>${u.role === 'admin' ? '<span class="badge badge-plan">ADMIN</span>' : 'user'}</td>
+                    <td><span class="badge ${u.is_active ? 'badge-ok' : 'badge-off'}">${u.is_active ? 'Active' : 'Disabled'}</span></td>
+                    <td><span class="badge badge-plan">${escapeHtml(u.plan || 'free')}</span></td>
+                    <td id="credits-${u.id}">${u.ai_credits}</td>
+                    <td>${u.leads_count}</td>
+                    <td style="font-size:11.5px;color:var(--text-muted);">${String(u.created_at || '').slice(0, 10)}</td>
+                    <td>
+                        <button class="btn btn-ghost" onclick="openCreditsModal('${u.id}')">+ Credits</button>
+                        <button class="btn btn-ghost" onclick="cyclePlan('${u.id}', '${u.plan || 'free'}')">Plan ▸</button>
+                        ${u.role !== 'admin' ? `<button class="btn ${u.is_active ? 'btn-danger' : 'btn-primary'}" onclick="toggleActive('${u.id}', ${u.is_active})">${u.is_active ? 'Disable' : 'Enable'}</button>` : ''}
+                    </td>
+                </tr>`).join('');
+        }
+
+        const pager = document.getElementById('pager');
+        pager.innerHTML = `
+            <span>${rows.length} user(s) · page ${this.page}/${pages}</span>
+            <button class="btn btn-ghost" ${this.page <= 1 ? 'disabled' : ''} onclick="usersView.goto(${this.page - 1})">‹ Prev</button>
+            <button class="btn btn-ghost" ${this.page >= pages ? 'disabled' : ''} onclick="usersView.goto(${this.page + 1})">Next ›</button>`;
+    },
+
+    goto(p) { this.page = p; this.render(); },
+
+    refresh() { this.load(); }
+};
+
+function loadUsers(search = '') { usersView.load(); }
+
+// ------------------------------------------------------------------
+// Proper modals (replace native prompt()/confirm())
+// ------------------------------------------------------------------
+function openModal(title, bodyHtml, confirmLabel, onConfirm) {
+    let back = document.getElementById('app-modal');
+    if (!back) {
+        back = document.createElement('div');
+        back.id = 'app-modal';
+        back.className = 'modal-backdrop';
+        document.body.appendChild(back);
+    }
+    back.innerHTML = `
+        <div class="modal">
+            <h4>${escapeHtml(title)}</h4>
+            ${bodyHtml}
+            <div class="err" id="modal-err"></div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modal-confirm">${escapeHtml(confirmLabel)}</button>
+            </div>
+        </div>`;
+    back.style.display = 'flex';
+    back.onclick = (e) => { if (e.target === back) closeModal(); };
+    document.getElementById('modal-confirm').onclick = async () => {
+        const err = await onConfirm();
+        if (err) document.getElementById('modal-err').textContent = err;
+        else closeModal();
+    };
 }
 
-async function grantCredits(userId) {
-    const amount = prompt('Grant AI credits (amount):', '100');
-    if (!amount) return;
-    const r = await fetch(`/api/admin/users/${userId}/credits`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ amount: parseInt(amount, 10) || 0 })
-    });
-    const d = await r.json();
-    if (d.status === 'success') { document.getElementById('credits-' + userId).textContent = d.ai_credits; }
-    else alert(d.detail || 'Failed');
+function closeModal() {
+    const back = document.getElementById('app-modal');
+    if (back) back.style.display = 'none';
+}
+
+function openCreditsModal(userId) {
+    openModal('Grant AI Credits', `
+        <p>Enter the number of AI credits to grant this user.</p>
+        <input id="credits-amount" type="number" min="1" step="1" value="100">`,
+        'Grant', async () => {
+            const amount = parseInt(document.getElementById('credits-amount').value, 10);
+            if (!amount || amount <= 0) return 'Enter a positive whole number.';
+            const r = await fetch(`/api/admin/users/${userId}/credits`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ amount })
+            });
+            const d = await r.json();
+            if (d.status === 'success') {
+                const cell = document.getElementById('credits-' + userId);
+                if (cell) cell.textContent = d.ai_credits;
+                return null;
+            }
+            return d.detail || 'Failed to grant credits.';
+        });
 }
 
 const PLAN_CYCLE = { 'free': 'starter', 'starter': 'growth', 'growth': 'scale', 'scale': 'free' };
 async function cyclePlan(userId, current) {
     const next = PLAN_CYCLE[current] || 'free';
-    if (!confirm(`Set plan to "${next}"?`)) return;
-    const r = await fetch(`/api/admin/users/${userId}/plan`, {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ plan: next })
+    openModal('Change Plan', `<p>Set this user's plan to <strong>"${escapeHtml(next)}"</strong>?`, 'Change Plan', async () => {
+        const r = await fetch(`/api/admin/users/${userId}/plan`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ plan: next })
+        });
+        if (r.ok) { usersView.load(); return null; }
+        const d = await r.json().catch(() => ({}));
+        return d.detail || 'Failed to set plan';
     });
-    if (r.ok) loadUsers(document.getElementById('searchBox').value);
-    else alert('Failed to set plan');
 }
 
 async function toggleActive(userId, currentActive) {
-    if (!confirm(currentActive ? 'Disable this user? They will not be able to sign in.' : 'Enable this user?')) return;
-    const r = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PATCH', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ is_active: !currentActive })
-    });
-    if (r.ok) loadUsers(document.getElementById('searchBox').value);
-    else { const d = await r.json(); alert(d.detail || 'Failed'); }
+    openModal(
+        currentActive ? 'Disable User' : 'Enable User',
+        currentActive
+            ? '<p>This user will <strong>not be able to sign in</strong> until re-enabled. Continue?</p>'
+            : '<p>Re-enable sign-in for this user?</p>',
+        currentActive ? 'Disable' : 'Enable',
+        async () => {
+            const r = await fetch(`/api/admin/users/${userId}`, {
+                method: 'PATCH', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ is_active: !currentActive })
+            });
+            if (r.ok) { usersView.load(); return null; }
+            const d = await r.json().catch(() => ({}));
+            return d.detail || 'Failed';
+        });
 }
 
 async function loadTraffic() {
