@@ -578,20 +578,24 @@ class AutomationsService:
 
         platform_str = platform.value if hasattr(platform, "value") else str(platform).lower()
 
-        # Human Takeover guard: if the commenting customer has an active
-        # takeover, the human owns the conversation — automations must stay
-        # silent (same policy as the orchestrator's AI-reply guard).
+        # Human Takeover / AI Pause guards: the human owns the conversation —
+        # automations must stay silent. (Takeover = per-conversation; AI pause
+        # = the owner's global switch, Wave 9.8.)
         try:
             sender_id = event.get("sender_id")
             if sender_id:
                 id_field = "instagram_account_id" if platform_str == "instagram" else "facebook_account_id"
                 matches_lead = supabase_db.select("leads", {id_field: sender_id}) or []
-                if matches_lead and matches_lead[0].get("human_takeover"):
+                lead_row = matches_lead[0] if matches_lead else None
+                from src.ai.pause import is_ai_paused
+                if lead_row and (lead_row.get("human_takeover")
+                                 or is_ai_paused(lead_row.get("user_id"))):
                     logger.info(
-                        f"Automation skipped for commenter {sender_id}: Human Takeover active.")
+                        f"Automation skipped for commenter {sender_id}: "
+                        f"{'Human Takeover' if lead_row.get('human_takeover') else 'AI paused'}.")
                     return None
         except Exception as e:
-            logger.warning(f"Takeover check skipped (non-blocking): {e}")
+            logger.warning(f"Takeover/pause check skipped (non-blocking): {e}")
 
         # Policy guard: outbound API bursts must respect the shared rate limiter
         from src.meta_api.rate_limiter import rate_limiter

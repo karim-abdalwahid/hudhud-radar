@@ -88,6 +88,24 @@ class AgentOrchestrator:
         )
         self.lead_svc.add_message(inbound_msg)
 
+        # 4b. Global AI pause (Wave 9.8): the user manages personally — the
+        # inbound message is STILL stored (human replies from the inbox),
+        # but the AI never generates a reply anywhere.
+        try:
+            from src.ai.pause import is_ai_paused
+            if is_ai_paused(lead_record.get("user_id")):
+                logger.info(f"AI paused for lead {lead_id} owner — inbound stored, no auto-reply.")
+                return {
+                    "lead_id": lead_id,
+                    "is_new_lead": is_new,
+                    "queue_id": queue_id,
+                    "reply_sent": None,
+                    "is_converted": False,
+                    "ai_paused": True,
+                }
+        except Exception as e:
+            logger.warning(f"AI pause check skipped (non-blocking): {e}")
+
         # 5. Check for contact details extracted directly from message text
         contact_info = self.engine.extract_contact_info(text)
         updates = {}

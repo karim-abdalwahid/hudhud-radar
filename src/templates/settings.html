@@ -326,6 +326,21 @@
                 </div><!-- /set-tab-page-webhooks -->
 
                 <div id="set-tab-page-security" style="display:none">
+                    <!-- AI Master Switch (Wave 9.8 — owner request) -->
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title">🤖 <span data-i18n="set.ai_pause_title">إيقاف الردود الآلية — AI Master Switch</span></h3>
+                                <div class="panel-desc" data-i18n="set.ai_pause_desc">أوقف الذكاء الاصطناعي على مستوى كل المحادثات والتعليقات لتدير صفحاتك بنفسك — الرسايل الجديدة هتستمر في الظهور في صندوق الوارد وهترد عليها يدوياً. Human Takeover لكل محادثة يفضل شغال بشكل مستقل / Pause the AI across ALL conversations and comment automations to manage your pages personally — new messages still appear in your inbox for manual replies. Per-conversation Human Takeover stays independent.</div>
+                            </div>
+                            <span class="badge" id="ai-pause-badge" style="font-size: 12px; padding: 4px 12px;">...</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                            <button type="button" id="btn-ai-pause" class="btn-primary" onclick="toggleAiPause()" style="padding: 11px 20px; font-size: 13.5px; font-weight: 700; cursor: pointer; border: none; border-radius: 8px;">...</button>
+                            <span id="ai-pause-status" style="font-size: 12.5px; color: var(--text-muted);"></span>
+                        </div>
+                    </div>
+
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
@@ -377,7 +392,59 @@
             });
         }
 
+        // ==================== AI Master Switch (Wave 9.8) ====================
+        async function loadAiPause() {
+            try {
+                const r = await fetch('/api/ai/pause');
+                const d = await r.json();
+                renderAiPause(d);
+            } catch (e) { console.warn('AI pause load failed:', e); }
+        }
+
+        function renderAiPause(d) {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const paused = !!d.effective_paused;
+            const badge = document.getElementById('ai-pause-badge');
+            const btn = document.getElementById('btn-ai-pause');
+            const status = document.getElementById('ai-pause-status');
+            if (!badge || !btn) return;
+            badge.textContent = paused
+                ? (isAr ? '⏸️ الردود الآلية موقوفة' : '⏸️ AI Paused')
+                : (isAr ? '✅ الردود الآلية نشطة' : '✅ AI Active');
+            badge.style.background = paused ? '#fef2f2' : '#ecfdf5';
+            badge.style.color = paused ? '#dc2626' : '#059669';
+            btn.textContent = paused
+                ? (isAr ? '▶️ إعادة تشغيل الردود الآلية' : '▶️ Resume AI Replies')
+                : (isAr ? '⏸️ إيقاف الردود الآلية' : '⏸️ Pause AI Replies');
+            btn.style.background = paused ? '#059669' : '#dc2626';
+            btn.style.color = '#ffffff';
+            const scope = (d.global_paused && d.user_paused) ? (isAr ? 'شامل + حسابك' : 'global + your account')
+                : d.global_paused ? (isAr ? 'شامل (النظام)' : 'global (system)')
+                : d.user_paused ? (isAr ? 'حسابك' : 'your account') : '';
+            status.textContent = paused && scope ? (isAr ? `النطاق: ${scope}` : `Scope: ${scope}`) : '';
+        }
+
+        async function toggleAiPause() {
+            const btn = document.getElementById('btn-ai-pause');
+            const status = document.getElementById('ai-pause-status');
+            btn.disabled = true;
+            try {
+                const cur = await (await fetch('/api/ai/pause')).json();
+                const r = await fetch('/api/ai/pause', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({paused: !cur.effective_paused})
+                });
+                const d = await r.json();
+                if (r.ok && d.status === 'success') renderAiPause(d);
+                else status.textContent = (d.detail || 'Failed');
+            } catch (e) {
+                status.textContent = 'Failed: ' + e;
+            } finally { btn.disabled = false; }
+        }
+
         // ==================== Change password (Phase 9.9 — account security) ====================
+
         async function changeMyPassword() {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
             const status = document.getElementById('sec-status');
@@ -957,6 +1024,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            loadAiPause();
             loadSettingsStatus();
             checkUrlHashForToken();
             loadThreadsStatus();
