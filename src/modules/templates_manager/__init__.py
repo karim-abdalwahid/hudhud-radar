@@ -146,56 +146,67 @@ def register(app: FastAPI) -> None:
         return render_module_page(html, request)
 
 
-_ADMIN_TEMPLATES_HTML = """<!DOCTYPE html>
+_ADMIN_TEMPLATES_HTML = r"""<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin — Message Templates</title>
 <link rel="icon" href="/static/favicon.ico" sizes="any">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/saas.css">
 <style>
-:root{--bg-page:#f8fafc;--bg-card:#fff;--border-default:#e2e8f0;--text-primary:#0f172a;
---text-secondary:#475569;--text-muted:#94a3b8;--primary:#2563eb;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Plus Jakarta Sans','Tajawal',sans-serif;background:var(--bg-page);color:var(--text-primary);}
-.layout{display:flex;min-height:100vh;}
-.app-sidebar{width:230px;background:#0f172a;color:#f8fafc;padding:20px 14px;flex-shrink:0;}
-.brand-logo-text{font-size:22px;font-weight:800;}.brand-dot{color:#2563eb;}
-.brand-sub{font-size:11px;color:#94a3b8;margin-top:4px;}
-.app-main{flex:1;padding:24px 32px;overflow-y:auto;}
-.topbar-title{font-size:22px;font-weight:800;margin-bottom:4px;}
-.topbar-desc{font-size:13px;color:#64748b;margin-bottom:20px;}
+/* Page-only styles — shared chrome comes from saas.css (same as every page). */
 .tpl-card{background:var(--bg-card);border:1px solid var(--border-default);border-radius:14px;padding:18px;margin-bottom:14px;}
 .tpl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap;}
-.tpl-key{font-family:monospace;font-size:12.5px;color:var(--primary);font-weight:700;}
+.tpl-key{font-family:monospace;font-size:12.5px;color:var(--accent-blue);font-weight:700;}
 label{display:block;font-size:11.5px;color:var(--text-muted);font-weight:700;margin:8px 0 4px;text-transform:uppercase;}
-input.subject, textarea.body {width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:9px;font-family:inherit;font-size:13px;}
+input.subject, textarea.body {width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:9px;font-family:inherit;font-size:13px;background:var(--bg-card);color:var(--text-primary);}
 textarea.body{min-height:74px;resize:vertical;line-height:1.6;}
-.btn{border:none;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;margin:2px;}
-.btn-primary{background:var(--primary);color:#fff;} .btn-ghost{background:#f1f5f9;color:var(--text-primary);}
-.btn-warn{background:#fef3c7;color:#b45309;}
 .toggle{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;display:inline-block;}
 .on{background:#ecfdf5;color:#059669;} .off{background:#fef2f2;color:#dc2626;}
-.preview{background:#f8fafc;border:1px dashed var(--border-default);border-radius:9px;padding:10px 12px;font-size:12.5px;color:var(--text-secondary);margin-top:8px;white-space:pre-wrap;}
-.hint{font-size:11px;color:var(--text-muted);margin-top:4px;}
-@media(max-width:900px){.app-sidebar{display:none;}}
+.preview{background:var(--bg-subtle);border:1px dashed var(--border-default);border-radius:9px;padding:10px 12px;font-size:12.5px;color:var(--text-secondary);margin-top:8px;white-space:pre-wrap;}
 </style>
 </head>
 <body>
-<div class="layout">
+<div class="app-layout">
     <aside class="app-sidebar">
-        <div style="margin-bottom:18px;">
-            <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
-            <div class="brand-sub">Templates Manager</div>
+        <div class="sidebar-header">
+            <a href="/dashboard" class="brand-logo-link">
+                <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+            </a>
+            <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
         </div>
         <nav class="sidebar-nav"></nav>
+        <div class="sidebar-footer">
+            <div id="meta-status-container" class="status-pill">
+                <div id="meta-dot" class="status-dot"></div>
+                <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+            </div>
+        </div>
     </aside>
     <main class="app-main">
-        <div class="topbar-title">Message Templates</div>
-        <div class="topbar-desc">Edit the automatic messages your platform sends (signup, trials, plans, credits, new leads). Placeholders fill automatically at send time.</div>
-        <div id="tpl-list"><div style="color:var(--text-muted);">Loading…</div></div>
+        <header class="app-topbar">
+            <div class="topbar-breadcrumb">
+                <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                <span class="crumb-sep">/</span>
+                <span class="crumb-current">Message Templates</span>
+            </div>
+            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
+                <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                    <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                </button>
+            </div>
+        </header>
+        <div class="app-content">
+            <div class="panel-section" style="margin-bottom:14px;">
+                <div class="panel-header"><div>
+                    <h3 class="panel-title">Automatic Message Templates</h3>
+                    <div class="panel-desc">Edit the automatic messages your platform sends (signup, trials, plans, credits, new leads). Placeholders fill automatically at send time.</div>
+                </div></div>
+            </div>
+            <div id="tpl-list"><div style="color:var(--text-muted);">Loading…</div></div>
+        </div>
     </main>
 </div>
 <script src="/static/i18n.js"></script>

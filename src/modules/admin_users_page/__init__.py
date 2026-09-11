@@ -15,134 +15,121 @@ _ADMIN_USERS_HTML = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin — Users & Console</title>
 <link rel="icon" href="/static/favicon.ico" sizes="any">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/saas.css">
 <style>
-:root{--bg-page:#f8fafc;--bg-card:#ffffff;--bg-subtle:#f1f5f9;--border-default:#e2e8f0;
---text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;--primary:#2563eb;}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Plus Jakarta Sans','Tajawal',sans-serif;background:var(--bg-page);color:var(--text-primary);}
-.layout{display:flex;min-height:100vh;}
-.app-sidebar{width:230px;background:#0f172a;color:#f8fafc;padding:20px 14px;display:flex;flex-direction:column;flex-shrink:0;}
-.sidebar-header{margin-bottom:18px;}
-.brand-logo-text{font-size:22px;font-weight:800;}.brand-dot{color:#2563eb;}
-.brand-sub{font-size:11px;color:#94a3b8;margin-top:4px;}
-.app-main{flex:1;padding:24px 32px;overflow-y:auto;}
-.topbar-title{font-size:22px;font-weight:800;margin-bottom:4px;}
-.topbar-desc{font-size:13px;color:#64748b;margin-bottom:22px;}
-.metrics-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px;}
-.metric-card{background:var(--bg-card);border:1px solid var(--border-default);border-radius:14px;padding:16px;}
-.metric-label{font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
-.metric-val{font-size:26px;font-weight:800;margin-top:4px;}
-.panel{background:var(--bg-card);border:1px solid var(--border-default);border-radius:16px;padding:20px;margin-bottom:20px;}
-.panel h3{font-size:15px;margin-bottom:12px;}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{text-align:start;color:var(--text-muted);font-size:11px;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border-default);}
-td{padding:10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
-.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;}
-.badge-ok{background:#ecfdf5;color:#059669;} .badge-off{background:#fef2f2;color:#dc2626;}
-.badge-plan{background:#eff6ff;color:#1d4ed8;}
-.btn{border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin:2px;}
-.btn-primary{background:var(--primary);color:#fff;} .btn-ghost{background:var(--bg-subtle);color:var(--text-primary);}
-.btn-danger{background:#fee2e2;color:#dc2626;}
-input.search{width:280px;padding:9px 14px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-bottom:14px;}
-.chip{border:1px solid var(--border-default);background:var(--bg-card);color:var(--text-secondary);border-radius:99px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
-.chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-th.sortable{cursor:pointer;user-select:none;} th.sortable:hover{color:var(--primary);}
-.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:200;}
-.modal{background:var(--bg-card);border-radius:16px;padding:24px;width:min(420px,92vw);box-shadow:0 24px 64px rgba(15,23,42,.25);}
-.modal h4{font-size:15px;margin-bottom:8px;} .modal p{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;}
-.modal input{width:100%;padding:10px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:14px;margin-bottom:6px;}
-.modal .err{color:#dc2626;font-size:12px;min-height:16px;margin-bottom:8px;}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
-.ai-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
-.traffic-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px;}
-@media(max-width:900px){.app-sidebar{display:none;}}
+/* Page-only styles — the shared chrome (layout/sidebar/topbar/panels/badges/
+   buttons/chips/modal) comes from saas.css, same as every other page. */
+.search{width:280px;padding:9px 14px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;}
+td .btn{white-space:nowrap;}
 </style>
 </head>
 <body>
-<div class="layout">
+<div class="app-layout">
     <aside class="app-sidebar">
         <div class="sidebar-header">
-            <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
-            <div class="brand-sub">Owner Console</div>
+            <a href="/dashboard" class="brand-logo-link">
+                <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
+            </a>
+            <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
         </div>
         <nav class="sidebar-nav"></nav>
+        <div class="sidebar-footer">
+            <div id="meta-status-container" class="status-pill">
+                <div id="meta-dot" class="status-dot"></div>
+                <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
+            </div>
+        </div>
     </aside>
     <main class="app-main">
-        <div class="topbar-title">Admin Console — Users & Site</div>
-        <div class="topbar-desc">Manage accounts, plans, AI credits, traffic and AI usage</div>
-
-        <div class="metrics-strip" id="kpi-strip">
-            <div class="metric-card"><div class="metric-label">Total Users</div><div class="metric-val" id="kpi-users">—</div></div>
-            <div class="metric-card"><div class="metric-label">Signups (7d)</div><div class="metric-val" id="kpi-signups">—</div></div>
-            <div class="metric-card"><div class="metric-label">Page Views (7d)</div><div class="metric-val" id="kpi-views">—</div></div>
-            <div class="metric-card"><div class="metric-label">Leads</div><div class="metric-val" id="kpi-leads">—</div></div>
-            <div class="metric-card"><div class="metric-label">AI Calls</div><div class="metric-val" id="kpi-ai">—</div></div>
-        </div>
-
-        <div class="panel">
-            <h3>Plans Distribution</h3>
-            <div id="plans-dist" style="font-size:13px;color:var(--text-secondary);">—</div>
-        </div>
-
-        <div class="panel">
-            <h3>Users Management</h3>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
-                <input class="search" id="searchBox" placeholder="Search by email or name…" style="margin-bottom:0;" oninput="usersView.apply()">
-                <div id="role-chips" style="display:flex;gap:6px;">
-                    <button class="chip active" data-role="all" onclick="usersView.setRole('all')">All</button>
-                    <button class="chip" data-role="admin" onclick="usersView.setRole('admin')">Admins</button>
-                    <button class="chip" data-role="user" onclick="usersView.setRole('user')">Users</button>
-                </div>
-                <select id="status-filter" onchange="usersView.apply()" style="padding:8px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;">
-                    <option value="all">Any status</option>
-                    <option value="active">Active only</option>
-                    <option value="disabled">Disabled only</option>
-                </select>
+        <header class="app-topbar">
+            <div class="topbar-breadcrumb">
+                <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
+                <span class="crumb-sep">/</span>
+                <span class="crumb-current">Admin Console — Users & Site</span>
             </div>
-            <div style="overflow-x:auto;">
-            <table>
-                <thead><tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Plan</th>
-                    <th class="sortable" onclick="usersView.setSort('ai_credits')">AI Credits <span id="sort-ai_credits"></span></th>
-                    <th class="sortable" onclick="usersView.setSort('leads_count')">Leads <span id="sort-leads_count"></span></th>
-                    <th class="sortable" onclick="usersView.setSort('created_at')">Joined <span id="sort-created_at"></span></th>
-                    <th>Actions</th>
-                </tr></thead>
-                <tbody id="users-body"><tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">Loading…</td></tr></tbody>
-            </table>
+            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
+                <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                    <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                </button>
             </div>
-            <div id="pager" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:12.5px;color:var(--text-secondary);"></div>
-        </div>
+        </header>
 
-        <div class="panel">
-            <h3>Traffic — Top Paths (internal log)</h3>
-            <div id="traffic-box"><div style="color:var(--text-muted);font-size:13px;">Loading…</div></div>
-        </div>
-
-        <div class="panel">
-            <h3>Product Analytics (PostHog) — toggle-gated</h3>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;">
-                    <input type="checkbox" id="ph-enabled"> Enabled
-                </label>
-                <span style="font-size:11.5px;color:var(--text-muted);">Disabled = zero tracking (privacy-safe default)</span>
+        <div class="app-content">
+            <div class="metrics-strip" id="kpi-strip">
+                <div class="metric-card"><div class="metric-label">Total Users</div><div class="metric-val" id="kpi-users">—</div></div>
+                <div class="metric-card"><div class="metric-label">Signups (7d)</div><div class="metric-val" id="kpi-signups">—</div></div>
+                <div class="metric-card"><div class="metric-label">Page Views (7d)</div><div class="metric-val" id="kpi-views">—</div></div>
+                <div class="metric-card"><div class="metric-label">Leads</div><div class="metric-val" id="kpi-leads">—</div></div>
+                <div class="metric-card"><div class="metric-label">AI Calls</div><div class="metric-val" id="kpi-ai">—</div></div>
             </div>
-            <div style="display:grid;gap:10px;max-width:560px;">
-                <div>
-                    <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Project API Key</label>
-                    <input id="ph-key" placeholder="phc_..." style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
+
+            <div class="panel-section">
+                <div class="panel-header"><div><h3 class="panel-title">Plans Distribution</h3>
+                <div class="panel-desc">Subscriptions across the workspace</div></div></div>
+                <div id="plans-dist" style="font-size:13px;color:var(--text-secondary);">—</div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-header"><div><h3 class="panel-title">Users Management</h3>
+                <div class="panel-desc">Accounts, roles, plans, credits and access</div></div></div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+                    <input class="search" id="searchBox" placeholder="Search by email or name…" oninput="usersView.apply()">
+                    <div id="role-chips" style="display:flex;gap:6px;">
+                        <button type="button" class="chip active" data-role="all" onclick="usersView.setRole('all')">All</button>
+                        <button type="button" class="chip" data-role="admin" onclick="usersView.setRole('admin')">Admins</button>
+                        <button type="button" class="chip" data-role="user" onclick="usersView.setRole('user')">Users</button>
+                    </div>
+                    <select id="status-filter" onchange="usersView.apply()" style="padding:8px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;">
+                        <option value="all">Any status</option>
+                        <option value="active">Active only</option>
+                        <option value="disabled">Disabled only</option>
+                    </select>
                 </div>
-                <div>
-                    <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Host (EU: https://eu.i.posthog.com)</label>
-                    <input id="ph-host" value="https://eu.i.posthog.com" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
+                <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Plan</th>
+                        <th class="sortable" onclick="usersView.setSort('ai_credits')">AI Credits <span id="sort-ai_credits"></span></th>
+                        <th class="sortable" onclick="usersView.setSort('leads_count')">Leads <span id="sort-leads_count"></span></th>
+                        <th class="sortable" onclick="usersView.setSort('created_at')">Joined <span id="sort-created_at"></span></th>
+                        <th>Actions</th>
+                    </tr></thead>
+                    <tbody id="users-body"><tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">Loading…</td></tr></tbody>
+                </table>
                 </div>
-                <div><button class="btn btn-primary" style="padding:9px 18px;" onclick="saveAnalytics()">💾 Save analytics config</button>
-                <span id="ph-status" style="font-size:12.5px;margin-inline-start:10px;"></span></div>
+                <div id="pager" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:12.5px;color:var(--text-secondary);"></div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-header"><div><h3 class="panel-title">Traffic — Top Paths</h3>
+                <div class="panel-desc">Internal dashboard traffic log (7 days)</div></div></div>
+                <div id="traffic-box"><div style="color:var(--text-muted);font-size:13px;">Loading…</div></div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-header"><div><h3 class="panel-title">Product Analytics (PostHog)</h3>
+                <div class="panel-desc">Toggle-gated — disabled means zero tracking (privacy-safe default)</div></div></div>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;">
+                        <input type="checkbox" id="ph-enabled"> Enabled
+                    </label>
+                </div>
+                <div style="display:grid;gap:10px;max-width:560px;">
+                    <div>
+                        <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Project API Key</label>
+                        <input id="ph-key" placeholder="phc_..." style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
+                    </div>
+                    <div>
+                        <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Host (EU: https://eu.i.posthog.com)</label>
+                        <input id="ph-host" value="https://eu.i.posthog.com" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
+                    </div>
+                    <div><button class="btn-primary" style="padding:9px 18px;" onclick="saveAnalytics()">💾 Save analytics config</button>
+                    <span id="ph-status" style="font-size:12.5px;margin-inline-start:10px;"></span></div>
+                </div>
             </div>
         </div>
     </main>

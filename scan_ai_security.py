@@ -1,0 +1,10 @@
+import re, sys
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+src = open("src/modules/ai/routes.py", encoding="utf-8").read()
+print(re.findall(r'@router\.(?:get|post|put)\("([^"]+)"', src))
+m = re.search(r"router = APIRouter\(([^)]*)\)", src)
+print("router:", m.group(1) if m else "?")
+src2 = open("src/templates/settings.html", encoding="utf-8").read()
+i = src2.find('id="set-tab-page-security"')
+print("---security tab section (head)---")
+print(src2[i:i+900])
