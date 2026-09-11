@@ -306,11 +306,20 @@ def register_router(app: FastAPI) -> None:
         session = verify_session_token(token) if token else None
         if not session:
             return {"authenticated": False}
+        # public_profile identity (Wave 9.8): name for the sidebar chip
+        full_name = None
+        try:
+            u = user_store.get_by_id(session.get("sub"))
+            if u:
+                full_name = u.get("full_name")
+        except Exception:
+            pass
         return {
             "authenticated": True,
             "user_id": session.get("sub"),
             "email": session.get("email"),
             "role": session.get("role"),
+            "full_name": full_name,
         }
 
 

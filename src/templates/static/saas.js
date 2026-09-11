@@ -243,12 +243,15 @@ async function injectSessionUser() {
         if (existing) return;
 
         const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+        const displayName = me.full_name || me.email || '';
+        const initial = (me.full_name || me.email || '?').trim()[0].toUpperCase();
         const chip = document.createElement('div');
         chip.id = 'hudhud-user-chip';
         chip.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 12px;margin-top:8px;border-top:1px solid var(--border-default);';
         chip.innerHTML = `
+            <div class="hudhud-avatar" title="${escapeHtml(displayName)}" style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:var(--accent-blue,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">${escapeHtml(initial)}</div>
             <div style="min-width:0;flex:1;">
-                <div style="font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(me.email || '')}</div>
+                <div style="font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(displayName)}</div>
                 <div style="font-size:10.5px;color:var(--text-muted);">${me.role === 'admin' ? (isAr ? 'مدير النظام' : 'Administrator') : (isAr ? 'مستخدم' : 'User')}</div>
             </div>
             <button onclick="hudhudLogout()" title="${isAr ? 'تسجيل الخروج' : 'Sign out'}" style="flex-shrink:0;background:none;border:1px solid var(--border-default);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;color:var(--text-secondary);">⏻</button>

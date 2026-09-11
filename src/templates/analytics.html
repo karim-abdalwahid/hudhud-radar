@@ -54,9 +54,6 @@
                     <span class="crumb-current" data-i18n="an.title">Analytics & Root Cause Analysis (RCA Engine)</span>
                 </div>
                 <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
-                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
-                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
-                    </button>
                     <button class="btn-secondary" onclick="loadAnalyticsData()" data-i18n="an.refresh_btn">🔄 Refresh Metrics</button>
                 </div>
             </header>
@@ -147,6 +144,24 @@
                             <!-- Rendered from REAL activity_logs breakdown — no static claims -->
                         </div>
                     </div>
+                </div>
+
+
+                <!-- Threads Insights (threads_manage_insights) -->
+                <div class="panel-section" id="threads-insights-panel">
+                    <div class="panel-header">
+                        <div>
+                            <h2 class="panel-title">🧵 <span data-i18n="an.threads_title">Threads Insights</span></h2>
+                            <div class="panel-desc" data-i18n="an.threads_desc">Views, likes and replies across your connected Threads account — read live from the Threads API.</div>
+                        </div>
+                        <button class="btn-secondary" onclick="loadThreadsInsights()" data-i18n="an.threads_refresh">🔄 Refresh</button>
+                    </div>
+                    <div class="metrics-strip" style="margin-bottom:12px;">
+                        <div class="metric-card"><div class="metric-label" data-i18n="an.threads_views">Views</div><div class="metric-val" id="th-views">—</div></div>
+                        <div class="metric-card"><div class="metric-label" data-i18n="an.threads_likes">Likes</div><div class="metric-val" id="th-likes">—</div></div>
+                        <div class="metric-card"><div class="metric-label" data-i18n="an.threads_replies">Replies</div><div class="metric-val" id="th-replies">—</div></div>
+                    </div>
+                    <div id="threads-insights-status" style="font-size:12.5px;color:var(--text-muted);"></div>
                 </div>
 
                 <!-- Executive Reports Center -->
@@ -306,6 +321,27 @@
         }
 
         document.addEventListener('DOMContentLoaded', loadAnalyticsData);
-    </script>
+    
+        // ==================== Threads Insights (Wave 9.8) ====================
+        async function loadThreadsInsights() {
+            const status = document.getElementById('threads-insights-status');
+            try {
+                const r = await fetch('/api/threads/insights?metric=views,likes,replies');
+                const d = await r.json();
+                if (d.status !== 'success') {
+                    status.textContent = d.reason || d.detail || 'Insights unavailable';
+                    return;
+                }
+                const byName = {};
+                (d.insights || []).forEach(row => { byName[row.name] = (row.values || [])[0]?.value ?? 0; });
+                document.getElementById('th-views').textContent = byName['views'] ?? '—';
+                document.getElementById('th-likes').textContent = byName['likes'] ?? '—';
+                document.getElementById('th-replies').textContent = byName['replies'] ?? '—';
+                status.textContent = '';
+            } catch (e) { status.textContent = 'Failed: ' + e; }
+        }
+        document.addEventListener('DOMContentLoaded', loadThreadsInsights);
+
+</script>
 </body>
 </html>
