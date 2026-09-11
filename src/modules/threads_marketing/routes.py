@@ -126,6 +126,14 @@ async def get_threads_insights(request: Request = None,
         metric, user_id=_session_user_id(request) if request else None)
 
 
+@router.get("/api/threads/my-posts", tags=["Threads"])
+async def my_threads_posts(request: Request = None, limit: int = Query(10, ge=1, le=50)):
+    """Lists the account's recent published threads (studio Threads manager)."""
+    from src.meta_api.extended_api import threads_leads_sync
+    return await threads_leads_sync.get_my_posts(
+        limit=limit, user_id=_session_user_id(request) if request else None)
+
+
 @router.post("/api/threads/sync-replies", tags=["Threads"])
 async def sync_threads_replies(request: Request = None,
                                limit_threads: int = Query(10, ge=1, le=50),

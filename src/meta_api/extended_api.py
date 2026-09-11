@@ -167,10 +167,13 @@ class ThreadsPublisher:
 
     @staticmethod
     def _resolve_token(user_id: Optional[str] = None) -> Optional[str]:
-        """Per-user token (fail-closed entitlement gate) or legacy global."""
+        """Per-user token (fail-closed entitlement gate), with legacy global
+        fallback while no per-user connections exist (Wave 9.8 interim)."""
         if user_id:
             from src.modules.connections.service import connection_service
-            return connection_service.get_active_token(user_id, "threads")
+            tok = connection_service.get_active_token(user_id, "threads")
+            if tok:
+                return tok
         from src.meta_api.threads_oauth import get_active_threads_token
         return get_active_threads_token()
 
@@ -548,6 +551,21 @@ class ThreadsLeadsSync:
 
         return {"status": "success", "captured": captured, "duplicates": duplicate,
                 "skipped": skipped, "self_replies": self_replies}
+
+
+    async def get_my_posts(self, limit: int = 10, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Lists the account's recent published threads (for the studio Threads manager)."""
+        token = self._resolve_token(user_id)
+        if not token:
+            return {"status": "skipped", "reason": "Threads غير مربوط"}
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{settings.THREADS_BASE_URL}/me/threads",
+                params={"fields": "id,text,timestamp", "limit": limit, "access_token": token},
+            )
+            if resp.status_code != 200:
+                return {"status": "error", "detail": resp.text[:300]}
+            return {"status": "success", "posts": resp.json().get("data", [])}
 
 
 meta_insights_sync = MetaInsightsSync()

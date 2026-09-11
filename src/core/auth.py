@@ -67,6 +67,7 @@ ADMIN_EXACT_PATHS = frozenset({
     "/api/threads/disconnect",
     # Paid external actions on the OWNER's business accounts — admin only
     "/api/threads/publish",
+    "/api/threads/my-posts",
     "/api/marketing/sync-leads",
     "/api/marketing/sync-campaigns",
 })
