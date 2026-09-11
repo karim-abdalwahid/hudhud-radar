@@ -1682,3 +1682,7 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 12. Post-Entry Addition — توحيد /users و /templates على الهيكل القياسي
 - الصفحتان كانتا HTML مستقل بأسلوب مخصص مخالف — أعيد بناؤهما على shared chrome + saas.css حصرياً (نفس كل الصفحات). الإثبات الحي: styles موحدة + فصل أدوار شغال + وظائف سليمة. commit 75caaf3 لايف.
+
+### 13. Post-Entry Addition — الفصل صار Server-rendered (صفر وميض) + تصحيحا عملية
+- render_sidebar_nav يخرج مقسماً (client/dev wrappers + ADMIN badge) وغير الأدمن بلا روابط إدارية · initial_body_class من الكوكي (hudhud_role_mode) مع fallback المسار/الدور · saas.js بسط وكتابة الكوكي عند التبديل · mode.admin_only i18n · أنماط مشتركة (chip/modal/search/btn-warn) في saas.css.
+- إثبات: HTML خام بلا JS سليم على /users,/templates,/inbox,/settings. تصحيحا عملية موثقان: f2057b7 (اختبار قديم فاشل) → a65b405 · 696c99b (ادعاء خاطئ) سبق تصحيحه.
