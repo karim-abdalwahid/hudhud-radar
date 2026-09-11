@@ -1676,3 +1676,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - **الجذر**: update_lead (model-only) × takeover يمرر dict → AttributeError 500 → الحفظ صامت فاشل والواجهة تمثل محليًا.
 - **الإصلاح**: update_lead يقبل dict أو model · human_takeover في LeadUpdate · **أتمتة التعليقات تحترم takeover** (كانت الحماية مسار الرسائل فقط).
 - **إثبات حي**: toggle → DB true → orchestrator suppression (reply_sent=None) → restore. commit 6d73587 لايف.
+
+### 11. Post-Entry Addition — تصحيح عملية (شفافية)
+- كوميت 696c99b رفع بادعاء اختبارات خاطئ (5 failed فعلياً بسبب تسرب mocks على singletons في test_ai_pause). الكود الإنتاجي سليم. الإصلاح: monkeypatch hygiene + تصحيح الادعاء موثق (105e1b6). 272/272 حقيقية.
