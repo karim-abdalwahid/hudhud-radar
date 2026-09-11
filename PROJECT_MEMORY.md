@@ -1686,3 +1686,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 ### 13. Post-Entry Addition — الفصل صار Server-rendered (صفر وميض) + تصحيحا عملية
 - render_sidebar_nav يخرج مقسماً (client/dev wrappers + ADMIN badge) وغير الأدمن بلا روابط إدارية · initial_body_class من الكوكي (hudhud_role_mode) مع fallback المسار/الدور · saas.js بسط وكتابة الكوكي عند التبديل · mode.admin_only i18n · أنماط مشتركة (chip/modal/search/btn-warn) في saas.css.
 - إثبات: HTML خام بلا JS سليم على /users,/templates,/inbox,/settings. تصحيحا عملية موثقان: f2057b7 (اختبار قديم فاشل) → a65b405 · 696c99b (ادعاء خاطئ) سبق تصحيحه.
+
+### 14. Post-Entry Addition — مصفوفة تصوير App Review النهائية
+- RECORDING_MATRIX.md: 22 جاهز + 5 بشرط + 14 حذف (بإثبات /me/adaccounts والنطاق) · بنيات: identity chip + Threads insights card + لغة بلا تكرار. النشر b232a77.
