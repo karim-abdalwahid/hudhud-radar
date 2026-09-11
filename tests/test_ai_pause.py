@@ -100,14 +100,18 @@ async def test_orchestrator_stores_message_but_skips_reply_when_paused(monkeypat
 
     orch = AgentOrchestrator()
 
-    from unittest.mock import AsyncMock
-    orch.client.get_profile = AsyncMock(return_value={})  # no profile fields (zero-fabrication)
+    # NOTE: use monkeypatch (auto-restored) for SINGLETON attributes — direct
+    # assignment leaks mocks into later tests (full-suite pollution bug).
+    from unittest.mock import AsyncMock, MagicMock
+    monkeypatch.setattr(orch.client, "get_profile", AsyncMock(return_value={}))
 
     lead_row = {"id": "lead_p", "human_takeover": False, "user_id": None,
                 "facebook_account_id": "psid_1"}
-    orch.resolver.resolve_and_save_lead = MagicMock(return_value=(lead_row, True, None))
+    monkeypatch.setattr(orch.resolver, "resolve_and_save_lead",
+                        MagicMock(return_value=(lead_row, True, None)))
     stored = []
-    orch.lead_svc.add_message = MagicMock(side_effect=lambda m: stored.append(m))
+    monkeypatch.setattr(orch.lead_svc, "add_message",
+                        MagicMock(side_effect=lambda m: stored.append(m)))
 
     monkeypatch.setattr("src.ai.pause.is_ai_paused", lambda uid: True)
 

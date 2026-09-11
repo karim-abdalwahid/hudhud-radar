@@ -46,7 +46,7 @@ def test_missing_profile_pic_stays_none():
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_fetches_real_profile_before_extraction():
+async def test_orchestrator_fetches_real_profile_before_extraction(monkeypatch):
     """
     Incoming webhook must enrich the sender payload via MetaGraphClient.get_profile()
     so the stored lead carries the customer's REAL name and photo.
@@ -62,10 +62,11 @@ async def test_orchestrator_fetches_real_profile_before_extraction():
         "profile_pic": "https://platform-lookaside.fbsbx.com/mohamed.jpg",
     }
 
-    orch.client.get_profile = AsyncMock(return_value=fake_profile)
-    orch.resolver.resolve_and_save_lead = MagicMock(
+    # monkeypatch (auto-restored) — direct assignment on singletons leaks mocks
+    monkeypatch.setattr(orch.client, "get_profile", AsyncMock(return_value=fake_profile))
+    monkeypatch.setattr(orch.resolver, "resolve_and_save_lead", MagicMock(
         return_value=({"id": "lead_1", "human_takeover": True}, True, None)
-    )
+    ))
 
     event = {
         "platform": PlatformSource.FACEBOOK,
@@ -90,15 +91,16 @@ async def test_orchestrator_fetches_real_profile_before_extraction():
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_survives_profile_fetch_failure():
+async def test_orchestrator_survives_profile_fetch_failure(monkeypatch):
     """If the Graph API profile call fails, processing must continue (zero-assumption fallback)."""
     from src.agent.orchestrator import AgentOrchestrator
 
     orch = AgentOrchestrator()
-    orch.client.get_profile = AsyncMock(side_effect=Exception("network down"))
-    orch.resolver.resolve_and_save_lead = MagicMock(
+    monkeypatch.setattr(orch.client, "get_profile",
+                        AsyncMock(side_effect=Exception("network down")))
+    monkeypatch.setattr(orch.resolver, "resolve_and_save_lead", MagicMock(
         return_value=({"id": "lead_2", "human_takeover": True}, True, None)
-    )
+    ))
 
     event = {
         "platform": PlatformSource.FACEBOOK,
