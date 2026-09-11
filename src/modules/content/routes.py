@@ -61,9 +61,12 @@ async def check_content_compliance(payload: ComplianceCheckRequest):
 
 
 @router.post("/api/content/posts", response_model=ContentPostResponse, tags=["Content Studio"])
-async def create_content_post(payload: ContentPostCreate, background_tasks: BackgroundTasks):
-    """Creates a draft, scheduled, or instant publishing post."""
-    post = content_studio_service.create_post(payload)
+async def create_content_post(payload: ContentPostCreate, background_tasks: BackgroundTasks, request: Request):
+    """Creates a draft, scheduled, or instant publishing post (owned by the session user — Wave 9.8)."""
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    user_id = (session or {}).get("sub")
+    post = content_studio_service.create_post(payload, user_id=user_id)
     if payload.status == ContentStatus.PUBLISHING:
         background_tasks.add_task(content_scheduler.publish_single_post, post)
     return post
@@ -71,22 +74,30 @@ async def create_content_post(payload: ContentPostCreate, background_tasks: Back
 
 @router.get("/api/content/posts", response_model=List[ContentPostResponse], tags=["Content Studio"])
 async def list_content_posts(
+    request: Request,
     status: Optional[ContentStatus] = None,
     platform: Optional[ContentPlatform] = None,
     limit: int = Query(50, ge=1, le=100)
 ):
-    """Lists saved, scheduled, and published posts."""
-    return content_studio_service.list_posts(status=status, platform=platform, limit=limit)
+    """Lists the session user's saved, scheduled, and published posts."""
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    user_id = (session or {}).get("sub")
+    return content_studio_service.list_posts(status=status, platform=platform, limit=limit, user_id=user_id)
 
 
 @router.get("/api/studio/posts", tags=["Content Studio"])
 async def alias_list_studio_posts(
+    request: Request,
     status: Optional[ContentStatus] = None,
     platform: Optional[ContentPlatform] = None,
     limit: int = Query(50, ge=1, le=100)
 ):
     """Alias for /api/content/posts for backward compatibility with frontend dashboard."""
-    return content_studio_service.list_posts(status=status, platform=platform, limit=limit)
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    user_id = (session or {}).get("sub")
+    return content_studio_service.list_posts(status=status, platform=platform, limit=limit, user_id=user_id)
 
 
 @router.get("/api/content/posts/{post_id}", response_model=ContentPostResponse, tags=["Content Studio"])

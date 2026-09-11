@@ -85,3 +85,86 @@ async def receive_meta_webhook(request: Request, background_tasks: BackgroundTas
         queued += 1
 
     return {"status": "received", "events_queued": queued}
+
+
+# --------------------------------------------------------------------
+# 3. Threads Webhooks (Wave 9.8) — replies → CRM bridge receiver
+#    Subscription is configured in the Meta dashboard (Threads → webhooks);
+#    this endpoint verifies the handshake + HMAC signature (fail-closed,
+#    same policy as the Meta webhook) and captures real replies as leads.
+# --------------------------------------------------------------------
+@router.get("/api/webhook/threads", tags=["Webhooks"])
+async def verify_threads_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token")
+):
+    """Meta dashboard subscription handshake for Threads webhooks."""
+    challenge = webhook_handler.verify_subscription(hub_mode, hub_verify_token, hub_challenge)
+    if challenge:
+        return Response(content=challenge, media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification token mismatch")
+
+
+@router.post("/api/webhook/threads", tags=["Webhooks"])
+async def receive_threads_webhook(request: Request, background_tasks: BackgroundTasks):
+    """Receives Threads reply events, verifies the HMAC signature, and
+    captures each real reply as (or into) a CRM lead. Self-replies skipped."""
+    import hmac as _hmac
+    import hashlib as _hashlib
+
+    raw_body = await request.body()
+    signature = request.headers.get("X-Hub-Signature-256")
+
+    if not settings.THREADS_APP_SECRET:
+        logger.error("THREADS_APP_SECRET not configured — Threads webhook rejected (fail-closed).")
+        raise HTTPException(status_code=401, detail="Threads webhook not configured")
+    if not signature:
+        raise HTTPException(status_code=401, detail="Missing X-Hub-Signature-256")
+
+    expected = _hmac.new(settings.THREADS_APP_SECRET.encode("utf-8"),
+                         raw_body, _hashlib.sha256).hexdigest()
+    parts = signature.split("sha256=")
+    if len(parts) != 2 or not _hmac.compare_digest(parts[1], expected):
+        logger.error("Threads webhook HMAC verification failed.")
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    payload = await request.json()
+    if payload.get("object") != "threads":
+        return {"status": "ignored", "reason": "unknown object"}
+
+    from src.meta_api.extended_api import threads_leads_sync
+
+    queued = 0
+    for entry in payload.get("entry", []):
+        entry_user_id = entry.get("id")
+        for change in entry.get("changes", []):
+            val = change.get("value") or {}
+            reply_id = val.get("id")
+            if not reply_id:
+                continue
+            reply = {
+                "id": reply_id,
+                "text": val.get("text") or "",
+                "timestamp": val.get("timestamp"),
+                "username": (val.get("from") or {}).get("username") or val.get("username"),
+                "from_user": {"id": (val.get("from") or {}).get("id")},
+            }
+            background_tasks.add_task(
+                _capture_threads_reply_safe, reply, entry_user_id)
+            queued += 1
+
+    return {"status": "received", "events_queued": queued}
+
+
+async def _capture_threads_reply_safe(reply: dict, entry_user_id: Optional[str]):
+    """Background wrapper: resolves the owning connection's token and captures."""
+    try:
+        from src.meta_api.extended_api import threads_leads_sync
+        token = threads_leads_sync._resolve_token(None)
+        if not token:
+            logger.warning("Threads webhook: no active token — event skipped.")
+            return
+        await threads_leads_sync.capture_thread_reply(reply, token=token)
+    except Exception as e:
+        logger.error(f"Threads webhook capture failed: {e}")

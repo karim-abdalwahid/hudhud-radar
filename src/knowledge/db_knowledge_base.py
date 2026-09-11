@@ -102,7 +102,7 @@ class DBKnowledgeBase:
         return chunks or ([text] if text else [])
 
     # ------------------------------------------------------------------
-    # Document CRUD
+    # Document CRUD (per-user aware: user_id=None = legacy global)
     # ------------------------------------------------------------------
     def save_document(self, filename: str, content: str, source: str = "upload",
                       user_id: Optional[str] = None, is_core: bool = False) -> Dict[str, Any]:
@@ -111,16 +111,36 @@ class DBKnowledgeBase:
         if not filename or not content:
             raise ValueError("اسم الملف والمحتوى مطلوبان")
 
-        # Upsert document (unique filename)
+        # Per-user upsert: filename uniqueness is scoped to (user_id, filename)
+        # since migration 017 — so we select-then-insert/update manually.
         try:
-            doc = supabase_db.upsert("kb_documents", {
-                "filename": filename,
-                "content": content,
-                "source": source,
-                "word_count": len(content.split()),
-                "is_core": is_core,
-                **({"user_id": user_id} if user_id else {}),
-            }, on_conflict="filename")
+            if supabase_db.is_connected and supabase_db.client:
+                q = supabase_db.client.table("kb_documents").select("id").eq(
+                    "filename", filename)
+                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                existing = q.execute().data or []
+            else:
+                existing = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
+                            if r.get("filename") == filename
+                            and (r.get("user_id") or None) == user_id
+                            and "id" in r]
+                existing = existing[:1]
+        except Exception as e:
+            raise ValueError(f"تعذر التحقق من المستند: {e}")
+
+        payload = {
+            "filename": filename,
+            "content": content,
+            "source": source,
+            "word_count": len(content.split()),
+            "is_core": is_core,
+            **({"user_id": user_id} if user_id else {}),
+        }
+        try:
+            if existing:
+                doc = supabase_db.update("kb_documents", existing[0]["id"], payload)
+            else:
+                doc = supabase_db.insert("kb_documents", payload)
         except Exception as e:
             raise ValueError(f"تعذر حفظ المستند: {e}")
 
@@ -148,25 +168,40 @@ class DBKnowledgeBase:
         fully_embedded = bool(chunks) and embedded_count == len(chunks)
         if chunks and not fully_embedded:
             logger.warning(f"KB document {filename}: partial embedding ({embedded_count}/{len(chunks)} chunks) — hybrid search will degrade to keyword for missing vectors")
-        logger.info(f"KB document saved: {filename} ({len(chunks)} chunks, embedded={embedded_count}/{len(chunks)})")
+        logger.info(f"KB document saved: {filename} ({len(chunks)} chunks, embedded={embedded_count}/{len(chunks)}, user={user_id or 'legacy'})")
         return {"status": "success", "filename": filename, "chunks": len(chunks),
                 "embedded": fully_embedded, "embedded_chunks": embedded_count}
 
-    def get_document(self, filename: str) -> Optional[Dict[str, Any]]:
+    def get_document(self, filename: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         try:
-            rows = supabase_db.select("kb_documents", {"filename": self._safe_filename(filename)})
+            if supabase_db.is_connected and supabase_db.client:
+                q = supabase_db.client.table("kb_documents").select("*").eq(
+                    "filename", self._safe_filename(filename))
+                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                rows = q.execute().data or []
+                return rows[0] if rows else None
+            rows = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
+                    if r.get("filename") == self._safe_filename(filename)
+                    and (r.get("user_id") or None) == user_id]
             return rows[0] if rows else None
         except Exception as e:
             logger.error(f"KB get_document failed: {e}")
             return None
 
-    def get_document_content(self, filename: str) -> Optional[str]:
-        doc = self.get_document(filename)
+    def get_document_content(self, filename: str, user_id: Optional[str] = None) -> Optional[str]:
+        doc = self.get_document(filename, user_id=user_id)
         return doc["content"] if doc else None
 
-    def list_documents(self) -> List[Dict[str, Any]]:
+    def list_documents(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
-            docs = supabase_db.select("kb_documents") or []
+            if supabase_db.is_connected and supabase_db.client:
+                q = supabase_db.client.table("kb_documents").select(
+                    "filename,word_count,source,is_core,updated_at")
+                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                docs = q.execute().data or []
+            else:
+                docs = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
+                        if (r.get("user_id") or None) == user_id]
             docs.sort(key=lambda d: (not d.get("is_core", False), d.get("filename", "")))
             return [
                 {
@@ -182,8 +217,8 @@ class DBKnowledgeBase:
             logger.error(f"KB list_documents failed: {e}")
             return []
 
-    def delete_document(self, filename: str) -> bool:
-        doc = self.get_document(filename)
+    def delete_document(self, filename: str, user_id: Optional[str] = None) -> bool:
+        doc = self.get_document(filename, user_id=user_id)
         if not doc:
             return False
         self._delete_chunks(doc["id"])
@@ -212,13 +247,15 @@ class DBKnowledgeBase:
     # ------------------------------------------------------------------
     # Hybrid search (Postgres RPC; keyword-only fallback)
     # ------------------------------------------------------------------
-    def search(self, query: str, top_k: int = 5) -> List[Tuple[float, str, str]]:
-        """Returns [(score, filename, chunk_text), ...] via hybrid RRF search."""
+    def search(self, query: str, top_k: int = 5,
+               user_id: Optional[str] = None) -> List[Tuple[float, str, str]]:
+        """Returns [(score, filename, chunk_text), ...] via hybrid RRF search.
+        user_id scopes results to that user's documents (Wave 9.8)."""
         if not query.strip():
             return []
         try:
             if not (supabase_db.is_connected and supabase_db.client):
-                return self._fallback_keyword_search(query, top_k)
+                return self._fallback_keyword_search(query, top_k, user_id=user_id)
             qvec = self._embed(query)
             params: Dict[str, Any] = {"query_text": query, "match_count": top_k}
             if qvec:
@@ -226,18 +263,27 @@ class DBKnowledgeBase:
             else:
                 # keyword-only: pass null embedding
                 params["query_embedding"] = None
+            if user_id:
+                params["p_user_id"] = user_id
             res = supabase_db.client.rpc("match_kb_chunks", params).execute()
             rows = res.data or []
             return [(r["score"], r["filename"], r["chunk_text"]) for r in rows]
         except Exception as e:
             logger.warning(f"Hybrid search failed, keyword fallback: {e}")
-            return self._fallback_keyword_search(query, top_k)
+            return self._fallback_keyword_search(query, top_k, user_id=user_id)
 
-    def _fallback_keyword_search(self, query: str, top_k: int) -> List[Tuple[float, str, str]]:
+    def _fallback_keyword_search(self, query: str, top_k: int,
+                                 user_id: Optional[str] = None) -> List[Tuple[float, str, str]]:
         """Simple ILIKE scoring over kb_documents.content (no RPC needed)."""
         results: List[Tuple[float, str, str]] = []
         try:
-            docs = supabase_db.select("kb_documents") or []
+            if supabase_db.is_connected and supabase_db.client:
+                q = supabase_db.client.table("kb_documents").select("filename,content")
+                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                docs = q.execute().data or []
+            else:
+                docs = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
+                        if (r.get("user_id") or None) == user_id]
             terms = [t for t in re.split(r"\s+", query.lower()) if len(t) > 1]
             for d in docs:
                 content = d.get("content") or ""
@@ -253,8 +299,9 @@ class DBKnowledgeBase:
     # ------------------------------------------------------------------
     # Context builders (used by conversation engine — same interface as before)
     # ------------------------------------------------------------------
-    def search_context(self, query: str, top_k: int = 3) -> str:
-        results = self.search(query, top_k=top_k)
+    def search_context(self, query: str, top_k: int = 3,
+                       user_id: Optional[str] = None) -> str:
+        results = self.search(query, top_k=top_k, user_id=user_id)
         if not results:
             return ""
         parts = []
@@ -262,11 +309,11 @@ class DBKnowledgeBase:
             parts.append(f"[من وثيقة: {filename}]\n{chunk}")
         return "\n---\n".join(parts)
 
-    def sales_context(self) -> str:
+    def sales_context(self, user_id: Optional[str] = None) -> str:
         """Concatenates conversion-critical docs (same trio as the file-based KB)."""
         out = []
         for name in ("sales_scripts_and_closing.md", "products_and_services.md", "business_profile.md"):
-            doc = self.get_document_content(name)
+            doc = self.get_document_content(name, user_id=user_id)
             if doc:
                 out.append(f"--- {name} ---\n{doc}")
         return "\n\n".join(out)

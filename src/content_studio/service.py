@@ -25,8 +25,8 @@ class ContentStudioService:
         self.db = db or supabase_db
         self.table = "content_posts"
 
-    def create_post(self, post_in: ContentPostCreate) -> ContentPostResponse:
-        """Create a new post/reel/story record."""
+    def create_post(self, post_in: ContentPostCreate, user_id: Optional[str] = None) -> ContentPostResponse:
+        """Create a new post/reel/story record (owned by the session user — Wave 9.8)."""
         now = datetime.now(timezone.utc).isoformat()
         row_id = str(uuid.uuid4())
         
@@ -41,6 +41,7 @@ class ContentStudioService:
             "creation_mode": post_in.creation_mode.value if hasattr(post_in.creation_mode, 'value') else post_in.creation_mode,
             "generation_prompt": post_in.generation_prompt,
             "performance_metrics": {},
+            **({"user_id": user_id} if user_id else {}),
             "created_at": now,
             "updated_at": now,
         }
@@ -56,13 +57,15 @@ class ContentStudioService:
             return ContentPostResponse(**rows[0])
         return None
 
-    def list_posts(self, status: Optional[ContentStatus] = None, platform: Optional[ContentPlatform] = None, limit: int = 50) -> List[ContentPostResponse]:
-        """List posts with optional filters."""
+    def list_posts(self, status: Optional[ContentStatus] = None, platform: Optional[ContentPlatform] = None, limit: int = 50, user_id: Optional[str] = None) -> List[ContentPostResponse]:
+        """List posts with optional filters (per-user scoped when user_id provided — Wave 9.8)."""
         filters = {}
         if status:
             filters["status"] = status.value if hasattr(status, 'value') else status
         if platform:
             filters["platform"] = platform.value if hasattr(platform, 'value') else platform
+        if user_id:
+            filters["user_id"] = user_id
 
         rows = self.db.select(self.table, filters if filters else None)
         # Sort descending by created_at

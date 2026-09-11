@@ -141,8 +141,31 @@ async def test_conversation_engine_sales_closing():
     assert "شكراً جزيلاً لمشاركتك" in reply_conv
 
 
-def test_fastapi_knowledge_endpoints(client):
-    """Tests FastAPI REST endpoints for knowledge documents, meta sync, and upload (authed admin)."""
+def test_fastapi_knowledge_endpoints(client, monkeypatch):
+    """Tests FastAPI REST endpoints for knowledge documents, meta sync, and upload (authed admin).
+
+    Wave 9.8: routes stamp kb_documents with the session user_id — this test runs
+    against the REAL Supabase with a conftest-registered (fake) user, so the DB
+    save path is mocked (the file-based path is exercised elsewhere)."""
+    import src.modules.knowledge.routes as kb_routes
+    _store = {}
+    monkeypatch.setattr(
+        kb_routes.db_knowledge_base, "save_document",
+        lambda filename, content, **kw: (_store.__setitem__(filename, content),
+                                          {"status": "success", "filename": filename,
+                                           "chunks": 1, "embedded": False, "embedded_chunks": 0})[1])
+    monkeypatch.setattr(
+        kb_routes.db_knowledge_base, "get_document_content",
+        lambda filename, user_id=None: _store.get(filename))
+    monkeypatch.setattr(
+        kb_routes.db_knowledge_base, "list_documents",
+        lambda user_id=None: [{"filename": fn, "word_count": len(c.split()),
+                                "source": "upload", "is_core": False, "updated_at": None}
+                               for fn, c in _store.items()])
+    monkeypatch.setattr(
+        kb_routes.db_knowledge_base, "delete_document",
+        lambda filename, user_id=None: _store.pop(filename, None) is not None)
+
     # 1. List documents
     resp = client.get("/api/knowledge/documents")
     assert resp.status_code == 200

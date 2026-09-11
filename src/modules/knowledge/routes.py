@@ -24,6 +24,8 @@ from src.modules.context import (  # explicit for readability
 
 router = APIRouter()
 
+from src.knowledge.db_knowledge_base import db_knowledge_base  # per-user KB (Wave 9.8)
+
 # --------------------------------------------------------------------
 # 6.5 Knowledge Base, Meta Scraping & RAG Management
 # --------------------------------------------------------------------
@@ -62,41 +64,53 @@ async def sync_knowledge_from_meta():
     return res
 
 
+def _session_user(request: Request) -> Optional[str]:
+    """Session user id for per-user KB scoping (Wave 9.8). None = legacy."""
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    return (session or {}).get("sub")
+
+
 @router.get("/api/knowledge/documents", tags=["Knowledge Base & RAG"])
-async def list_knowledge_documents():
-    """Lists all stored knowledge base documents with word count, size, and status."""
-    return {"documents": knowledge_base.list_documents()}
+async def list_knowledge_documents(request: Request):
+    """Lists the session user's knowledge base documents (per-user scoping)."""
+    return {"documents": db_knowledge_base.list_documents(user_id=_session_user(request))}
 
 
 @router.get("/api/knowledge/documents/{filename}", tags=["Knowledge Base & RAG"])
-async def get_knowledge_document(filename: str):
-    """Retrieves raw content of a specific knowledge base document."""
-    content = knowledge_base.get_document(filename)
+async def get_knowledge_document(filename: str, request: Request):
+    """Retrieves raw content of one of the session user's knowledge documents."""
+    content = db_knowledge_base.get_document_content(filename, user_id=_session_user(request))
     if content is None:
         raise HTTPException(status_code=404, detail=f"Document '{filename}' not found")
     return {"filename": filename, "content": content}
 
 
 @router.put("/api/knowledge/documents/{filename}", tags=["Knowledge Base & RAG"])
-async def update_knowledge_document(filename: str, payload: SaveDocumentRequest):
-    """Updates a knowledge document and instantly reloads the AI agent's memory."""
-    res = knowledge_base.save_document(filename, payload.content)
+async def update_knowledge_document(filename: str, payload: SaveDocumentRequest, request: Request):
+    """Updates a knowledge document (owner-scoped) and hot-reloads the AI agent's memory."""
+    res = db_knowledge_base.save_document(filename, payload.content,
+                                          user_id=_session_user(request))
+    knowledge_base.reload()
     return res
 
 
 @router.post("/api/knowledge/documents", tags=["Knowledge Base & RAG"])
-async def create_knowledge_document(payload: CreateDocumentRequest):
-    """Creates a new knowledge document and hot-reloads the agent's memory."""
-    res = knowledge_base.save_document(payload.filename, payload.content)
+async def create_knowledge_document(payload: CreateDocumentRequest, request: Request):
+    """Creates a new knowledge document owned by the session user."""
+    res = db_knowledge_base.save_document(payload.filename, payload.content,
+                                          user_id=_session_user(request))
+    knowledge_base.reload()
     return res
 
 
 @router.delete("/api/knowledge/documents/{filename}", tags=["Knowledge Base & RAG"])
-async def delete_knowledge_document(filename: str):
-    """Deletes a document from the knowledge base and reloads memory."""
-    success = knowledge_base.delete_document(filename)
+async def delete_knowledge_document(filename: str, request: Request):
+    """Deletes one of the session user's knowledge documents."""
+    success = db_knowledge_base.delete_document(filename, user_id=_session_user(request))
     if not success:
         raise HTTPException(status_code=404, detail=f"Document '{filename}' not found or could not be deleted")
+    knowledge_base.reload()
     return {"status": "success", "message": f"Document '{filename}' deleted successfully"}
 
 
@@ -173,11 +187,23 @@ class SearchKnowledgeRequest(BaseModel):
 
 
 @router.post("/api/knowledge/search", tags=["Knowledge Base & RAG"])
-async def search_knowledge(payload: SearchKnowledgeRequest):
+async def search_knowledge(payload: SearchKnowledgeRequest, request: Request):
     """
-    Executes LEANN-inspired lightweight hybrid semantic search:
-    Vector cosine similarity + keyword RRF fusion across knowledge base.
+    Hybrid semantic search (vector + keyword RRF) scoped to the session user's
+    knowledge base; falls back to the legacy semantic engine when the DB is
+    disconnected (local dev).
     """
+    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    user_id = (session or {}).get("sub")
+
+    if supabase_db.is_connected:
+        chunks = db_knowledge_base.search(payload.query, top_k=payload.top_k, user_id=user_id)
+        return {"status": "success", "query": payload.query, "results": [
+            {"filename": fn, "score": round(score, 4), "chunk": text, "text": text}
+            for score, fn, text in chunks
+        ]}
+
     from src.knowledge.semantic_engine import semantic_engine
     if not knowledge_base.knowledge_cache:
         knowledge_base.reload()

@@ -226,8 +226,18 @@ def test_api_generate_content(test_client):
     assert data["post_type"] == "post"
 
 
-def test_api_create_and_list_posts(test_client):
-    """Test POST and GET /api/content/posts."""
+def test_api_create_and_list_posts(test_client, monkeypatch):
+    """Test POST and GET /api/content/posts.
+
+    Wave 9.8: posts are stamped with the session user_id. This test runs against
+    the REAL Supabase with a conftest fake user, so the session is pinned to the
+    real owner row (FK-valid)."""
+    import src.core.auth as core_auth
+    OWNER_ID = "8d0ab6c3-544d-4a14-84c9-d021acf26ddf"
+    real_verify = core_auth.verify_session_token
+    monkeypatch.setattr(core_auth, "verify_session_token",
+                        lambda token: {"sub": OWNER_ID, "role": "admin"} if token else None)
+
     create_res = test_client.post("/api/content/posts", json={
         "platform": "both",
         "post_type": "post",
