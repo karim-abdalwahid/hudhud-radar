@@ -1655,3 +1655,11 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - **الصفحات الأخرى**: /settings تبويباتها تعمل حيًا (الانطباع القديم = نسخة منشورة قديمة) · "Failed to fetch" في الداشبورد = أثر تنقل اختباري وليس باج (KPIs تتعبى بوقوف طبيعي، صفر أخطاء).
 - **درس**: إعادة كتابة JS داخل سلاسل Python قد تحذف ثوابت مستخدمة — node --check للسكربت المستخرج اكتشف PLAN_CYCLE المفقودة.
 - الاختبارات 265/265 ✅.
+
+
+### 8. Post-Entry Addition — التدقيق الشامل (P0 x5 + بنود Wave 9.8 الجاهزة)
+- **دراسة أولًا بأمر المالك** (Brain/SOPs/Memory) ثم فحص شامل بإصلاح فوري. التقرير: AUDIT_2026-09-11_FINAL.md.
+- **P0 x5 اتصلحت بإثبات حي**: (1) IG views كانت صفر مكتوبة يدويًا → Insights API حقيقي. (2) Threads publish ميت → env fallback للتوكن. (3) enums القاعدة ناقصة threads (015/016) — كانت هتقتل كل leads الثريدز. (4) KB الـ AI كانت فاضية (db-mode بلا بيانات + الرفع للملفات فقط) → زرع 5 مستندات المالك بالـ embeddings + الرفع بقى يخزن في kb_documents باسم صاحبه. (5) init مكرر في saas.js كان بيلغي فصل الأدوار — اكتشف بـ fetch-interception.
+- **مطبق على القاعدة**: migrations 014/015/016. **مطبق في الكود**: self-reply guard لجسر الثريدز (رد المالك على نفسه مش lead) · DEV_ROUTES +client/developer فصل ثنائي.
+- **Wave 9.8 اكتملت متطلباته الموثقة**: automations_workflows جاهز per-user · user_id stamping · فلاتر المستخدم الجاية.
+- الاختبارات 265/265 ✅ · النشر fbb7aa1 متحقق حيًا ✅.
