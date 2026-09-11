@@ -1689,3 +1689,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 14. Post-Entry Addition — مصفوفة تصوير App Review النهائية
 - RECORDING_MATRIX.md: 22 جاهز + 5 بشرط + 14 حذف (بإثبات /me/adaccounts والنطاق) · بنيات: identity chip + Threads insights card + لغة بلا تكرار. النشر b232a77.
+
+### 15. Post-Entry Addition — هيدر الداشبورد: Create Post deep-link + توحيد الأزرار
+- /studio?view=publisher (الاستوديو كان بيدعم view params بلا استخدام) + topbar-actions قياسي في overview/inbox/leads. إثبات حي: النقر فتح Create & Publish. 272/272 · d12abab لايف.
