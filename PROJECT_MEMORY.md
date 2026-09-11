@@ -1692,3 +1692,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 15. Post-Entry Addition — هيدر الداشبورد: Create Post deep-link + توحيد الأزرار
 - /studio?view=publisher (الاستوديو كان بيدعم view params بلا استخدام) + topbar-actions قياسي في overview/inbox/leads. إثبات حي: النقر فتح Create & Publish. 272/272 · d12abab لايف.
+
+### 16. Post-Entry Addition — الفحص الختامي نظيف بالكامل
+- 26 صفحة × لغتين: صفر أخطاء (بعد guard التنقل في سكربت الفحص). f37553f لايف.
