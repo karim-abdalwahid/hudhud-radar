@@ -1701,3 +1701,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 18. Post-Entry Addition — API test calls gate
 - IG comments: مكتمل (3 استدعاءات 200 حية). Threads replies: GETs ناجحة، POST الرد 400 قبل الموافقة (advanced access لاحق — سلوك ميتا). Route الرد جاهز يتفعل تلقائيًا. SOP-11 قاعدة دائمة ضد أوامر inline.
+
+### 19. Post-Entry Addition — API test calls gate مكتمل
+- threads_manage_replies PASSED: الرد عبر المسار الرسمي (container + reply_to_id) — 200/200 حيًا (كان endpoint خاطئ). IG comments PASSED (3×200). c67b2e4 لايف — المالك يقدر يقدم المراجعة.
