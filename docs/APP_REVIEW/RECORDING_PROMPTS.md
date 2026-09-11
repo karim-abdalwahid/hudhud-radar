@@ -26,6 +26,7 @@ curl -s "https://graph.facebook.com/v21.0/me/threads?fields=id,text,timestamp&li
 curl -s "https://graph.facebook.com/v21.0/{THREAD_ID}/replies?fields=id,text,timestamp,username&access_token=$TOKEN"
 ```
 ✅ النجاح: HTTP 200 + قائمة threads/replies.
+   ⚠️ ملاحظة موثقة: POST الرد الآلي على الثريدز يرجع 400 (missing permissions) قبل الموافقة — هذا طبيعي (advanced access يُمنح بعد اعتماد المراجعة). استدعاءات GET replies الناجحة (منفذة 2026-09-11 ×3) هي التي يراها ميتا، والسكرينكاست يوضح القراءة والتخزين والإدارة في الـ CRM.
 
 **ب. instagram_business_manage_comments**:
 ```bash
@@ -33,6 +34,7 @@ curl -s "https://graph.facebook.com/v21.0/{IG_ID}/media?fields=id,like_count,com
 curl -s "https://graph.facebook.com/v21.0/{MEDIA_ID}/comments?fields=id,text&access_token=$TOKEN"
 ```
 ✅ النجاح: HTTP 200 + قائمة comments. سجّل وقت التنفيذ — ميتا تتحقق من النشاط تلقائيًا.
+   ✅ منفذة فعلًا 2026-09-12: POST comment → id 18150530074556424 · GET comments → 200 · POST reply-to-comment → 200 (الثلاثة 200 حية).
 
 ---
 
