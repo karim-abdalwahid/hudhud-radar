@@ -1710,3 +1710,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 20. Post-Entry Addition — Wave 9.8 safe batch COMPLETE
 - Automations→table (bootstrap mirror verified), NodeData sanitizer bug fixed, per-page token resolution w/ legacy fallback, threads refresh cron live on prod (401 verified). +15 tests → 293/293. commit 1357d58.
+
+### 21. Post-Entry Addition — TRUTH AUDIT (owner alarm during review)
+- Only genuine fake found+fixed: Studio post DELETE was local-only → now Graph-deletes published objects first (live round-trip proven: exists on Meta -> delete -> 'Object does not exist'). Insights/analytics numbers verified REAL (exact match to Meta); perceived fakeness = honest zeros (views bug fixed same day, Meta-hidden likes, quiet Threads account). Both sweeps clean; nothing invented anywhere else. commit 2e80485.
