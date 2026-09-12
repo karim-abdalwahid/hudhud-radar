@@ -1716,3 +1716,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 22. Post-Entry Addition — all 3 platforms PROVEN publish+delete REAL (live round-trips)
 - IG permalink proof + Threads + FB all: publish->Graph-live-read->app-delete->Graph-confirms-gone. commit 4ab4ebf. 293/293.
+
+### 24. Post-Entry Addition — FULL BACKEND TRUTH AUDIT (96 endpoints)
+- Fixed 2 more silent fakes: human send >24h (now HUMAN_AGENT tag — delivery read back from Graph) & knowledge sync (dual-write per-user DB). IG path proven reaching Meta. Production webhook e2e re-proven. Leadgen forms honestly zero-on-Meta. 293/293. commit 3b9b675 live.
