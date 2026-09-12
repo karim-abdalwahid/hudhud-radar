@@ -121,11 +121,41 @@ async def publish_post_now(post_id: str):
 
 @router.delete("/api/content/posts/{post_id}", tags=["Content Studio"])
 async def delete_content_post(post_id: str):
-    """Deletes a content post."""
+    """
+    Deletes a content post. Wave 9.8 (owner truth-audit): if the post was
+    already published, its real Meta objects (meta_post_id) are deleted from
+    the Page/IG via Graph API FIRST — the local row is removed and the response
+    reports honestly which deletions actually happened.
+    """
+    import json as _json
+    post = content_studio_service.get_post(post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    meta_deleted, meta_errors = {}, {}
+    raw_meta = getattr(post, "meta_post_id", None)
+    if raw_meta:
+        try:
+            ids = _json.loads(raw_meta) if isinstance(raw_meta, str) else dict(raw_meta)
+        except Exception:
+            ids = {}
+        from src.meta_api.publishing import meta_publisher
+        for platform, ext_id in (ids or {}).items():
+            if not ext_id:
+                continue
+            res = await meta_publisher.delete_published(platform, str(ext_id))
+            (meta_deleted if res.get("ok") else meta_errors)[platform] = (
+                True if res.get("ok") else res.get("detail"))
+
     success = content_studio_service.delete_post(post_id)
     if not success:
-        raise HTTPException(status_code=404, detail="Post not found or could not be deleted")
-    return {"status": "success", "message": f"Post {post_id} deleted successfully"}
+        raise HTTPException(status_code=500, detail="Post row could not be removed")
+    return {
+        "status": "success",
+        "message": f"Post {post_id} deleted",
+        "meta_deleted": meta_deleted,
+        "meta_errors": meta_errors,
+    }
 
 
 @router.post("/api/content/scheduler/trigger", tags=["Content Studio"])

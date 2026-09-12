@@ -237,4 +237,32 @@ class MetaPublisher:
         return results
 
 
+
+    # -------------------------------------------------------------
+    # Lifecycle: delete a published object (Wave 9.8 — makes "manage
+    # posts" TRUE: scheduled drafts are removed locally, published
+    # objects are removed from Meta itself)
+    # -------------------------------------------------------------
+    async def delete_published(self, platform: str, external_id: str) -> Dict[str, Any]:
+        """DELETEs a published FB Page post or IG media object via Graph API.
+        Honest result dict — never claims success without a 200."""
+        platform = (platform or "").lower()
+        target = "facebook" if platform in ("facebook", "both") else platform
+        if not external_id:
+            return {"ok": False, "detail": "no external id"}
+        if not self.access_token or self.access_token.startswith("your-"):
+            return {"ok": False, "detail": "Meta token not configured (fail-closed)"}
+        url = f"{self.BASE_URL}/{external_id}"
+        try:
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                resp = await client.delete(url, params={"access_token": self.access_token})
+            if resp.status_code == 200:
+                logger.info(f"Deleted published {platform} object {external_id} on Meta")
+                return {"ok": True}
+            logger.warning(f"Meta delete {platform} {external_id} failed: HTTP {resp.status_code} {resp.text[:180]}")
+            return {"ok": False, "detail": f"HTTP {resp.status_code}: {resp.text[:180]}"}
+        except Exception as e:
+            logger.error(f"Meta delete {platform} {external_id} error: {e}")
+            return {"ok": False, "detail": str(e)[:180]}
+
 meta_publisher = MetaPublisher()
