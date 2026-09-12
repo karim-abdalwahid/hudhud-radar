@@ -50,17 +50,17 @@ async def analyze_meta_posts(request: Request, limit: int = Query(10, ge=1, le=4
     if not session or session.get("role") != "admin":
         raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحيات المدير")
     from src.knowledge.meta_analyzer import meta_posts_analyzer
-    result = await meta_posts_analyzer.analyze_recent(limit=limit)
+    result = await meta_posts_analyzer.analyze_recent(limit=limit, user_id=_session_user(request))
     if result.get("status") == "skipped":
         raise HTTPException(status_code=400, detail=result.get("reason", "skipped"))
     return result
 
 
 @router.post("/api/knowledge/sync-meta", tags=["Knowledge Base & RAG"])
-async def sync_knowledge_from_meta():
+async def sync_knowledge_from_meta(request: Request):
     """Scrapes historical Facebook/Instagram posts, reels, and comments and synthesizes business knowledge."""
     raw_data = await meta_crawler.fetch_all_historical_content()
-    res = await knowledge_synthesizer.synthesize_and_save(raw_data)
+    res = await knowledge_synthesizer.synthesize_and_save(raw_data, user_id=_session_user(request))
     return res
 
 

@@ -139,7 +139,8 @@ def _get_lead_recipient(lead: Dict[str, Any]) -> Optional[str]:
     return lead.get("facebook_account_id") or lead.get("instagram_account_id")
 
 
-async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_meta: Optional[Dict[str, Any]] = None):
+async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_meta: Optional[Dict[str, Any]] = None,
+                                        tag: Optional[str] = None):
     """Sends a real DM to the lead via Meta Send API and stores it in messages."""
     from src.meta_api.client import meta_client
     from src.leads.models import MessageCreate, PlatformSource, SenderType
@@ -152,9 +153,11 @@ async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_m
 
     send_result = {}
     if platform == PlatformSource.FACEBOOK:
-        send_result = await meta_client.send_facebook_message(recipient_id=recipient, message_text=text)
+        send_result = await meta_client.send_facebook_message(recipient_id=recipient, message_text=text,
+                                                              tag=tag)
     else:
-        send_result = await meta_client.send_instagram_message(recipient_id=recipient, message_text=text)
+        send_result = await meta_client.send_instagram_message(recipient_id=recipient, message_text=text,
+                                                               tag=tag)
 
     stored = lead_service.add_message(MessageCreate(
         lead_id=lead["id"],
@@ -213,7 +216,15 @@ async def send_manual_inbox_message(lead_id: str, payload: ManualMessagePayload,
     text = (payload.text or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="نص الرسالة فارغ")
-    result = await _send_and_store_agent_message(lead, text, extra_meta={"sent_by": "human"})
+    from src.core.exceptions import MetaAPIError
+    try:
+        # Human Agent feature: Meta's sanctioned out-of-window path is
+        # messaging_type=MESSAGE_TAG with tag=HUMAN_AGENT (verified live:
+        # Meta accepts it and delivers the message — 200 + real message id).
+        result = await _send_and_store_agent_message(lead, text, extra_meta={"sent_by": "human"},
+                                                     tag="HUMAN_AGENT")
+    except MetaAPIError as e:
+        raise HTTPException(status_code=502, detail=f"Meta rejected the message: {str(e)[:240]}")
     if not lead.get("human_takeover"):
         lead_service.update_lead(lead_id, {"human_takeover": True})
     return {"status": "success", **result}

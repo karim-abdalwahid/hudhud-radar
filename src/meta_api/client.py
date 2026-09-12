@@ -157,14 +157,18 @@ class MetaGraphClient:
         message_text: str,
         last_interaction_time: Optional[datetime] = None,
         tag: Optional[str] = None,
-        access_token: Optional[str] = None
+        access_token: Optional[str] = None,
+        messaging_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sends a Direct Message to a Facebook Page conversation.
-        Strictly enforces the 24-hour messaging window unless a legitimate tag is supplied.
+        Strictly enforces the 24-hour messaging window unless a legitimate tag or
+        an approved human-agent context is supplied.
         access_token: per-page token when provided (Wave 9.8), else legacy global.
+        messaging_type: e.g. HUMAN_AGENT — the sanctioned out-of-window path.
         """
-        self._validate_messaging_window(recipient_id, "facebook", last_interaction_time, tag)
+        if messaging_type != "HUMAN_AGENT":
+            self._validate_messaging_window(recipient_id, "facebook", last_interaction_time, tag)
 
         token = access_token or self.access_token
         rate_limiter.check_and_acquire("facebook")
@@ -177,6 +181,8 @@ class MetaGraphClient:
         if tag:
             payload["messaging_type"] = "MESSAGE_TAG"
             payload["tag"] = tag
+        if messaging_type and messaging_type != "MESSAGE_TAG":
+            payload["messaging_type"] = messaging_type
 
         try:
             # ZERO-FABRICATION: without a real token we FAIL honestly —
@@ -204,13 +210,20 @@ class MetaGraphClient:
         recipient_id: str,
         message_text: str,
         last_interaction_time: Optional[datetime] = None,
-        access_token: Optional[str] = None
+        access_token: Optional[str] = None,
+        messaging_type: Optional[str] = None,
+        tag: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sends an Instagram Direct Message adhering to Instagram Business Messaging rules.
         access_token: per-account token when provided (Wave 9.8), else legacy global.
+        messaging_type: HUMAN_AGENT — sanctioned out-of-window human path.
+        tag: approved message tag (MESSAGE_TAG path) for out-of-window sends.
         """
-        self._validate_messaging_window(recipient_id, "instagram", last_interaction_time)
+        if tag:
+            self._validate_messaging_window(recipient_id, "instagram", last_interaction_time, tag)
+        elif messaging_type != "HUMAN_AGENT":
+            self._validate_messaging_window(recipient_id, "instagram", last_interaction_time)
 
         token = access_token or self.access_token
         rate_limiter.check_and_acquire("instagram")
@@ -220,11 +233,16 @@ class MetaGraphClient:
             "recipient": {"id": recipient_id},
             "message": {"text": message_text}
         }
+        if tag:
+            payload["messaging_type"] = "MESSAGE_TAG"
+            payload["tag"] = tag
+        if messaging_type and messaging_type != "MESSAGE_TAG":
+            payload["messaging_type"] = messaging_type
 
         try:
             # ZERO-FABRICATION: without a real token we FAIL honestly —
             # no simulated delivery receipts, no fake activity_logs success.
-            if not self.access_token or self.access_token.startswith("your-"):
+            if not token or token.startswith("your-"):
                 logger.error(f"IG DM to {recipient_id} NOT sent: Meta token not configured (fail-closed, no simulation).")
                 self._log_activity("send_message", "instagram", recipient_id, "failed", "Meta token not configured")
                 raise MetaAPIError("Meta Page Access Token غير مضبوط — لم يتم إرسال الرسالة (لا توجد محاكاة)", status_code=503)

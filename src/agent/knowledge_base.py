@@ -144,12 +144,12 @@ class KnowledgeBaseManager:
             return target.read_text(encoding="utf-8")
         return None
 
-    def save_document(self, filename: str, content: str) -> Dict[str, Any]:
-        """Saves or edits a document (DB mode chunks+embeds; file mode writes)."""
+    def save_document(self, filename: str, content: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Saves or edits a document (DB mode chunks+embeds with owner stamp; file mode writes)."""
         if self._mode == "db":
             try:
                 from src.knowledge.db_knowledge_base import db_knowledge_base
-                res = db_knowledge_base.save_document(filename, content)
+                res = db_knowledge_base.save_document(filename, content, user_id=user_id)
                 self.knowledge_cache[res["filename"]] = content
                 res["message"] = f"تم حفظ المستند '{res['filename']}' وفهرسته للبحث الذكي بنجاح."
                 return res

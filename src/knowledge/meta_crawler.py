@@ -173,7 +173,23 @@ class BusinessKnowledgeSynthesizer:
         self.kb_dir = Path(kb_dir)
         self.kb_dir.mkdir(parents=True, exist_ok=True)
 
-    async def synthesize_and_save(self, raw_data: Dict[str, Any]) -> Dict[str, str]:
+    def _persist_doc(self, name: str, content: str) -> None:
+        """File-mode parity + DB-mode authority: writes the repo file when the
+        FS is writable, AND (in db mode) persists to kb_documents stamped with
+        the operating user — so the AI agent + per-user UI see it (Phase C truth fix)."""
+        try:
+            (self.kb_dir / name).write_text(content, encoding="utf-8")
+        except OSError:
+            pass  # read-only serverless FS — DB below is the source of truth
+        try:
+            from src.agent.knowledge_base import knowledge_base
+            if getattr(knowledge_base, "_mode", "file") == "db":
+                knowledge_base.save_document(name, content, user_id=getattr(self, "_user_id", None))
+        except Exception as e:
+            logger.warning(f"KB DB persist failed for {name}: {e}")
+
+    async def synthesize_and_save(self, raw_data: Dict[str, Any], user_id: Optional[str] = None) -> Dict[str, str]:
+        self._user_id = user_id
         """
         Processes extracted social content and creates/updates the dedicated knowledge base files:
         1. business_profile.md
@@ -263,10 +279,10 @@ class BusinessKnowledgeSynthesizer:
             parsed = json.loads(text_content.strip())
 
             # Write out files
-            (self.kb_dir / "business_profile.md").write_text(parsed.get("business_profile", ""), encoding="utf-8")
-            (self.kb_dir / "products_and_services.md").write_text(parsed.get("products_and_services", ""), encoding="utf-8")
-            (self.kb_dir / "sales_scripts_and_closing.md").write_text(parsed.get("sales_scripts_and_closing", ""), encoding="utf-8")
-            (self.kb_dir / "audience_insights.md").write_text(parsed.get("audience_insights", ""), encoding="utf-8")
+            self._persist_doc("business_profile.md", parsed.get("business_profile", ""))
+            self._persist_doc("products_and_services.md", parsed.get("products_and_services", ""))
+            self._persist_doc("sales_scripts_and_closing.md", parsed.get("sales_scripts_and_closing", ""))
+            self._persist_doc("audience_insights.md", parsed.get("audience_insights", ""))
 
             self._write_synced_meta_history(raw_data)
             return True
@@ -284,7 +300,7 @@ class BusinessKnowledgeSynthesizer:
 ## المحتوى المستخرج من الحساب:
 {chr(10).join('- ' + c[:200] for c in captions[:10]) if captions else '- (لم يتم سحب منشورات بعد)'}
 """
-        (self.kb_dir / "business_profile.md").write_text(bp_content, encoding="utf-8")
+        self._persist_doc("business_profile.md", bp_content)
 
         # 2. products_and_services.md
         ps_content = """# المنتجات والخدمات (Products & Services)
@@ -303,7 +319,7 @@ class BusinessKnowledgeSynthesizer:
 ### 4. الاستشارات التسويقية والتدقيق الشامل (Marketing Consulting & Audit)
 - تحليل أداء الحساب ومراجعة مسار الشراء (Sales Funnel) لتحديد نقاط تسريب العملاء وحلها.
 """
-        (self.kb_dir / "products_and_services.md").write_text(ps_content, encoding="utf-8")
+        self._persist_doc("products_and_services.md", ps_content)
 
         # 3. sales_scripts_and_closing.md
         sc_content = """# نصوص وتكتيكات إغلاق المبيعات (Sales Scripts & Closing Tactics)
@@ -325,7 +341,7 @@ class BusinessKnowledgeSynthesizer:
 ### 4. قاعدة إغلاق الصفقة (The Golden Rule):
 دائمًا أنهِ رسالتك بسؤال توجيهي مفتوح يحث على الرد أو طلب رقم الهاتف للتواصل المباشر.
 """
-        (self.kb_dir / "sales_scripts_and_closing.md").write_text(sc_content, encoding="utf-8")
+        self._persist_doc("sales_scripts_and_closing.md", sc_content)
 
         # 4. audience_insights.md
         sample_comments = raw_data.get("all_comments", [])
@@ -340,7 +356,7 @@ class BusinessKnowledgeSynthesizer:
 ### عينة من التعليقات الحقيقية المسحوبة:
 {comments_preview}
 """
-        (self.kb_dir / "audience_insights.md").write_text(ai_content, encoding="utf-8")
+        self._persist_doc("audience_insights.md", ai_content)
 
         # 5. synced_meta_history.md
         self._write_synced_meta_history(raw_data)
@@ -361,7 +377,7 @@ class BusinessKnowledgeSynthesizer:
         for m in raw_data.get("instagram_media", [])[:5]:
             history += f"- **[Instagram {m.get('media_type', 'MEDIA')}]**: {m.get('text', '')[:100]}... (تعليقات: {len(m.get('comments', []))})\n"
 
-        (self.kb_dir / "synced_meta_history.md").write_text(history, encoding="utf-8")
+        self._persist_doc("synced_meta_history.md", history)
 
 
 meta_crawler = MetaContentCrawler()

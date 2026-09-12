@@ -210,7 +210,7 @@ class MetaPostsAnalyzer:
     # ------------------------------------------------------------------
     # Main entry: analyze recent posts
     # ------------------------------------------------------------------
-    async def analyze_recent(self, limit: int = 10) -> Dict[str, Any]:
+    async def analyze_recent(self, limit: int = 10, user_id: Optional[str] = None) -> Dict[str, Any]:
         from src.meta_api.extended_api import _resolve_credentials
         from src.meta_api.feed_sync import meta_feed_sync
 
@@ -252,7 +252,8 @@ class MetaPostsAnalyzer:
         for name, content in aggregated.items():
             if content:
                 res = db_knowledge_base.save_document(
-                    f"{name}.md", content, source="meta_analysis", is_core=(name == "audience_insights")
+                    f"{name}.md", content, source="meta_analysis",
+                    is_core=(name == "audience_insights"), user_id=user_id
                 )
                 saved.append(res.get("filename"))
 
