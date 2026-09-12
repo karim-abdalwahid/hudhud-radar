@@ -1707,3 +1707,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 19. Post-Entry Addition — ⏭️ المراجعة قُدّمت
 - Meta App Review submission COMPLETED by owner (2026-09-12) — videos uploaded (31), API test gates passed (IG trio 200; threads GETs). Status: under review. Post-approval activations ready: threads reply POST + Wave 9.8 webhook receiver.
+
+### 20. Post-Entry Addition — Wave 9.8 safe batch COMPLETE
+- Automations→table (bootstrap mirror verified), NodeData sanitizer bug fixed, per-page token resolution w/ legacy fallback, threads refresh cron live on prod (401 verified). +15 tests → 293/293. commit 1357d58.
