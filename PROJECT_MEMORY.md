@@ -1713,3 +1713,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 21. Post-Entry Addition — TRUTH AUDIT (owner alarm during review)
 - Only genuine fake found+fixed: Studio post DELETE was local-only → now Graph-deletes published objects first (live round-trip proven: exists on Meta -> delete -> 'Object does not exist'). Insights/analytics numbers verified REAL (exact match to Meta); perceived fakeness = honest zeros (views bug fixed same day, Meta-hidden likes, quiet Threads account). Both sweeps clean; nothing invented anywhere else. commit 2e80485.
+
+### 22. Post-Entry Addition — all 3 platforms PROVEN publish+delete REAL (live round-trips)
+- IG permalink proof + Threads + FB all: publish->Graph-live-read->app-delete->Graph-confirms-gone. commit 4ab4ebf. 293/293.
