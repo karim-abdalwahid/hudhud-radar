@@ -225,6 +225,73 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
     ]
 
 
+# ----------------------------------------------------------------------
+# Wave 9.8: automations_workflows table (source of truth) — pure helpers
+# (db injected for testability; class methods delegate to these).
+# ----------------------------------------------------------------------
+def db_load_workflows(db) -> Optional[List[Workflow]]:
+    """Rebuilds workflows from table rows (config JSONB = full model dump).
+    Returns None when unavailable/empty (caller falls back to legacy stores)."""
+    if db is None or not getattr(db, "is_connected", False):
+        return None
+    try:
+        rows = db.select("automations_workflows") or []
+        if not rows:
+            return None
+        wfs: List[Workflow] = []
+        for r in rows:
+            cfg = r.get("config") or {}
+            try:
+                wfs.append(Workflow(**cfg))
+            except Exception as e:
+                logger.warning(f"Skipping malformed automation row {r.get('id')}: {e}")
+        return wfs or None
+    except Exception as e:
+        logger.warning(f"Automations DB load failed (legacy fallback): {e}")
+        return None
+
+
+def db_save_workflows(db, workflows: Dict[str, "Workflow"],
+                      owner_user_id: Optional[str] = None) -> bool:
+    """Upserts each workflow (column subset for querying + full model in
+    config JSONB). Best-effort: per-row failures are logged, never raised."""
+    if db is None or not getattr(db, "is_connected", False):
+        return False
+    now = datetime.now(timezone.utc).isoformat()
+    ok = False
+    for wf in workflows.values():
+        payload = {
+            "id": wf.id,
+            "name": wf.name,
+            "platform": wf.platform,
+            "status": wf.status,
+            "keywords": wf.keywords or [],
+            "target_type": wf.target_type,
+            "target_post_id": wf.target_post_id,
+            "like_comment": wf.like_comment,
+            "reply_comment": wf.reply_comment,
+            "reply_comment_text": wf.reply_comment_text,
+            "send_dm": wf.send_dm,
+            "dm_text": wf.dm_text,
+            "last_executed_at": getattr(wf, "last_executed_at", None),
+            "execution_count": getattr(wf, "execution_count", 0) or 0,
+            "config": wf.model_dump(mode="json"),
+            "updated_at": now,
+        }
+        if owner_user_id:
+            payload["user_id"] = owner_user_id
+        try:
+            existing = db.select("automations_workflows", {"id": wf.id}) or []
+            if existing:
+                db.update("automations_workflows", wf.id, payload)
+            else:
+                db.insert("automations_workflows", payload)
+            ok = True
+        except Exception as e:
+            logger.warning(f"Automations DB upsert failed for {wf.id}: {e}")
+    return ok
+
+
 class AutomationsService:
     """Manages storage, lifecycle, and execution of visual automation workflows.
 
@@ -240,6 +307,27 @@ class AutomationsService:
     # ------------------------------------------------------------------
     # Persistence helpers
     # ------------------------------------------------------------------
+    def _owner_user_id(self) -> Optional[str]:
+        """Stamp rows with the legacy workspace operator (oldest admin)."""
+        try:
+            if not getattr(self, "_owner_cache", None):
+                from src.core.supabase_client import supabase_db
+                rows = supabase_db.select("users", {"role": "admin"}) or []
+                if rows:
+                    self._owner_cache = sorted(
+                        rows, key=lambda u: u.get("created_at") or "")[0]["id"]
+            return getattr(self, "_owner_cache", None)
+        except Exception:
+            return None
+
+    def _load_db(self) -> Optional[List[Workflow]]:
+        from src.core.supabase_client import supabase_db
+        return db_load_workflows(supabase_db)
+
+    def _save_db(self) -> bool:
+        from src.core.supabase_client import supabase_db
+        return db_save_workflows(supabase_db, self._workflows, self._owner_user_id())
+
     def _load_supabase(self) -> Optional[Dict[str, Any]]:
         try:
             from src.core.supabase_client import supabase_db
@@ -268,8 +356,24 @@ class AutomationsService:
             return False
 
     def _load(self):
-        """Loads workflows: Supabase first, then disk, then defaults."""
-        # 1. Supabase (serverless-safe source of truth)
+        """Loads workflows: DB table (Wave 9.8 source of truth) first,
+        then legacy Supabase settings, then disk, then defaults.
+        Legacy loads are mirrored into the table once (self-healing bootstrap)."""
+        # 0. automations_workflows table (per-user ready)
+        try:
+            table_rows = self._load_db()
+        except Exception as e:
+            logger.error(f"Error loading automations from table: {e}")
+            table_rows = None
+            self._workflows = {}
+        if table_rows:
+            for wf in table_rows:
+                self._workflows[wf.id] = wf
+            self._sanitize_legacy_fabrications()
+            logger.info(f"Loaded {len(self._workflows)} workflows from automations_workflows table")
+            return
+
+        # 1. Supabase legacy (serverless-safe until cutover is proven)
         cloud = self._load_supabase()
         if cloud:
             try:
@@ -278,6 +382,7 @@ class AutomationsService:
                     self._workflows[wf.id] = wf
                 self._sanitize_legacy_fabrications()
                 logger.info(f"Loaded {len(self._workflows)} workflows from Supabase app_settings")
+                self._save_db()  # one-time bootstrap mirror into the table
                 return
             except Exception as e:
                 logger.error(f"Error parsing Supabase workflows: {e}")
@@ -292,6 +397,7 @@ class AutomationsService:
                     self._workflows[wf.id] = wf
                 self._sanitize_legacy_fabrications()
                 logger.info(f"Loaded {len(self._workflows)} workflows from {STORE_PATH}")
+                self._save_db()  # one-time bootstrap mirror into the table
                 return
             except Exception as e:
                 logger.error(f"Error loading automations store: {e}")
@@ -306,27 +412,40 @@ class AutomationsService:
 
     def _sanitize_legacy_fabrications(self):
         """One-time cleanup of previously-shipped fabricated defaults that
-        could DM real customers a fake booking link / discount code."""
+        could DM real customers a fake booking link / discount code.
+        Nodes may be pydantic NodeData or raw dicts (legacy stores)."""
         dirty = False
         for wf in self._workflows.values():
             for node in (wf.nodes or []):
-                cfg = node.get("config") or {}
+                if isinstance(node, dict):
+                    cfg = node.get("config") or {}
+                else:
+                    cfg = getattr(node, "config", None) or {}
+                if not isinstance(cfg, dict):
+                    continue
+                changed = False
                 if cfg.get("discount_code") == "HUDHUD20":
                     cfg["discount_code"] = ""
                     cfg["include_offer"] = False
-                    node["config"] = cfg
-                    dirty = True
+                    changed = True
                 if cfg.get("calendar_link") == "https://calendar.app.google/hudhud-meeting":
                     cfg["calendar_link"] = ""
                     cfg["cta_button"] = ""
-                    node["config"] = cfg
+                    changed = True
+                if changed:
+                    if isinstance(node, dict):
+                        node["config"] = cfg
+                    else:
+                        node.config = cfg
                     dirty = True
         if dirty:
             logger.warning("Sanitized legacy fabricated automation defaults (HUDHUD20 / fake calendar link).")
             self._save()
 
     def _save(self):
-        """Persists workflows to Supabase (primary) and disk (cache)."""
+        """Persists workflows: DB table (Wave 9.8 primary) + legacy Supabase
+        settings mirror + disk cache."""
+        saved_db = self._save_db()
         saved_cloud = self._save_supabase()
         try:
             try:

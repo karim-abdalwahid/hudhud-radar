@@ -11,7 +11,7 @@ from src.leads.service import lead_service
 from src.identity.extractor import ProfileDataExtractor
 from src.identity.resolver import identity_resolver
 from src.agent.conversation_engine import conversation_engine
-from src.meta_api.client import meta_client
+from src.meta_api.client import meta_client, resolve_page_token
 from src.core.supabase_client import supabase_db
 
 
@@ -122,6 +122,9 @@ class AgentOrchestrator:
         reply_text, is_converted = await self.engine.generate_response(lead_record, text, history)
 
         # 7. Send Outbound Response adhering to 24-hr window & Rate Limits.
+        # Wave 9.8: prefer the owner's per-page token for this page/account;
+        # legacy global token is the fallback (zero behavior change today).
+        page_token = resolve_page_token(event.get("recipient_id"))
         # Use the real event timestamp when available (accurate 24h-window basis).
         event_ts = event.get("timestamp")
         try:
@@ -138,13 +141,15 @@ class AgentOrchestrator:
                 send_result = await self.client.send_facebook_message(
                     recipient_id=sender_id,
                     message_text=reply_text,
-                    last_interaction_time=last_interaction
+                    last_interaction_time=last_interaction,
+                    access_token=page_token
                 )
             else:
                 send_result = await self.client.send_instagram_message(
                     recipient_id=sender_id,
                     message_text=reply_text,
-                    last_interaction_time=last_interaction
+                    last_interaction_time=last_interaction,
+                    access_token=page_token
                 )
 
             # 8. Store Outbound Message

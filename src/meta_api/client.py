@@ -18,6 +18,35 @@ MAX_SEND_RETRIES = 2
 RETRY_BASE_DELAY_SECONDS = 1.0
 
 
+def resolve_page_token(account_id: Optional[str]) -> Optional[str]:
+    """Wave 9.8: per-user token for a page/account id from platform_connections
+    (encrypted at rest). None → callers use the legacy global token. A
+    decryption failure is NOT fatal — it degrades to the legacy token."""
+    if not account_id or str(account_id).startswith("your-"):
+        return None
+    try:
+        from src.core.supabase_client import supabase_db
+        if not supabase_db.is_connected:
+            return None
+        rows = (supabase_db.select("platform_connections", {"status": "active"}) or [])
+        for r in rows:
+            if r.get("platform") not in ("facebook", "instagram"):
+                continue
+            if str(r.get("account_id") or "") != str(account_id):
+                continue
+            try:
+                from src.core.crypto import decrypt_token
+                tok = decrypt_token(r.get("access_token_encrypted") or "")
+                if tok:
+                    return tok
+            except Exception as e:
+                logger.warning(f"Per-page token decrypt failed for account {account_id} (legacy fallback): {e}")
+                return None
+    except Exception as e:
+        logger.warning(f"Per-page token resolution unavailable: {e}")
+    return None
+
+
 class MetaGraphClient:
     """Production client for Facebook & Instagram Graph API."""
 
@@ -127,17 +156,20 @@ class MetaGraphClient:
         recipient_id: str,
         message_text: str,
         last_interaction_time: Optional[datetime] = None,
-        tag: Optional[str] = None
+        tag: Optional[str] = None,
+        access_token: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sends a Direct Message to a Facebook Page conversation.
         Strictly enforces the 24-hour messaging window unless a legitimate tag is supplied.
+        access_token: per-page token when provided (Wave 9.8), else legacy global.
         """
         self._validate_messaging_window(recipient_id, "facebook", last_interaction_time, tag)
 
+        token = access_token or self.access_token
         rate_limiter.check_and_acquire("facebook")
         url = f"{self.BASE_URL}/me/messages"
-        params = {"access_token": self.access_token}
+        params = {"access_token": token}
         payload = {
             "recipient": {"id": recipient_id},
             "message": {"text": message_text}
@@ -149,7 +181,7 @@ class MetaGraphClient:
         try:
             # ZERO-FABRICATION: without a real token we FAIL honestly —
             # no simulated delivery receipts, no fake activity_logs success.
-            if not self.access_token or self.access_token.startswith("your-"):
+            if not token or token.startswith("your-"):
                 logger.error(f"FB DM to {recipient_id} NOT sent: Meta token not configured (fail-closed, no simulation).")
                 self._log_activity("send_message", "facebook", recipient_id, "failed", "Meta token not configured")
                 raise MetaAPIError("Meta Page Access Token غير مضبوط — لم يتم إرسال الرسالة (لا توجد محاكاة)", status_code=503)
@@ -171,16 +203,19 @@ class MetaGraphClient:
         self,
         recipient_id: str,
         message_text: str,
-        last_interaction_time: Optional[datetime] = None
+        last_interaction_time: Optional[datetime] = None,
+        access_token: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Sends an Instagram Direct Message adhering to Instagram Business Messaging rules.
+        access_token: per-account token when provided (Wave 9.8), else legacy global.
         """
         self._validate_messaging_window(recipient_id, "instagram", last_interaction_time)
 
+        token = access_token or self.access_token
         rate_limiter.check_and_acquire("instagram")
         url = f"{self.BASE_URL}/me/messages"
-        params = {"access_token": self.access_token}
+        params = {"access_token": token}
         payload = {
             "recipient": {"id": recipient_id},
             "message": {"text": message_text}

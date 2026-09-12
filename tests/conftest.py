@@ -47,8 +47,12 @@ def _isolated_user_store():
     _orig_save_supabase = AutomationsService._save_supabase
     _orig_load_supabase = AutomationsService._load_supabase
     _orig_save_disk = AutomationsService._save
+    _orig_save_db = AutomationsService._save_db
+    _orig_load_db = AutomationsService._load_db
     AutomationsService._save_supabase = lambda self: False
     AutomationsService._load_supabase = lambda self: None
+    AutomationsService._save_db = lambda self: False
+    AutomationsService._load_db = lambda self: None
     AutomationsService._save = lambda self: None
     yield
     # Restore original state
@@ -58,6 +62,8 @@ def _isolated_user_store():
     for name, fn in (
         ("_save_supabase", _orig_save_supabase),
         ("_load_supabase", _orig_load_supabase),
+        ("_save_db", _orig_save_db),
+        ("_load_db", _orig_load_db),
         ("_save", _orig_save_disk),
     ):
         setattr(AutomationsService, name, fn)

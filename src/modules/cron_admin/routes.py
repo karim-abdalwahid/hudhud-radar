@@ -91,3 +91,17 @@ async def admin_system_alerts(request: Request, force: bool = False):
     if not session or session.get("role") != "admin":
         raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحيات المدير")
     return {"status": "success", "alerts": collect_alerts(force=force)}
+
+
+@router.get("/api/cron/threads-token-refresh", tags=["Cron"])
+async def cron_threads_token_refresh(request: Request):
+    """Daily (Wave 9.8): refresh Threads tokens — legacy + per-user — that
+    expire within 7 days. Failures are logged, never raised."""
+    _verify_cron_secret(request)
+    result = await threads_oauth_manager.refresh_if_expiring()
+    if result.get("refreshed"):
+        from src.modules.notifications.hooks import _notify_admin
+        _notify_admin("🔄 تحديث توكن Threads",
+                      f"تم تحديث {len(result['refreshed'])} توكن(ات) قبل انتهائها",
+                      "success", {"job": "threads_token_refresh", **result})
+    return result
