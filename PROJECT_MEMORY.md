@@ -1722,3 +1722,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 25. Post-Entry Addition — Settings page backend review (UI frozen during App Review)
 - Live matrix over all settings endpoints: healthy (meta/status mirrors debug_token; clean 4xx paths; admin gates; password untouched). One data fix only (zero UI): threads get_status enriched from real per-user connections (username+expiry were None). /api/{meta,threads}/status stay session-visible by design (sidebar pill) — per-tenant hardening deferred to Wave 9.8. commit 0de1fe9. 293/293.
+
+### 26. Post-Entry Addition — FULL backend sweep (all routes, gates, write-paths, races)
+- 84 GETs live: zero 5xx/dups. Gates model == observed (anon/user). 3 real 5xx fixed: configure PROJECT_ROOT/Path (save-credentials button was always crashing!), knowledge ValueError->400 — all verified live on prod (200/400). 2 races closed: scheduled double-publish CAS claim + dedup duplicate-key tolerance. +7 regression tests => 300/300. UI untouched. commit 3868293.
