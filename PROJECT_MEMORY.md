@@ -1725,3 +1725,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 26. Post-Entry Addition — FULL backend sweep (all routes, gates, write-paths, races)
 - 84 GETs live: zero 5xx/dups. Gates model == observed (anon/user). 3 real 5xx fixed: configure PROJECT_ROOT/Path (save-credentials button was always crashing!), knowledge ValueError->400 — all verified live on prod (200/400). 2 races closed: scheduled double-publish CAS claim + dedup duplicate-key tolerance. +7 regression tests => 300/300. UI untouched. commit 3868293.
+
+### 27. Post-Entry Addition — EXHAUSTIVE 6-LAYER FINAL AUDIT
+- 3 new real bugs fixed: polar List import (checkout webhooks), meta status cache shadow (split caches), automations DB prune (deleted workflows resurrected after restart - the most dangerous class). Verified: enums parity (020), settings parity, background guards, 14 contract keys, valid-payload write smoke 32/32, prod live 200s. 305/305. UI untouched. commit eafa1c3.
