@@ -36,21 +36,41 @@ async def cron_scheduler_tick(request: Request):
     WS-F: fires a notification when real publishing happened.
     """
     _verify_cron_secret(request)
-    results = await content_scheduler.check_and_publish_due_posts()
-    if results:
+    try:
+        results = await content_scheduler.check_and_publish_due_posts()
+        status = "success"
+        err = None
+    except Exception as e:
+        # cron-job.org disables jobs after repeated non-2xx answers. The tick
+        # always returns 200 with an honest status; failures land in logs +
+        # admin alerts instead of HTTP failures.
+        logger.error(f"scheduler tick failed (reported 200): {e}")
+        results, status, err = [], "partial", str(e)[:200]
+    published = [r for r in results if r.get("status") == "published"]
+    if published:
         from src.modules.notifications.hooks import _notify_admin
-        _notify_admin("📣 نشر محتوى مجدول", f"تم نشر {len(results)} منشور(ات) مجدولة",
-                      "success", {"job": "scheduler_tick", "count": len(results)})
-    return {"status": "success", "due_posts_processed": len(results), "details": results}
+        _notify_admin("📣 نشر محتوى مجدول", f"تم نشر {len(published)} منشور(ات) مجدولة",
+                      "success", {"job": "scheduler_tick", "count": len(published)})
+    body = {"status": status, "due_posts_processed": len(results), "details": results}
+    if err:
+        body["error"] = err
+    return body
 
 
 @router.get("/api/cron/insights-sync", tags=["Cron"])
 async def cron_insights_sync(request: Request):
     """Cron trigger for daily Meta Insights sync (Facebook + Instagram metrics)."""
     _verify_cron_secret(request)
-    result = await meta_insights_sync.sync_recent_metrics(days=7)
+    try:
+        result = await meta_insights_sync.sync_recent_metrics(days=7)
+    except Exception as e:
+        logger.error(f"insights sync cron failed (reported 200): {e}")
+        return {"status": "partial", "error": str(e)[:200]}
     from src.modules.notifications.hooks import notify_sync_result
-    notify_sync_result("insights", result)
+    try:
+        notify_sync_result("insights", result)
+    except Exception as e:
+        logger.warning(f"insights notify failed: {e}")
     return result
 
 
@@ -72,7 +92,11 @@ async def cron_threads_token_refresh(request: Request):
     """Daily (Wave 9.8): refresh Threads tokens — legacy + per-user — that
     expire within 7 days. Failures are logged, never raised."""
     _verify_cron_secret(request)
-    result = await threads_oauth_manager.refresh_if_expiring()
+    try:
+        result = await threads_oauth_manager.refresh_if_expiring()
+    except Exception as e:
+        logger.error(f"threads token-refresh cron failed (reported 200): {e}")
+        return {"status": "partial", "error": str(e)[:200]}
     if result.get("refreshed"):
         from src.modules.notifications.hooks import _notify_admin
         _notify_admin("🔄 تحديث توكن Threads",
