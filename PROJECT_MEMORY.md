@@ -1728,3 +1728,9 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 27. Post-Entry Addition — EXHAUSTIVE 6-LAYER FINAL AUDIT
 - 3 new real bugs fixed: polar List import (checkout webhooks), meta status cache shadow (split caches), automations DB prune (deleted workflows resurrected after restart - the most dangerous class). Verified: enums parity (020), settings parity, background guards, 14 contract keys, valid-payload write smoke 32/32, prod live 200s. 305/305. UI untouched. commit eafa1c3.
+
+### 28. Post-Entry Addition — IG DM delivery diagnosis
+- Site side PROVEN working (signed instagram-object event -> lead+message via prod webhook). Delivery gap is Meta-side: IG webhook subscription needs instagram_manage_messages capability (pending review; subscribed_apps returns error #3). Owner checklist logged (dashboard IG connect + tester role + await approval). Probe leftovers cleaned.
+
+### 30. Post-Entry Addition — CRON AUTO-DISABLE ROOT-CAUSED & FIXED
+- 45s container waits killed by Vercel 10s budget -> cron-job.org auto-disabled job. Short-budget state machine (queue/poll-once/requeue; cap 2/tick) + cron endpoints always-200. Prod tick 1.5s. +4 tests -> 309/309. commit 39a2764. ACTION owner: re-enable job + ROTATE exposed CRON_SECRET.
