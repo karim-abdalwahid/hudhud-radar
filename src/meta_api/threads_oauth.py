@@ -346,7 +346,7 @@ class ThreadsOAuthManager:
         configured = bool(settings.THREADS_APP_ID and settings.THREADS_APP_SECRET)
         if not token:
             return {"configured": configured, "connected": False}
-        return {
+        status = {
             "configured": configured,
             "connected": True,
             "username": creds.get("threads_username"),
@@ -354,6 +354,33 @@ class ThreadsOAuthManager:
             "expires_at": creds.get("expires_at"),
             "expires_in_days": round(max(0, (creds.get("expires_at", 0) - time.time())) / 86400, 1),
         }
+        # Enrich from the real per-user connection when the legacy env token
+        # carries no identity/expiry (settings page shows the truth, same UI).
+        if not status["username"] or not status.get("expires_at"):
+            try:
+                rows = supabase_db.select("platform_connections",
+                                          {"platform": "threads", "status": "active"}) or []
+                if rows:
+                    rows.sort(key=lambda r: r.get("updated_at") or r.get("connected_at") or "", reverse=True)
+                    conn = rows[0]
+                    if not status["username"]:
+                        status["username"] = (conn.get("account_name") or "").lstrip("@") or None
+                    if not status["threads_user_id"]:
+                        status["threads_user_id"] = conn.get("account_id") or None
+                    exp_s = conn.get("token_expires_at")
+                    if exp_s and not status.get("expires_at"):
+                        try:
+                            from datetime import datetime as _dt
+                            exp_dt = _dt.fromisoformat(str(exp_s).replace("Z", "+00:00"))
+                            status["expires_at"] = int(exp_dt.timestamp())
+                            status["expires_in_days"] = round(
+                                max(0, exp_dt.timestamp() - time.time()) / 86400, 1)
+                        except Exception:
+                            pass
+                    status["source"] = "per_user_connection"
+            except Exception as e:
+                logger.debug(f"Threads status enrichment skipped: {e}")
+        return status
 
     def disconnect(self) -> Dict[str, Any]:
         removed = _save_stored_creds({})
