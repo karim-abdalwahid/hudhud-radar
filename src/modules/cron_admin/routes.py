@@ -28,32 +28,6 @@ router = APIRouter()
 # Cron Endpoints (Vercel Cron / external cron-job.org)
 # Protected by CRON_SECRET (Vercel sends 'Authorization: Bearer $CRON_SECRET').
 # --------------------------------------------------------------------
-def _verify_cron_secret(request: Request):
-    """Validates the cron caller secret. FAIL-CLOSED in production: if
-    CRON_SECRET is unset there, the request is rejected (never public).
-    Accepts either:
-    - Authorization: Bearer <secret> header (Vercel Cron), or
-    - ?key=<secret> / ?secret=<secret> query param (cron-job.org free plan
-      does not support custom headers).
-    Comparison is constant-time (hmac.compare_digest).
-    """
-    secret = settings.CRON_SECRET
-    if not secret:
-        if settings.APP_ENV.lower() == "production":
-            logger.error("CRON_SECRET is not configured in production — cron endpoints fail CLOSED")
-            raise HTTPException(status_code=503, detail="Cron endpoints disabled: CRON_SECRET not configured")
-        return  # Local dev convenience only
-    auth_header = request.headers.get("authorization") or ""
-    provided = ""
-    if auth_header.startswith("Bearer "):
-        provided = auth_header[7:].strip()
-    if not provided:
-        provided = (request.query_params.get("key") or request.query_params.get("secret") or "").strip()
-    if not provided or not hmac.compare_digest(provided.encode("utf-8"), secret.encode("utf-8")):
-        logger.warning(f"Cron auth rejected from {request.client.host if request.client else 'unknown'}")
-        raise HTTPException(status_code=401, detail="Invalid cron secret")
-
-
 @router.get("/api/cron/scheduler-tick", tags=["Cron"])
 async def cron_scheduler_tick(request: Request):
     """

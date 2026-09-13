@@ -203,7 +203,6 @@ from src.modules import admin_users_page  # noqa: E402
 from src.modules import templates_manager  # noqa: E402
 from src.modules import billing_pages  # noqa: E402
 from src.modules import billing as billing_module  # noqa: E402
-from src.modules.compliance import register_compliance_routes  # noqa: E402
 from src.modules import legal as _legal
 from src.modules import connections as connections_module  # noqa: E402 — Phase 9.7
 

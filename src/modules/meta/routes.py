@@ -48,9 +48,6 @@ class MetaUserPagesPayload(BaseModel):
 
 import time
 
-_meta_status_cache: Dict[str, Any] = {"ts": 0.0, "data": None}
-META_STATUS_CACHE_TTL = 60.0
-
 
 @router.get("/api/meta/status", tags=["Meta Integration"])
 async def get_meta_status():

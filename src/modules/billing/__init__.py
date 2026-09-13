@@ -113,7 +113,6 @@ def register(app: FastAPI) -> None:
         import json as _json
 
         from src.core.event_dedup import event_deduplicator
-        from src.core.logger import logger
         from src.payments.registry import get_gateway
 
         gateway = get_gateway(provider)

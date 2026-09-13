@@ -70,7 +70,6 @@ def _verify_cron_secret(request: Request):
     CRON_SECRET is unset there, the request is rejected (never public).
     Accepts Authorization: Bearer <secret> or ?key=/secret= query params.
     Constant-time comparison."""
-    from fastapi import HTTPException
 
     secret = settings.CRON_SECRET
     if not secret:

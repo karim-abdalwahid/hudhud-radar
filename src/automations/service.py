@@ -259,6 +259,18 @@ def db_save_workflows(db, workflows: Dict[str, "Workflow"],
         return False
     now = datetime.now(timezone.utc).isoformat()
     ok = False
+    # prune rows that no longer exist in the authoritative in-memory set
+    try:
+        existing = db.select("automations_workflows") or []
+        live_ids = set(workflows.keys())
+        for row in existing:
+            if row.get("id") and row["id"] not in live_ids:
+                try:
+                    db.delete("automations_workflows", row["id"])
+                except Exception as e:
+                    logger.warning(f"Automations prune failed for {row['id']}: {e}")
+    except Exception as e:
+        logger.warning(f"Automations prune check failed: {e}")
     for wf in workflows.values():
         payload = {
             "id": wf.id,
