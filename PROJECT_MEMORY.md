@@ -1719,3 +1719,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 24. Post-Entry Addition — FULL BACKEND TRUTH AUDIT (96 endpoints)
 - Fixed 2 more silent fakes: human send >24h (now HUMAN_AGENT tag — delivery read back from Graph) & knowledge sync (dual-write per-user DB). IG path proven reaching Meta. Production webhook e2e re-proven. Leadgen forms honestly zero-on-Meta. 293/293. commit 3b9b675 live.
+
+### 25. Post-Entry Addition — Settings page backend review (UI frozen during App Review)
+- Live matrix over all settings endpoints: healthy (meta/status mirrors debug_token; clean 4xx paths; admin gates; password untouched). One data fix only (zero UI): threads get_status enriched from real per-user connections (username+expiry were None). /api/{meta,threads}/status stay session-visible by design (sidebar pill) — per-tenant hardening deferred to Wave 9.8. commit 0de1fe9. 293/293.
