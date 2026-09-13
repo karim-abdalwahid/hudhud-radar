@@ -4,6 +4,9 @@ Meta Platform & Social Connection Management — migrated verbatim from main.py 
 Owned by module 'meta'. Registered via src/modules/meta/__init__.py.
 Handlers are UNCHANGED — only @app.* became @router.* (same URLs).
 """
+from pathlib import Path
+
+PROJECT_ROOT = str(Path(__file__).resolve().parents[3])
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks, Response, UploadFile, File
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel

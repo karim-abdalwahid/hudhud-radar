@@ -47,9 +47,36 @@ class ContentScheduler:
 
         return results
 
-    async def publish_single_post(self, post: ContentPostResponse) -> Dict[str, Any]:
-        """Publishes a specific post and updates its status in the database."""
+    def _claim_for_publish(self, post_id: str) -> bool:
+        """Atomic compare-and-swap: flip the row out of any non-publishing
+        state to 'publishing'. Returns False when another worker already
+        claimed this exact post (double cron tick / double-click protection).
+        Memory-mode dev (no client) skips the claim."""
+        try:
+            from src.core.supabase_client import supabase_db
+            if not (supabase_db.is_connected and supabase_db.client):
+                return True
+            res = supabase_db.client.table("content_posts").update(
+                {"status": "publishing"}
+            ).eq("id", post_id).neq("status", "publishing").execute()
+            return len(res.data or []) == 1
+        except Exception as e:
+            logger.warning(f"publish claim check failed (proceeding): {e}")
+            return True
+
+    async def publish_single_post(self, post: ContentPostResponse,
+                                  allow_inflight: bool = False) -> Dict[str, Any]:
+        """Publishes a specific post and updates its status in the database.
+
+        Concurrency guard (audit 2026-09-12): without an explicit
+        allow_inflight (used only by the fresh create->publish path where the
+        row was just inserted as 'publishing' in this same request), the post is
+        atomically claimed first — a duplicate scheduler tick or a double-click
+        on Publish Now can no longer publish the same content twice."""
         post_id = post.id
+        if not allow_inflight and not self._claim_for_publish(post_id):
+            logger.info(f"Post {post_id} publish skipped: already claimed/in flight.")
+            return {"post_id": post_id, "status": "skipped_already_publishing"}
         logger.info(f"Publishing post {post_id} ({post.platform.value}, {post.post_type.value})...")
         
         # Ruflo Swarm Gatekeeper: Audit content safety, brand tone, and policy compliance

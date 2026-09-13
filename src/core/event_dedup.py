@@ -75,6 +75,10 @@ class EventDeduplicator:
                 )
                 return True
             except Exception as e:
+                msg = str(e).lower()
+                if "duplicate" in msg or "unique" in msg or "409" in msg:
+                    # another worker inserted it first = already processed.
+                    return False
                 logger.warning(f"Dedup DB mark failed — disabling DB dedup (memory-only): {e}")
                 self._db_disabled = True
         return False

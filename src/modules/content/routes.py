@@ -68,7 +68,9 @@ async def create_content_post(payload: ContentPostCreate, background_tasks: Back
     user_id = (session or {}).get("sub")
     post = content_studio_service.create_post(payload, user_id=user_id)
     if payload.status == ContentStatus.PUBLISHING:
-        background_tasks.add_task(content_scheduler.publish_single_post, post)
+        # fresh row created as 'publishing' in this same request -> pre-claimed
+        background_tasks.add_task(
+            lambda: content_scheduler.publish_single_post(post, allow_inflight=True))
     return post
 
 

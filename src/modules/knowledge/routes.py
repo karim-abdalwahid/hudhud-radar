@@ -89,8 +89,11 @@ async def get_knowledge_document(filename: str, request: Request):
 @router.put("/api/knowledge/documents/{filename}", tags=["Knowledge Base & RAG"])
 async def update_knowledge_document(filename: str, payload: SaveDocumentRequest, request: Request):
     """Updates a knowledge document (owner-scoped) and hot-reloads the AI agent's memory."""
-    res = db_knowledge_base.save_document(filename, payload.content,
-                                          user_id=_session_user(request))
+    try:
+        res = db_knowledge_base.save_document(filename, payload.content,
+                                              user_id=_session_user(request))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     knowledge_base.reload()
     return res
 
@@ -98,8 +101,11 @@ async def update_knowledge_document(filename: str, payload: SaveDocumentRequest,
 @router.post("/api/knowledge/documents", tags=["Knowledge Base & RAG"])
 async def create_knowledge_document(payload: CreateDocumentRequest, request: Request):
     """Creates a new knowledge document owned by the session user."""
-    res = db_knowledge_base.save_document(payload.filename, payload.content,
-                                          user_id=_session_user(request))
+    try:
+        res = db_knowledge_base.save_document(payload.filename, payload.content,
+                                              user_id=_session_user(request))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     knowledge_base.reload()
     return res
 
