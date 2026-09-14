@@ -72,3 +72,19 @@ def test_dedup_duplicate_key_keeps_db_dedup_enabled(monkeypatch):
     monkeypatch.setattr(d, "_db_ready", lambda: True)
     assert d.mark_processed("evt-x", "message") is False
     assert d._db_disabled is False  # NOT disabled
+
+
+def test_ai_provider_empty_custom_returns_400_not_500(client):
+    """Button audit: submitNewProvider() with an empty form must 400 (was 500)."""
+    r = client.post("/api/ai/providers",
+                    json={"kind": "custom", "provider_key": "",
+                          "display_name": "", "base_url": "", "api_key": ""})
+    assert r.status_code == 400, r.text[:250]
+    assert "display_name" in r.text or "اسم" in r.text
+
+
+def test_ai_provider_bad_base_url_returns_400(client):
+    r = client.post("/api/ai/providers", json={
+        "kind": "custom", "provider_key": "bad-url-test",
+        "display_name": "X", "base_url": "not-a-url", "api_key": ""})
+    assert r.status_code == 400, r.text[:200]

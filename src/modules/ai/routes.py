@@ -63,11 +63,16 @@ async def create_ai_provider(payload: ProviderCreatePayload):
     """Admin: connects a provider (official registry key or custom OpenAI-compatible)."""
     try:
         res = ai_provider_manager.create_provider(payload.model_dump())
-        # Auto-discover immediately
-        sync = ai_provider_manager.sync_provider_models(res["provider_id"])
-        return {"status": "success", **res, "sync": {k: v for k, v in sync.items() if k != "models"}}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=_safe_error(e))
+    # Auto-discover — a sync failure must NOT 500 a successful creation
+    try:
+        sync = ai_provider_manager.sync_provider_models(res["provider_id"])
+        sync_out = {k: v for k, v in sync.items() if k != "models"}
+    except Exception as e:
+        logger.warning(f"provider auto-sync failed after create: {e}")
+        sync_out = {"status": "error", "detail": "sync failed — models can be synced later"}
+    return {"status": "success", **res, "sync": sync_out}
 
 
 @router.put("/api/ai/providers/{provider_id}", tags=["AI Providers"])

@@ -196,6 +196,12 @@ class AIProviderManager:
             }
         else:
             key = key or f"custom-{int(time.time())}"
+            base = (payload.get("base_url") or "").strip()
+            disp = (payload.get("display_name") or "").strip()
+            if not disp:
+                raise ValueError("اسم المزود مطلوب / display_name is required")
+            if not base.startswith("http"):
+                raise ValueError("رابط Base URL غير صالح — يجب أن يبدأ بـ https://")
             row = {
                 "kind": "custom",
                 "provider_key": key,
