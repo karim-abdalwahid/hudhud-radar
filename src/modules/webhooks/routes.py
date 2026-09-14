@@ -59,7 +59,12 @@ async def receive_meta_webhook(request: Request, background_tasks: BackgroundTas
     if not webhook_handler.verify_signature(raw_body, signature):
         raise HTTPException(status_code=401, detail="Invalid HMAC SHA-256 signature")
 
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Malformed webhook JSON body")
+    if not isinstance(payload, dict):
+        return {"status": "ignored", "reason": "non-object payload"}
     events = webhook_handler.parse_messaging_events(payload)
     comment_events = webhook_handler.parse_comment_events(payload)
 
@@ -129,17 +134,29 @@ async def receive_threads_webhook(request: Request, background_tasks: Background
         logger.error("Threads webhook HMAC verification failed.")
         raise HTTPException(status_code=401, detail="Invalid signature")
 
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Malformed webhook JSON body")
+    if not isinstance(payload, dict):
+        return {"status": "ignored", "reason": "non-object payload"}
     if payload.get("object") != "threads":
         return {"status": "ignored", "reason": "unknown object"}
 
     from src.meta_api.extended_api import threads_leads_sync
 
     queued = 0
-    for entry in payload.get("entry", []):
+    for entry in (payload.get("entry") if isinstance(payload.get("entry"), list) else []):
+        if not isinstance(entry, dict):
+            continue
         entry_user_id = entry.get("id")
-        for change in entry.get("changes", []):
+        changes = entry.get("changes")
+        for change in (changes if isinstance(changes, list) else []):
+            if not isinstance(change, dict):
+                continue
             val = change.get("value") or {}
+            if not isinstance(val, dict):
+                continue
             reply_id = val.get("id")
             if not reply_id:
                 continue

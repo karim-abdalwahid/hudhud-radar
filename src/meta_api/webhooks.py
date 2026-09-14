@@ -59,18 +59,27 @@ class WebhookHandler:
         """
         Parses incoming Facebook and Instagram DM events.
         Extracts sender ID, recipient ID, message text, message ID, timestamp, and platform.
+        Hardened: non-dict entries/values are skipped, never crash (500-hunter audit).
         """
         events = []
+        if not isinstance(payload, dict):
+            return events
         obj = payload.get("object")
         platform = PlatformSource.INSTAGRAM if obj == "instagram" else PlatformSource.FACEBOOK
 
-        entries = payload.get("entry", [])
-        for entry in entries:
-            messaging = entry.get("messaging", [])
-            for msg_event in messaging:
-                sender = msg_event.get("sender", {}).get("id")
-                recipient = msg_event.get("recipient", {}).get("id")
-                message = msg_event.get("message", {})
+        entries = payload.get("entry")
+        for entry in (entries if isinstance(entries, list) else []):
+            if not isinstance(entry, dict):
+                continue
+            messaging = entry.get("messaging")
+            for msg_event in (messaging if isinstance(messaging, list) else []):
+                if not isinstance(msg_event, dict):
+                    continue
+                sender = (msg_event.get("sender") or {}).get("id")
+                recipient = (msg_event.get("recipient") or {}).get("id")
+                message = msg_event.get("message")
+                if not isinstance(message, dict):
+                    continue
                 timestamp = msg_event.get("timestamp")
 
                 if message and sender:
@@ -91,17 +100,27 @@ class WebhookHandler:
     def parse_comment_events(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Parses incoming Instagram & Facebook post/reel comments and feed changes.
+        Hardened: malformed entries/changes/values are skipped, never crash.
         """
         events = []
+        if not isinstance(payload, dict):
+            return events
         obj = payload.get("object")
         platform = PlatformSource.INSTAGRAM if obj == "instagram" else PlatformSource.FACEBOOK
 
-        entries = payload.get("entry", [])
-        for entry in entries:
+        entries = payload.get("entry")
+        for entry in (entries if isinstance(entries, list) else []):
+            if not isinstance(entry, dict):
+                continue
             account_id = entry.get("id")
-            for change in entry.get("changes", []):
+            changes = entry.get("changes")
+            for change in (changes if isinstance(changes, list) else []):
+                if not isinstance(change, dict):
+                    continue
                 field = change.get("field")
-                val = change.get("value", {})
+                val = change.get("value") or {}
+                if not isinstance(val, dict):
+                    continue
 
                 # Instagram comments
                 if field == "comments":

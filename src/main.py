@@ -151,6 +151,41 @@ def _is_admin_route(path: str, method: str) -> bool:
     return False
 
 
+# --------------------------------------------------------------------
+# UUID-segment guard (500-hunter audit): path params that MUST be UUIDs are
+# validated centrally so a malformed id returns an honest 404 instead of
+# reaching PostgREST and raising a 500. Patterns mirror the real routes.
+# --------------------------------------------------------------------
+import uuid as _uuid  # noqa: E402
+import re as _re  # noqa: E402  (module already imports re; alias for readability)
+_UUID_PATH_PATTERNS = (
+    _re.compile(r"^/api/leads/([^/]+)$"),
+    _re.compile(r"^/api/content/posts/([^/]+)(?:/publish-now)?$"),
+    _re.compile(r"^/api/inbox/conversations/([^/]+)(?:/.*)?$"),
+    _re.compile(r"^/api/admin/users/([^/]+)(?:/credits|/plan)?$"),
+    _re.compile(r"^/api/notifications/([^/]+)/read$"),
+    _re.compile(r"^/api/ai/providers/([^/]+)(?:/sync|/models)?$"),
+    _re.compile(r"^/api/ai/models/([^/]+)/toggle$"),
+    _re.compile(r"^/api/identity/queue/([^/]+)/(?:approve|reject)$"),
+    _re.compile(r"^/api/admin/billing/coupons/([^/]+)$"),
+)
+
+
+@app.middleware("http")
+async def uuid_segment_guard(request: Request, call_next):
+    path = request.url.path
+    for rx in _UUID_PATH_PATTERNS:
+        m = rx.match(path)
+        if m:
+            seg = m.group(1)
+            try:
+                _uuid.UUID(seg)
+            except (ValueError, AttributeError, TypeError):
+                return JSONResponse(status_code=404, content={"detail": "Not Found"})
+            break
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     path = request.url.path
