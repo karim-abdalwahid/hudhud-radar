@@ -1737,3 +1737,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 31. Post-Entry Addition — BUTTON/WIRE FULL AUDIT
 - 110 handlers + all fetches/anchors mapped to real routes (static + 65 live button clicks = zero 5xx/404). One real bug fixed: empty AI-provider form -> clean bilingual 400 (was 500), sync failure can't kill a create. Stale takeover flag restored. +2 regressions -> 311/311. commit 6855018, prod-verified 400.
+
+### 32. Post-Entry Addition — 500-HUNTER (44-case hostile sweep)
+- 10 real 5xx classes eliminated: webhook hostile payloads (garbage/None/non-list) now 400/ignored with full isinstance parsers; central uuid_segment_guard middleware (auth-ordered, 403 intact) converts every malformed UUID path to honest 404. 44/44 local, prod-verified 400/401. 317/317. commit 3d99b51. Report: AUDIT_500_SWEEP_2026-09-15.md
