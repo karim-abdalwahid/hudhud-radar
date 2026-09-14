@@ -1734,3 +1734,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 30. Post-Entry Addition — CRON AUTO-DISABLE ROOT-CAUSED & FIXED
 - 45s container waits killed by Vercel 10s budget -> cron-job.org auto-disabled job. Short-budget state machine (queue/poll-once/requeue; cap 2/tick) + cron endpoints always-200. Prod tick 1.5s. +4 tests -> 309/309. commit 39a2764. ACTION owner: re-enable job + ROTATE exposed CRON_SECRET.
+
+### 31. Post-Entry Addition — BUTTON/WIRE FULL AUDIT
+- 110 handlers + all fetches/anchors mapped to real routes (static + 65 live button clicks = zero 5xx/404). One real bug fixed: empty AI-provider form -> clean bilingual 400 (was 500), sync failure can't kill a create. Stale takeover flag restored. +2 regressions -> 311/311. commit 6855018, prod-verified 400.
