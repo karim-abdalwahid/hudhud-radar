@@ -1746,3 +1746,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 34. Post-Entry Addition — SaaS RAG tenant boundary repaired
 - Inbound Meta webhooks now resolve the tenant from the recipient connected account before a lead is created or an AI response is generated. The owner `user_id` is stamped on leads/messages and propagated into retrieval and sales context. Missing or ambiguous ownership returns no automated reply; unscoped RAG returns no context. Migration 021 removes the legacy 3-argument `match_kb_chunks` overload, makes `p_user_id` mandatory, and revokes browser-role access to KB tables/RPC. Targeted regression suite: 21 passed.
+
+### 35. Post-Entry Addition — Supabase migration history reconciled and tenant RAG applied
+- Supabase CLI history was reconciled without dropping any database objects: the legacy remote-only history was retired, the already-live security migration was marked applied, and the current local/remote history now matches. `supabase/migrations/20260915225700_kb_tenant_fail_closed.sql` was applied successfully to Cloud. Live verification confirmed the four-argument tenant RPC accepts a scoped request and the legacy three-argument unscoped call is rejected. `db pull` remains blocked only by Windows reserving Docker's required shadow port 54320; this does not affect applied migrations or the live schema.
