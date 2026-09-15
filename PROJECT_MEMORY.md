@@ -1740,3 +1740,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 32. Post-Entry Addition — 500-HUNTER (44-case hostile sweep)
 - 10 real 5xx classes eliminated: webhook hostile payloads (garbage/None/non-list) now 400/ignored with full isinstance parsers; central uuid_segment_guard middleware (auth-ordered, 403 intact) converts every malformed UUID path to honest 404. 44/44 local, prod-verified 400/401. 317/317. commit 3d99b51. Report: AUDIT_500_SWEEP_2026-09-15.md
+
+### 33. Post-Entry Addition — Supabase test isolation & key validation
+- `TESTING=true` now forces the database manager to use in-memory storage before a Supabase client is created, preventing pytest from touching the live project. The manager validates that configured server credentials carry the `service_role` claim (or use the modern `sb_secret_` form) and rejects an anon key in production. A reproducible migration and archive record were added; remote migration-history reconciliation remains a deliberate CLI step.

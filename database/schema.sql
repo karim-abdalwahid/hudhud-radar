@@ -391,3 +391,23 @@ DO $$ BEGIN
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
+
+-- --------------------------------------------------------------------
+-- Backend-only Data API access alignment
+-- --------------------------------------------------------------------
+-- The browser talks to this application through FastAPI, never directly to
+-- Supabase Data API. Keep all application-table CRUD server-side.
+REVOKE ALL ON TABLE public.app_settings, public.leads, public.messages,
+    public.identity_verification_queue, public.activity_logs,
+    public.page_performance_metrics, public.campaigns, public.content_posts,
+    public.users, public.processed_events, public.platform_connections
+    FROM anon, authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.app_settings, public.leads,
+    public.messages, public.identity_verification_queue, public.activity_logs,
+    public.page_performance_metrics, public.campaigns, public.content_posts,
+    public.users, public.processed_events, public.platform_connections
+    TO service_role;
+
+COMMENT ON TABLE public.app_settings IS
+    'Server-managed application configuration. Never expose credentials to browser clients.';

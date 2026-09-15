@@ -139,3 +139,17 @@
 - UNIQUE(user_id, platform, account_id) · فهارس user_id و(user_id, platform, status) · RLS بنمط المنصة (service_role فقط، anon مقطوع).
 - **Upsell الذهبي**: ربط فيسبوك يكتشف IG مربوط بالصفحة → metadata.linked_ig_username → بطاقة upsell مقفولة في الـ wizard حتى شراء entitlement:instagram.
 - الخدمة: `src/modules/connections/service.py` (ConnectionService + assert_entitled fail-closed) · المسارات: `/api/connections/*` (overview / authorize / callback / disconnect).
+
+---
+
+### إعدادات التطبيق المحفوظة بالخادم (`app_settings`)
+
+إعدادات تشغيل خاصة بالـbackend فقط، مثل بيانات الربط المتغيرة. لا يصل إليها المتصفح مباشرة؛ الوصول يتم عبر FastAPI باستخدام service role فقط.
+
+| الحقل | النوع | الوصف |
+| :--- | :--- | :--- |
+| `key` | TEXT (PK) | اسم الإعداد الفريد، مثل `meta_credentials` |
+| `value` | JSONB | القيمة المنظمة للإعداد |
+| `updated_at` | TIMESTAMPTZ | وقت آخر حفظ |
+
+سياسة الوصول: جداول التطبيق تعمل بـRLS، وصلاحيات `anon` و`authenticated` مسحوبة من Data API. يبقى مفتاح `service_role` على الخادم فقط ولا يُوضع في المتصفح أو متغير `NEXT_PUBLIC_`.

@@ -6,11 +6,16 @@ Shared pytest fixtures for HudhudRadar test suite.
 - Provides an authenticated ADMIN TestClient (`client` fixture) that passes
   the AuthMiddleware for all dashboard/API tests.
 """
+import os
 import uuid
 from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
+
+# pytest imports this file before test modules, so application imports below
+# always use the isolated in-memory Supabase manager.
+os.environ["TESTING"] = "true"
 
 ADMIN_PASSWORD = "HudhudTest#2026"
 _ADMIN_EMAIL = {"value": None}
