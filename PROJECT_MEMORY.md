@@ -1743,3 +1743,6 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 33. Post-Entry Addition — Supabase test isolation & key validation
 - `TESTING=true` now forces the database manager to use in-memory storage before a Supabase client is created, preventing pytest from touching the live project. The manager validates that configured server credentials carry the `service_role` claim (or use the modern `sb_secret_` form) and rejects an anon key in production. A reproducible migration and archive record were added; remote migration-history reconciliation remains a deliberate CLI step.
+
+### 34. Post-Entry Addition — SaaS RAG tenant boundary repaired
+- Inbound Meta webhooks now resolve the tenant from the recipient connected account before a lead is created or an AI response is generated. The owner `user_id` is stamped on leads/messages and propagated into retrieval and sales context. Missing or ambiguous ownership returns no automated reply; unscoped RAG returns no context. Migration 021 removes the legacy 3-argument `match_kb_chunks` overload, makes `p_user_id` mandatory, and revokes browser-role access to KB tables/RPC. Targeted regression suite: 21 passed.

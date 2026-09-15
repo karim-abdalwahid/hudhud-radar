@@ -253,6 +253,9 @@ class DBKnowledgeBase:
         user_id scopes results to that user's documents (Wave 9.8)."""
         if not query.strip():
             return []
+        if not user_id:
+            logger.warning("KB search skipped because tenant user_id is missing (fail-closed).")
+            return []
         try:
             if not (supabase_db.is_connected and supabase_db.client):
                 return self._fallback_keyword_search(query, top_k, user_id=user_id)
@@ -263,8 +266,7 @@ class DBKnowledgeBase:
             else:
                 # keyword-only: pass null embedding
                 params["query_embedding"] = None
-            if user_id:
-                params["p_user_id"] = user_id
+            params["p_user_id"] = user_id
             res = supabase_db.client.rpc("match_kb_chunks", params).execute()
             rows = res.data or []
             return [(r["score"], r["filename"], r["chunk_text"]) for r in rows]

@@ -29,15 +29,24 @@ class IdentityResolver:
         # 1. Deterministic Search: Check by specific platform account ID
         existing_lead = None
         if incoming.source == PlatformSource.FACEBOOK and incoming.facebook_account_id:
-            matches = self.db.select("leads", {"facebook_account_id": incoming.facebook_account_id})
+            filters = {"facebook_account_id": incoming.facebook_account_id}
+            if incoming.user_id:
+                filters["user_id"] = incoming.user_id
+            matches = self.db.select("leads", filters)
             if matches:
                 existing_lead = matches[0]
         elif incoming.source == PlatformSource.INSTAGRAM and incoming.instagram_account_id:
-            matches = self.db.select("leads", {"instagram_account_id": incoming.instagram_account_id})
+            filters = {"instagram_account_id": incoming.instagram_account_id}
+            if incoming.user_id:
+                filters["user_id"] = incoming.user_id
+            matches = self.db.select("leads", filters)
             if matches:
                 existing_lead = matches[0]
         elif incoming.source == PlatformSource.THREADS and incoming.threads_account_id:
-            matches = self.db.select("leads", {"threads_account_id": incoming.threads_account_id})
+            filters = {"threads_account_id": incoming.threads_account_id}
+            if incoming.user_id:
+                filters["user_id"] = incoming.user_id
+            matches = self.db.select("leads", filters)
             if matches:
                 existing_lead = matches[0]
 
@@ -91,7 +100,7 @@ class IdentityResolver:
         Scans ALL leads, evaluates every possible match signal per lead, and
         returns the HIGHEST-confidence candidate (not the first found).
         """
-        all_leads = self.db.select("leads")
+        all_leads = self.db.select("leads", {"user_id": incoming.user_id}) if incoming.user_id else self.db.select("leads")
 
         best_lead: Optional[Dict[str, Any]] = None
         best_score = 0.0

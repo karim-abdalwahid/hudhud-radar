@@ -11,7 +11,7 @@ from src.leads.service import lead_service
 from src.identity.extractor import ProfileDataExtractor
 from src.identity.resolver import identity_resolver
 from src.agent.conversation_engine import conversation_engine
-from src.meta_api.client import meta_client, resolve_page_token
+from src.meta_api.client import meta_client
 from src.core.supabase_client import supabase_db
 
 
@@ -33,6 +33,25 @@ class AgentOrchestrator:
         message_id: str = event.get("message_id")
         text: str = event.get("text", "")
         raw_event = event.get("raw_event", {})
+        recipient_id = event.get("recipient_id")
+
+        # In Meta webhooks the sender is the *end customer*. The recipient is
+        # the business account, and therefore the only trustworthy tenant key.
+        # Never accept or answer an event that cannot be mapped to one active
+        # connected account; guessing here could expose another client's KB.
+        from src.modules.connections.service import connection_service
+        owner_user_id = connection_service.owner_for_account(platform.value, recipient_id)
+        if not owner_user_id:
+            logger.error(
+                "Webhook ignored: no unique active owner for %s recipient %s",
+                platform.value, recipient_id or "<missing>",
+            )
+            return {
+                "reply_sent": None,
+                "is_converted": False,
+                "ignored": True,
+                "reason": "unmapped_recipient_account",
+            }
 
         logger.info(f"Processing incoming {platform} message from {sender_id}: mid={message_id}")
 
@@ -61,6 +80,8 @@ class AgentOrchestrator:
                 logger.warning(f"Profile enrichment skipped for Instagram sender {sender_id}: {e}")
             lead_in = ProfileDataExtractor.extract_from_instagram(profile_payload)
 
+        lead_in = lead_in.model_copy(update={"user_id": owner_user_id})
+
         # 2. Identity Resolution & Linking
         lead_record, is_new, queue_id = self.resolver.resolve_and_save_lead(lead_in)
         lead_id = lead_record["id"]
@@ -80,6 +101,7 @@ class AgentOrchestrator:
         # 4. Store Inbound Message linked to lead
         inbound_msg = MessageCreate(
             lead_id=lead_id,
+            user_id=owner_user_id,
             platform=platform,
             platform_message_id=message_id,
             sender_type=SenderType.LEAD,
@@ -124,7 +146,19 @@ class AgentOrchestrator:
         # 7. Send Outbound Response adhering to 24-hr window & Rate Limits.
         # Wave 9.8: prefer the owner's per-page token for this page/account;
         # legacy global token is the fallback (zero behavior change today).
-        page_token = resolve_page_token(event.get("recipient_id"))
+        page_token = connection_service.get_active_token_for_account(
+            owner_user_id, platform.value, recipient_id
+        )
+        if not page_token:
+            logger.warning("AI reply skipped: no entitled active token for owner %s", owner_user_id)
+            return {
+                "lead_id": lead_id,
+                "is_new_lead": is_new,
+                "queue_id": queue_id,
+                "reply_sent": None,
+                "is_converted": is_converted,
+                "reason": "no_entitled_account_token",
+            }
         # Use the real event timestamp when available (accurate 24h-window basis).
         event_ts = event.get("timestamp")
         try:
@@ -155,6 +189,7 @@ class AgentOrchestrator:
             # 8. Store Outbound Message
             outbound_msg = MessageCreate(
                 lead_id=lead_id,
+                user_id=owner_user_id,
                 platform=platform,
                 platform_message_id=send_result.get("message_id"),
                 sender_type=SenderType.AGENT,

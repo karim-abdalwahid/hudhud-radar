@@ -74,6 +74,50 @@ class ConnectionService:
             logger.warning(f"connection list failed → empty (fail-closed): {e}")
             return []
 
+    def owner_for_account(self, platform: str, account_id: Optional[str]) -> Optional[str]:
+        """Return the sole active SaaS owner of an inbound recipient account.
+
+        Webhook sender IDs belong to the end customer; the recipient business
+        account identifies the tenant. Missing or ambiguous ownership returns
+        None so the caller can fail closed rather than route a conversation to
+        another tenant.
+        """
+        if platform not in ("facebook", "instagram", "threads") or not account_id:
+            return None
+        try:
+            rows = supabase_db.select("platform_connections", {
+                "platform": platform, "account_id": str(account_id), "status": "active",
+            }) or []
+            owners = {str(row.get("user_id")) for row in rows if row.get("user_id")}
+            if len(owners) == 1:
+                return owners.pop()
+            if len(owners) > 1:
+                logger.error("Ambiguous active connection owner for %s account %s", platform, account_id)
+        except Exception as e:
+            logger.warning("connection owner lookup failed → None (fail-closed): %s", e)
+        return None
+
+    def get_active_token_for_account(self, user_id: str, platform: str,
+                                     account_id: Optional[str]) -> Optional[str]:
+        """Resolve the entitled user's token for exactly this recipient account."""
+        if not account_id or not self.assert_entitled(user_id, platform, raise_http=False):
+            return None
+        try:
+            rows = supabase_db.select("platform_connections", {
+                "user_id": user_id, "platform": platform,
+                "account_id": str(account_id), "status": "active",
+            }) or []
+            if len(rows) != 1:
+                return None
+            row = rows[0]
+            exp = row.get("token_expires_at")
+            if exp and exp <= datetime.now(timezone.utc).isoformat():
+                return None
+            return decrypt_token(row.get("access_token_encrypted") or "")
+        except Exception as e:
+            logger.warning("account token lookup failed → None (fail-closed): %s", e)
+            return None
+
     def get_active_token(self, user_id: str, platform: str,
                          check_entitlement: bool = True) -> Optional[str]:
         """Resolves the user's decrypted token for a platform. THE gate:

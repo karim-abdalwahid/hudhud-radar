@@ -209,50 +209,43 @@ class KnowledgeBaseManager:
             parts.append(f"--- KNOWLEDGE BASE SECTION: {name.upper()} ---\n{text}\n")
         return "\n".join(parts)
 
-    def search_relevant_chunks(self, query: str, top_k: int = 3) -> str:
+    def search_relevant_chunks(self, query: str, top_k: int = 3,
+                               user_id: Optional[str] = None) -> str:
         """
         RAG Hybrid Retrieval:
         - DB mode: pgvector cosine + full-text tsvector + RRF (Postgres RPC).
         - File mode: in-memory deterministic hybrid (legacy LEANN-inspired).
         """
+        if not user_id:
+            logger.warning("RAG lookup skipped because tenant user_id is missing (fail-closed).")
+            return ""
+
         if self._mode == "db":
             try:
                 from src.knowledge.db_knowledge_base import db_knowledge_base
-                context = db_knowledge_base.search_context(query, top_k=top_k)
+                context = db_knowledge_base.search_context(query, top_k=top_k, user_id=user_id)
                 if context:
                     return context
-                return self.get_combined_context()[:2500]
+                return ""
             except Exception as e:
                 logger.warning(f"DB RAG search failed, in-memory fallback: {e}")
+        # The legacy file cache has no tenant boundary. It is never a safe
+        # fallback for a SaaS reply, even when a user_id is present.
+        return ""
 
-        if not self.knowledge_cache:
-            self.reload()
-
-        try:
-            from src.knowledge.semantic_engine import semantic_engine
-            results = semantic_engine.hybrid_search(
-                query=query,
-                documents=self.knowledge_cache,
-                top_k=top_k
-            )
-            if results:
-                chunks = [f"[من وثيقة: {fn}]\n{chunk}" for _, fn, chunk in results]
-                return "\n\n---\n\n".join(chunks)
-        except Exception as e:
-            logger.warning(f"Hybrid semantic search encountered an issue: {e}")
-
-        # Fallback to general combined context if no specific matches
-        return self.get_combined_context()[:2500]
-
-    def get_sales_closing_context(self) -> str:
+    def get_sales_closing_context(self, user_id: Optional[str] = None) -> str:
         """Retrieves targeted context for lead conversion and sales closing."""
-        closing_docs = ["sales_scripts_and_closing.md", "products_and_services.md", "business_profile.md"]
-        parts = []
-        for doc in closing_docs:
-            content = self.get_document(doc)
-            if content:
-                parts.append(f"--- تكتيكات البيع والمعلومات المعتمدة ({doc}) ---\n{content}\n")
-        return "\n".join(parts) if parts else self.get_combined_context()
+        if not user_id:
+            return ""
+        if self._mode == "db":
+            try:
+                from src.knowledge.db_knowledge_base import db_knowledge_base
+                return db_knowledge_base.sales_context(user_id=user_id)
+            except Exception as e:
+                logger.warning(f"DB sales context failed: {e}")
+                return ""
+        # See search_relevant_chunks: file-mode documents are not tenant-scoped.
+        return ""
 
 
 knowledge_base = KnowledgeBaseManager()

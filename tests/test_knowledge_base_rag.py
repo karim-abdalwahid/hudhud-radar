@@ -40,9 +40,11 @@ def test_knowledge_base_crud(temp_kb):
     assert len(docs) == 1
     assert docs[0]["name"] == "test_policy"
 
-    # 4. Search relevant chunks (RAG)
+    # 4. The legacy file store is intentionally unavailable to SaaS reply
+    # paths because it has no tenant boundary. Production retrieval uses
+    # the user-scoped database implementation.
     relevant = temp_kb.search_relevant_chunks("policy customer")
-    assert "customer policy" in relevant
+    assert relevant == ""
 
     # 5. Delete document
     deleted = temp_kb.delete_document("test_policy.md")

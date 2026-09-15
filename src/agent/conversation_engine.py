@@ -50,6 +50,7 @@ class ConversationEngine:
         extracted = self.extract_contact_info(incoming_message)
         is_converted = bool(extracted["email"] or extracted["phone"])
         lead_name = lead_data.get("full_name") or lead_data.get("username") or "صديقنا"
+        owner_user_id = lead_data.get("user_id")
 
         # Case 1: Lead shared their contact details (Conversion Completed!)
         if is_converted:
@@ -91,7 +92,7 @@ class ConversationEngine:
         if any(w in msg_lower for w in ["خدمات", "ايش تقدمون", "ماذا تقدمون", "خدمتكم", "services", "بتعملوا ايه"]):
             return (
                 f"أهلاً بك {lead_name}! يسعدنا توضيح خدماتنا — حسب قاعدة معرفتنا الحالية:\n"
-                f"{self.kb.get_sales_closing_context()[:600] or 'أخبرنا باحتياجك بالتفصيل وسنرد عليك بكل التفاصيل.'}\n"
+                f"{self.kb.get_sales_closing_context(user_id=owner_user_id)[:600] or 'أخبرنا باحتياجك بالتفصيل وسنرد عليك بكل التفاصيل.'}\n"
                 f"ما هو الهدف الأهم لحسابك حالياً؟"
             ), False
 
@@ -110,8 +111,9 @@ class ConversationEngine:
         }
 
         # Dynamic RAG context
-        rag_context = self.kb.search_relevant_chunks(message, top_k=3)
-        sales_tactics = self.kb.get_sales_closing_context()
+        owner_user_id = lead_data.get("user_id")
+        rag_context = self.kb.search_relevant_chunks(message, top_k=3, user_id=owner_user_id)
+        sales_tactics = self.kb.get_sales_closing_context(user_id=owner_user_id)
 
         system_prompt = (
             "أنت المساعد الذكي الرسمي المسؤول عن إدارة محادثات العملاء لحساب التواصل الاجتماعي المتصل بهذه المنصة.\n"

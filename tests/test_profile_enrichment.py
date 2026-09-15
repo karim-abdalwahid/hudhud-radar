@@ -67,10 +67,15 @@ async def test_orchestrator_fetches_real_profile_before_extraction(monkeypatch):
     monkeypatch.setattr(orch.resolver, "resolve_and_save_lead", MagicMock(
         return_value=({"id": "lead_1", "human_takeover": True}, True, None)
     ))
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.owner_for_account",
+        lambda *_: "owner_1",
+    )
 
     event = {
         "platform": PlatformSource.FACEBOOK,
         "sender_id": "psid_real",
+        "recipient_id": "page_1",
         "message_id": "mid_x",
         "text": "hello",
         "raw_event": {},
@@ -101,10 +106,15 @@ async def test_orchestrator_survives_profile_fetch_failure(monkeypatch):
     monkeypatch.setattr(orch.resolver, "resolve_and_save_lead", MagicMock(
         return_value=({"id": "lead_2", "human_takeover": True}, True, None)
     ))
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.owner_for_account",
+        lambda *_: "owner_1",
+    )
 
     event = {
         "platform": PlatformSource.FACEBOOK,
         "sender_id": "psid_offline",
+        "recipient_id": "page_1",
         "message_id": "mid_y",
         "text": "hi",
         "raw_event": {},
