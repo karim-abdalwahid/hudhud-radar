@@ -150,3 +150,31 @@
 4. **لوحة الإعدادات**: بلوك الاتصالات في /settings (نفس عارض الـ wizard: الأبواب الثلاثة + upsell) — الـ wizard كامل في 9.7.
 5. **تحديث تلقائي للتوكنات**: cron refresh لتوكنات instagram/threads (60 يوم) قبل انتهائها.
 6. **Embedded Signup / Tech Provider flow**: تسليم OAuth عبر تطبيق المنصة لعملاء العملاء (لما يُفعَّل Advanced Access بعد App Review).
+
+---
+
+# 📌 ملحق حالة التنفيذ الفعلية — 2026-09-16
+
+> هذا الملحق يحدّث الحالة فقط؛ يبقي تفاصيل الخطة الأصلية وسياقها التاريخي كما هي.
+> الدليل: `PROJECT_MEMORY.md` Entries 046–048، migration الحي
+> `20260916190000_harden_backend_and_remove_unowned_legacy_data.sql`، وcommit
+> `d32d9bc`.
+
+| البند | الحالة الصادقة | الدليل/المتبقي |
+|---|---|---|
+| 9.1 أساس الاتصالات | ✅ منفذ | `platform_connections`، التشفير، ConnectionService، OAuth/status/disconnect وentitlement gates. |
+| 9.2 واجهة الربط | ✅ منفذ | wizard/settings connection paths موجودة؛ التحقق التشغيلي النهائي يكون بحساب عميل فعلي. |
+| 9.3 عزل البيانات | ✅ منفذ ومطبق حيًا | tenant scoping/fail-closed عبر CRM/RAG/ingress/content/automations/analytics + grants/RLS hardening. |
+| 9.4 AI لكل مستخدم | 🟡 جزئي | RAG tenant-aware مكتمل؛ persona/settings الدائمة، consumption لـ`usage_events`/`ai_credits`، وربط `provider_manager` بالرد ليست مكتملة. |
+| 9.5 اشتراكات v1 | 🟡 أساس منفذ | plans/trials/entitlements وإدارة رصيد يدوية موجودة؛ billing/credit consumption الفعلي يحتاج إكمال 9.4/قرار بوابة الدفع. |
+| 9.6 Meta App Review | ⏳ خارجي | التقديم موثق 2026-09-12؛ قرار Advanced Access من Meta ما زال معلقاً ويجب التحقق من اللوحة. |
+| Wave 9.8 البنود 1–4 | ✅ منفذة | backend rewiring، webhook receiver، إزالة shared settings، وواجهات الاتصال ضمن hardening الحي. |
+| Wave 9.8 refresh | 🟡 منفذ ويحتاج smoke | cron/refresh موجود، ويحتاج اختبار توكن عميل حقيقي وجدولة production. |
+| Wave 9.8 Embedded Signup | ⏳ محجوب خارجياً | لا يفعّل قبل Advanced Access/App Review. |
+
+## ترتيب الإكمال المعتمد الآن
+
+1. تدوير tokens التاريخية والتحقق من App Review.
+2. smoke test حي لمستأجرين منفصلين.
+3. قرار وتنفيذ 9.4 (Gemini-only v1 أم provider لكل عميل، persona/settings، usage ledger وcredit enforcement).
+4. Wave 9.9 ثم Phase 10 فقط بحسب أولوية المالك والعملاء الفعليين.

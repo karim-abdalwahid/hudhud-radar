@@ -153,3 +153,23 @@
 | `updated_at` | TIMESTAMPTZ | وقت آخر حفظ |
 
 سياسة الوصول: جداول التطبيق تعمل بـRLS، وصلاحيات `anon` و`authenticated` مسحوبة من Data API. يبقى مفتاح `service_role` على الخادم فقط ولا يُوضع في المتصفح أو متغير `NEXT_PUBLIC_`.
+
+---
+
+## ملحق schema الحي — SaaS tenant hardening (2026-09-16)
+
+الجزء السابق يحفظ مواصفة تاريخية مفيدة، لكن يجب عدم قراءته بمفرده كحالة cloud
+الحالية. الترحيل التنفيذي المطبق هو
+`supabase/migrations/20260916190000_harden_backend_and_remove_unowned_legacy_data.sql`.
+
+- موارد العملاء الأساسية صارت تتطلب owner صريحاً؛ أضيفت ملكية campaigns، وصارت
+  metrics unique لكل `(user_id, platform, metric_date)`.
+- `activity_logs.user_id` و`kb_documents.user_id` cascade-safe، والحساب الخارجي
+  active محمي من الارتباط بأكثر من tenant.
+- حذفت مفاتيح `app_settings` المشتركة القديمة (`meta_credentials`,
+  `threads_credentials`, `automations_workflows`, `meta_cached_posts`). لا يصح
+  اعتبار المثال `meta_credentials` أعلاه إعداداً مسموحاً الآن.
+- Data API backend-only وRAG لا يقبلان وصولاً غير scoped.
+
+التعريف الحالي المختصر القابل للتشغيل موجود في [[SaaS_Tenant_Data_Contract]].
+ترتيب migrations هو المرجع الكامل قبل أي تغيير أو export أو reconstruction.

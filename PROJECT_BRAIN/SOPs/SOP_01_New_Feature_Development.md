@@ -39,3 +39,15 @@
   1. `PROJECT_MEMORY.md` (إضافة تراكمية فقط دون تعديل أو مسح).
   2. عقل المشروع `PROJECT_BRAIN/` (تحديث الملفات ذات الصلة).
   3. سجل النشاطات `docs/PROJECT_REPORTS/ACTIVITY_EXECUTION_LOG.md`.
+
+---
+
+## ملحق إلزامي — دورة توثيق Codex وSaaS (2026-09-16)
+
+يُعمل بهذا الملحق عند التعارض مع اختصار سابق في هذا الإجراء:
+
+1. يبدأ/يُستأنف سجل حي للجلسة في `docs/PROJECT_REPORTS/SESSION_LOGS/YYYY-MM-DD_session.md` **أثناء** العمل، ويتضمن طلب المالك والقرار والتنفيذ والنتيجة.
+2. عند اكتمال block عمل، تُلحق فقط إضافة زمنية في `PROJECT_MEMORY.md` وفي مرجع Codex الخارجي `C:\Users\Dell\Desktop\$AI_TESTING\codex`؛ لا حذف ولا استبدال ولا إعادة كتابة لسجل سابق في أي منهما.
+3. عند وجود plan أو walkthrough أو audit جديد، يُؤرشف بالرقم التالي في `PROJECT_ARCHIVE/` ويُسجل في `000_ARCHIVE_CATALOG.md`.
+4. أي ميزة تمس بيانات عميل أو منصة مرتبطة تبدأ بتحديد `user_id`، الحساب الخارجي، والـConnectionService/entitlement ذي الصلة. غياب الملكية لا يُعالج بـfallback عام.
+5. بعد التحقق، يحدث الملف المعماري/المخططي المناسب في Project Brain، وسجل النشاطات، دون كشف tokens أو بيانات عملاء أو أسرار.

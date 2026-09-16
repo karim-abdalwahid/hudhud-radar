@@ -1811,3 +1811,41 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - The owner asked Codex to continue after the retrospective session record was created. Codex performed a final documentation-only quality pass, removed three trailing Markdown whitespace warnings from archive 025, and appended the continuation to the live session log.
 - `git diff --check` then passed cleanly. This block changes no production code, Supabase row, migration, credential, or business setting.
 - The standing contract is reaffirmed: Codex maintains the live session log while work is in progress; completes an append-only `PROJECT_MEMORY.md` entry after each meaningful completed block; updates relevant Brain/activity/archive records; and mirrors non-secret continuity information into `C:\Users\Dell\Desktop\$AI_TESTING\codex`.
+
+---
+
+## [Entry 048] 2026-09-16 — SOP/Project Brain Alignment Audit and Permanent Append-Only Governance
+- **Timestamp**: 2026-09-16T23:28:37+03:00
+- **Actor**: Owner & Codex
+- **Status**: ✅ REVIEW COMPLETED — SOP/PLAN EDITS AWAIT OWNER APPROVAL
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-16_session.md`
+- **Archived audit**: `PROJECT_ARCHIVE/026_20260916_2328_documentation_plan_alignment_audit.md`
+
+### Owner’s permanent instruction
+- `PROJECT_MEMORY.md` and the external Codex continuity reference must only receive appended, dated additions. Historical content must never be deleted, replaced, or silently rewritten under any circumstance.
+- During this review, Codex confirmed that the project memory history was append-only. A previous last-paragraph update in the external reference had been phrased as a replacement; Codex restored the prior text verbatim and appended a dated continuity addendum. Both references are now governed as append-only permanently.
+
+### Audit result
+- The live tenant-isolation implementation does **not** conflict with the SaaS goal, Phase 9 direction, or the owner-approved contract. It delivers the missing guarantee: one customer’s connected account, token, CRM data, content, automations, and RAG knowledge cannot become another customer’s context.
+- Documentation contains historical-model drift, not a reason to roll back code. The material updates needed after approval are: SOP-09/AI data flow (per-tenant KB/RAG), SOP-04/security data flow (encrypted per-tenant tokens and recipient ownership), live schema documentation, and honest Phase 9/Meta App Review status. SOP-01/03/05/07/08/10 need procedural tenant/governance addenda.
+- Phase 9.4 remains partial: tenant RAG works, but no runtime `usage_events`/credit consumption is wired and the direct Gemini response path does not yet use the multi-provider manager. Meta approval and real two-tenant operational smoke testing remain external/next validations.
+- No SOP, roadmap, architecture, or plan was edited in this block because the owner required the gaps to be shown first. The detailed decision-ready report is archive 026.
+
+---
+
+## [Entry 049] 2026-09-16 — Approved SaaS Documentation Alignment Applied
+- **Timestamp**: 2026-09-16T23:44:23+03:00
+- **Actor**: Owner & Codex
+- **Status**: ✅ DOCUMENTATION ALIGNMENT COMPLETE — NO CODE OR DATABASE CHANGE
+- **Decision**: Following the owner’s approval to start, Codex applied the previously reported documentation changes as dated append-only addenda and versioned references, preserving historical plans and SOP text.
+- **Walkthrough**: `PROJECT_ARCHIVE/027_20260916_2344_walkthrough_sop_brain_saas_alignment.md`
+
+### What changed
+- SOP-01/03/04/05/07/08/10 now contain tenant/governance addenda. The original SOP-09 remains historical; new `SOP_09_Knowledge_Base_and_RAG_Management_v2.md` is the binding SaaS RAG procedure.
+- Architecture, security, data flow, live schema documentation, Phase 9, development roadmap, Meta App Review guide, admin-tools plan, and Project Brain index now distinguish live tenant-scoped behavior from historical plans.
+- `PROJECT_BRAIN/Schemas/SaaS_Tenant_Data_Contract.md` is the compact current operational contract. It declares migrations as the executable schema source of truth and states the still-open Phase 9.4 and external Meta validation work.
+
+### Integrity and limits
+- `database/schema.sql` was intentionally not recoded or overwritten: legacy non-UTF-8 bytes make a safe append patch impossible, and the live migration chain—not that bootstrap snapshot—is authoritative. The new contract and SOP-03 record this fact.
+- Verification confirmed the new documents and internal wikilinks exist; `git diff --check` passes. No application code, test behavior, migration, Supabase row, secret, or deployment changed in this documentation block.
+- The append-only rule remains binding for `PROJECT_MEMORY.md` and the external Codex reference. The external reference was appended with this completion summary without replacing earlier history.

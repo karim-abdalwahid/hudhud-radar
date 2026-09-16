@@ -48,3 +48,13 @@
 - **Action:** استكمال أمر المالك بتوثيق الجلسة والتحقق من سلامة الـMarkdown قبل الإغلاق.
 - **Result:** أزيلت 3 trailing-whitespace notices من archive 025؛ `git diff --check` صار نظيفًا؛ أُلحق `PROJECT_MEMORY.md` Entry 047 وسجل الجلسة في نفس اللحظة.
 - **Impact:** توثيق فقط؛ لا تغيير في قاعدة البيانات أو التطبيق أو الأسرار.
+
+## 2026-09-16 — مراجعة مواءمة SOP/Project Brain بعد tenant hardening
+- **Action:** فحص read-only لكل SOPs والـProject Brain والخطط في مقابل إصلاحات SaaS العازلة الحية.
+- **Result:** لا تعارض وظيفي؛ رُصد انجراف توثيقي جوهري في نموذج KB/tokens/schema وstatus Phase 9، مع قائمة تحديثات لا تنفذ قبل موافقة المالك.
+- **Records:** archive 026 وسجل الجلسة `2026-09-16_session.md`. بقيت ملفات SOP والخطط بلا تعديل تنفيذاً لقرار المالك بعرض الفروقات أولاً.
+
+## 2026-09-16 — تنفيذ مواءمة SOP/Project Brain مع SaaS
+- **Action:** بعد موافقة المالك، أضيفت ملاحق مؤرخة إلى SOPs والمعمارية والخطط، وأُنشئ SOP-09 v2 وعقد SaaS tenant data مستقل.
+- **Result:** توثيق التشغيل الآن يميز بوضوح بين التاريخ والنموذج الحي: per-tenant encrypted connections، owner-first ingress، RAG fail-closed، Data API backend-only، وحالة Phase 9 الصادقة.
+- **Verification:** الملفات والـwikilinks الجديدة موجودة و`git diff --check` نجح؛ لا تغير application code أو Supabase في هذا block. الدليل: archive 027.

@@ -88,3 +88,15 @@ developers.facebook.com → تطبيقك → **App Review → Permissions and Fe
 - الـ Privacy Policy يجب أن تظهر **دون تسجيل دخول** — ✓ متوفر عندنا
 - لا تستخدم كلمة "WhatsApp" في أي واجهة قبل الحصول على WhatsApp Business Platform (مؤجل)
 - أي صلاحية تُرفض تعطيك سبباً محدداً — صحّح الفيديو حسب السبب وأعد التقديم (لا حد لعدد المحاولات)
+
+---
+
+## ملحق الحالة الفعلية — 2026-09-16
+
+- تم تقديم Meta App Review بواسطة المالك في **2026-09-12**، مع تسجيل فيديوهات
+  الأدلة ونجاح API test gates في `PROJECT_MEMORY.md`.
+- آخر حالة موثقة: **under review**. لا يعد هذا المستند بأن Advanced Access
+  مفعل قبل تحقق المالك من Meta Developer Dashboard.
+- قبل الإطلاق الخارجي/Embedded Signup: افحص الحالة والـpermissions الفعلية،
+  ثم نفذ smoke test لحساب عميل مصرح به. workaround الـTester في هذا الدليل
+  يبقى خياراً مؤقتاً فقط إن ظل مسموحاً من Meta.
