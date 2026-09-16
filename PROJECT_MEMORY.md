@@ -1897,3 +1897,7 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - Focused regression tests: **43 passed**. Full suite: **325 passed, 2 skipped, 1 warning** in 53.65 seconds; the two skips require unavailable `THREADS_APP_ID` test configuration. Compilation and diff whitespace checks passed.
 - The Supabase CLI reported successful application of exactly `20260917000100_guard_null_kb_query_embedding.sql`.
 - Root-level script cleanup was intentionally not performed because another agent has local work. The Phase 9.4 product decision for provider selection, deterministic persona/brain runtime, and usage-credit consumption remains open exactly as documented in Entry 050/archive 028.
+
+### Post-release addendum — 2026-09-17T00:16:00+03:00
+- The implementation and its associated migration/tests/SOP/archive record were committed and pushed only to the approved repository: `fd80219 fix: harden tenant knowledge and content runtime` → `origin/main` at `karim-abdalwahid/hudhud-radar`.
+- No other repository was queried for write or changed. This addendum is appended after the push and does not replace any earlier record.
