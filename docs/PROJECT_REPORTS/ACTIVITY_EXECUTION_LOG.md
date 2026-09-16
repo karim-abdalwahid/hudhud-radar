@@ -43,3 +43,8 @@
 - **Result:** حذف 11 messages، 3 leads، 75 posts، 21 metrics، 185 logs، 11,957 anonymous traffic، 7 dedup rows، و4 shared settings؛ postflight = صفر null-owner وanon REST blocked 401.
 - **Verification:** 320 passed، 2 skipped فقط لغياب Threads app-id؛ commit/push `d32d9bc` إلى `origin/main`.
 - **Records:** `PROJECT_MEMORY.md` Entry 046، session log `2026-09-16_session.md`، archive 025، ومرجع Codex الخارجي محدث.
+
+## 2026-09-16 — Documentation quality pass
+- **Action:** استكمال أمر المالك بتوثيق الجلسة والتحقق من سلامة الـMarkdown قبل الإغلاق.
+- **Result:** أزيلت 3 trailing-whitespace notices من archive 025؛ `git diff --check` صار نظيفًا؛ أُلحق `PROJECT_MEMORY.md` Entry 047 وسجل الجلسة في نفس اللحظة.
+- **Impact:** توثيق فقط؛ لا تغيير في قاعدة البيانات أو التطبيق أو الأسرار.

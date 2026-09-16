@@ -1,9 +1,9 @@
 # Walkthrough 025 — SaaS Tenant Hardening and Approved Legacy Cleanup
 #archive #walkthrough #supabase #tenant-isolation #2026-09-16
 
-**Timestamp:** 2026-09-16T23:16:51+03:00  
-**Owner approval:** The owner approved implementation, GitHub upload, and deletion of every historical row with no tenant owner.  
-**Repository:** `karim-abdalwahid/hudhud-radar`, `main`  
+**Timestamp:** 2026-09-16T23:16:51+03:00
+**Owner approval:** The owner approved implementation, GitHub upload, and deletion of every historical row with no tenant owner.
+**Repository:** `karim-abdalwahid/hudhud-radar`, `main`
 **Release commit:** `d32d9bc fix: enforce tenant isolation across SaaS data flows`
 
 ## Objective
