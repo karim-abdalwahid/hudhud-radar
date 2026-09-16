@@ -42,17 +42,9 @@ def test_saas_multipage_routes(client):
             assert "/static/saas.js" in resp.text, f"saas.js client script missing in {route}"
 
 
-def test_api_knowledge_hybrid_search(client):
-    """Verifies the LEANN-inspired hybrid semantic search endpoint."""
+def test_api_knowledge_search_fails_closed_without_database(client):
+    """A disconnected DB must never fall back to a global in-memory KB cache."""
     resp = client.post("/api/knowledge/search", json={"query": "بكام باقة الإعلانات والتسويق", "top_k": 3})
-    assert resp.status_code == 200
+    assert resp.status_code == 503
     data = resp.json()
-    assert "query" in data
-    assert "results" in data
-    assert isinstance(data["results"], list)
-    if data["results"]:
-        top_res = data["results"][0]
-        assert "score" in top_res
-        assert "filename" in top_res
-        assert "chunk" in top_res
-        assert top_res["score"] > 0
+    assert "مشتركة" in data["detail"]

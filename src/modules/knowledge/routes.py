@@ -4,6 +4,8 @@ Knowledge Base, Meta Scraping & RAG Management — migrated verbatim from main.p
 Owned by module 'knowledge'. Registered via src/modules/knowledge/__init__.py.
 Handlers are UNCHANGED — only @app.* became @router.* (same URLs).
 """
+import asyncio
+
 from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks, Response, UploadFile, File
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -64,22 +66,35 @@ async def sync_knowledge_from_meta(request: Request):
 
 
 def _session_user(request: Request) -> Optional[str]:
-    """Session user id for per-user KB scoping (Wave 9.8). None = legacy."""
+    """Returns the verified session owner id, when a session is present."""
     from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
     session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
     return (session or {}).get("sub")
 
 
+def _require_session_user(request: Request) -> str:
+    """Requires the owner identity before touching tenant knowledge."""
+    user_id = _session_user(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="غير مصرح")
+    return str(user_id)
+
+
 @router.get("/api/knowledge/documents", tags=["Knowledge Base & RAG"])
 async def list_knowledge_documents(request: Request):
     """Lists the session user's knowledge base documents (per-user scoping)."""
-    return {"documents": db_knowledge_base.list_documents(user_id=_session_user(request))}
+    user_id = _require_session_user(request)
+    documents = await asyncio.to_thread(db_knowledge_base.list_documents, user_id)
+    return {"documents": documents}
 
 
 @router.get("/api/knowledge/documents/{filename}", tags=["Knowledge Base & RAG"])
 async def get_knowledge_document(filename: str, request: Request):
     """Retrieves raw content of one of the session user's knowledge documents."""
-    content = db_knowledge_base.get_document_content(filename, user_id=_session_user(request))
+    user_id = _require_session_user(request)
+    content = await asyncio.to_thread(
+        db_knowledge_base.get_document_content, filename, user_id
+    )
     if content is None:
         raise HTTPException(status_code=404, detail=f"Document '{filename}' not found")
     return {"filename": filename, "content": content}
@@ -87,10 +102,12 @@ async def get_knowledge_document(filename: str, request: Request):
 
 @router.put("/api/knowledge/documents/{filename}", tags=["Knowledge Base & RAG"])
 async def update_knowledge_document(filename: str, payload: SaveDocumentRequest, request: Request):
-    """Updates a knowledge document (owner-scoped) and hot-reloads the AI agent's memory."""
+    """Updates a document in the caller's database-backed knowledge base."""
+    user_id = _require_session_user(request)
     try:
-        res = db_knowledge_base.save_document(filename, payload.content,
-                                              user_id=_session_user(request))
+        res = await asyncio.to_thread(
+            db_knowledge_base.save_document, filename, payload.content, user_id=user_id
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return res
@@ -99,9 +116,11 @@ async def update_knowledge_document(filename: str, payload: SaveDocumentRequest,
 @router.post("/api/knowledge/documents", tags=["Knowledge Base & RAG"])
 async def create_knowledge_document(payload: CreateDocumentRequest, request: Request):
     """Creates a new knowledge document owned by the session user."""
+    user_id = _require_session_user(request)
     try:
-        res = db_knowledge_base.save_document(payload.filename, payload.content,
-                                              user_id=_session_user(request))
+        res = await asyncio.to_thread(
+            db_knowledge_base.save_document, payload.filename, payload.content, user_id=user_id
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return res
@@ -110,7 +129,8 @@ async def create_knowledge_document(payload: CreateDocumentRequest, request: Req
 @router.delete("/api/knowledge/documents/{filename}", tags=["Knowledge Base & RAG"])
 async def delete_knowledge_document(filename: str, request: Request):
     """Deletes one of the session user's knowledge documents."""
-    success = db_knowledge_base.delete_document(filename, user_id=_session_user(request))
+    user_id = _require_session_user(request)
+    success = await asyncio.to_thread(db_knowledge_base.delete_document, filename, user_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Document '{filename}' not found or could not be deleted")
     return {"status": "success", "message": f"Document '{filename}' deleted successfully"}
@@ -132,9 +152,8 @@ async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
     safe_base = Path(file.filename or "upload").name
     ext = Path(safe_base).suffix.lower()
 
-    # Resolve the uploading user (per-user knowledge ownership)
-    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
-    user_id = _session_user(request)
+    # Resolve the uploading user before reading or processing a tenant file.
+    user_id = _require_session_user(request)
 
     try:
         file_bytes = await file.read()
@@ -143,9 +162,11 @@ async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
 
         if ext in [".md", ".txt"]:
             text_content = file_bytes.decode("utf-8", errors="replace")
-            result = document_processor.process_text_or_markdown(safe_base, text_content)
+            result = await asyncio.to_thread(
+                document_processor.process_text_or_markdown, safe_base, text_content
+            )
         elif ext == ".pdf":
-            result = document_processor.process_pdf(safe_base, file_bytes)
+            result = await asyncio.to_thread(document_processor.process_pdf, safe_base, file_bytes)
         elif ext in [".png", ".jpg", ".jpeg", ".webp"]:
             mime = file.content_type or "image/jpeg"
             result = await document_processor.process_image_vision(safe_base, file_bytes, mime_type=mime)
@@ -155,23 +176,33 @@ async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
                 detail=f"صيغة الملف غير مدعومة ({ext}). الصيغ المدعومة هي: .md, .txt, .pdf, .png, .jpg, .webp"
             )
 
-        # Persist to the per-user database knowledge base (AI agent source of truth)
+        # Persist to the per-user database knowledge base.  Local files are
+        # development-only copies; a DB failure must never be reported as a
+        # successful production upload.
         try:
-            from src.knowledge.db_knowledge_base import db_knowledge_base
             filename = result.get("filename") or safe_base
             content = result.get("content") or ""
             if not content and ext in [".md", ".txt"]:
                 content = text_content
             if not content:
-                content = db_knowledge_base.get_document_content(filename, user_id=user_id) or ""
-            if content:
-                db_result = db_knowledge_base.save_document(
-                    filename, content, source="upload", user_id=user_id)
-                result["db_saved"] = db_result.get("status") == "success"
-                result["db_chunks"] = db_result.get("chunks")
+                raise ValueError("لم يتم استخراج محتوى قابل للحفظ من الملف")
+            db_result = await asyncio.to_thread(
+                db_knowledge_base.save_document,
+                filename,
+                content,
+                source="upload",
+                user_id=user_id,
+            )
+            if db_result.get("status") != "success":
+                raise ValueError("قاعدة المعرفة لم تؤكد حفظ المستند")
+            result["db_saved"] = True
+            result["db_chunks"] = db_result.get("chunks")
         except Exception as db_err:
-            logger.warning(f"KB DB persist failed for {safe_base}: {db_err}")
-            result["db_saved"] = False
+            logger.error(f"KB DB persist failed for {safe_base}: {db_err}")
+            raise HTTPException(
+                status_code=503,
+                detail="تعذر حفظ الملف في قاعدة المعرفة. لم يتم اعتباره مرفوعًا بنجاح؛ أعد المحاولة.",
+            )
 
         return result
     except HTTPException:
@@ -189,38 +220,26 @@ class SearchKnowledgeRequest(BaseModel):
 @router.post("/api/knowledge/search", tags=["Knowledge Base & RAG"])
 async def search_knowledge(payload: SearchKnowledgeRequest, request: Request):
     """
-    Hybrid semantic search (vector + keyword RRF) scoped to the session user's
-    knowledge base; falls back to the legacy semantic engine when the DB is
-    disconnected (local dev).
+    Hybrid semantic search (vector + keyword RRF) scoped to the session user.
+    The legacy in-memory cache is deliberately never used as a fallback because
+    it has no tenant boundary.
     """
-    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
-    user_id = (session or {}).get("sub")
+    user_id = _require_session_user(request)
+    if not supabase_db.is_connected:
+        raise HTTPException(
+            status_code=503,
+            detail="البحث في قاعدة المعرفة غير متاح مؤقتًا. لم نستخدم أي بيانات مخزنة مشتركة.",
+        )
 
-    if supabase_db.is_connected:
-        chunks = db_knowledge_base.search(payload.query, top_k=payload.top_k, user_id=user_id)
-        return {"status": "success", "query": payload.query, "results": [
-            {"filename": fn, "score": round(score, 4), "chunk": text, "text": text}
-            for score, fn, text in chunks
-        ]}
+    try:
+        chunks = await asyncio.to_thread(
+            db_knowledge_base.search, payload.query, payload.top_k, user_id
+        )
+    except Exception as exc:
+        logger.error(f"Tenant KB search failed for user {user_id}: {exc}")
+        raise HTTPException(status_code=503, detail="تعذر البحث في قاعدة المعرفة مؤقتًا.")
 
-    from src.knowledge.semantic_engine import semantic_engine
-    if not knowledge_base.knowledge_cache:
-        knowledge_base.reload()
-
-    results = semantic_engine.hybrid_search(
-        query=payload.query,
-        documents=knowledge_base.knowledge_cache,
-        top_k=payload.top_k
-    )
-    return {
-        "query": payload.query,
-        "results": [
-            {
-                "score": round(score, 4),
-                "filename": filename,
-                "chunk": chunk
-            }
-            for score, filename, chunk in results
-        ]
-    }
+    return {"status": "success", "query": payload.query, "results": [
+        {"filename": fn, "score": round(score, 4), "chunk": text, "text": text}
+        for score, fn, text in chunks
+    ]}

@@ -51,19 +51,52 @@ class ConnectionService:
                                       user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Find exact active connections for a recipient business account.
 
-        The filtering deliberately happens in one place so webhook ownership,
-        outbound messaging, comments, and publishing cannot silently choose a
-        different customer's token.
+        Exact account ownership is filtered by PostgreSQL rather than loading
+        every tenant's active connection into application memory.  Instagram
+        may also be represented by a Facebook connection's ``linked_ig_id``;
+        that JSON lookup is likewise pushed to Postgres in production.
         """
         if not account_id:
             return []
         try:
-            rows = supabase_db.select("platform_connections", {"status": "active"}) or []
-            return [
-                row for row in rows
-                if (not user_id or str(row.get("user_id")) == str(user_id))
-                and self._matches_recipient_account(row, platform, str(account_id))
-            ]
+            filters: Dict[str, Any] = {
+                "status": "active",
+                "platform": platform,
+                "account_id": str(account_id),
+            }
+            if user_id:
+                filters["user_id"] = str(user_id)
+            rows = supabase_db.select("platform_connections", filters) or []
+
+            if platform == "instagram":
+                linked_filters: Dict[str, Any] = {
+                    "status": "active",
+                    "platform": "facebook",
+                }
+                if user_id:
+                    linked_filters["user_id"] = str(user_id)
+
+                if supabase_db.is_connected and supabase_db.client:
+                    query = supabase_db.client.table("platform_connections").select("*")
+                    for key, value in linked_filters.items():
+                        query = query.eq(key, value)
+                    linked_rows = query.contains(
+                        "metadata", {"linked_ig_id": str(account_id)}
+                    ).execute().data or []
+                else:
+                    # Test/local memory data is already process-local.  Keep
+                    # the same exact filtering semantics without a global scan
+                    # in the real database path.
+                    linked_rows = [
+                        row for row in (supabase_db.select("platform_connections", linked_filters) or [])
+                        if str((row.get("metadata") or {}).get("linked_ig_id") or "") == str(account_id)
+                    ]
+                rows.extend(linked_rows)
+
+            # A linked row could theoretically overlap an exact row.  Preserve
+            # the fail-closed ambiguity check while returning each DB row once.
+            unique_rows = {str(row.get("id")): row for row in rows if row.get("id")}
+            return list(unique_rows.values())
         except Exception as e:
             logger.warning("recipient connection lookup failed → empty: %s", e)
             return []

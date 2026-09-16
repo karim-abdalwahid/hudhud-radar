@@ -45,19 +45,19 @@ class KnowledgeBaseManager:
     # Reload / listing
     # ------------------------------------------------------------------
     def reload(self):
-        """Reloads all knowledge documents into memory cache (DB or files)."""
+        """Reloads legacy file-mode documents only.
+
+        Production documents are tenant-owned.  Loading the entire
+        ``kb_documents`` table into one process cache is both inefficient and
+        unsafe: equal filenames collide and an outage could expose another
+        tenant through a fallback.  DB-mode retrieval therefore always goes
+        through :class:`DBKnowledgeBase` with an explicit owner id.
+        """
         self.knowledge_cache.clear()
 
         if self._mode == "db":
-            try:
-                from src.core.supabase_client import supabase_db
-                rows = supabase_db.select("kb_documents") or []
-                for row in rows:
-                    self.knowledge_cache[row["filename"]] = row.get("content", "")
-                logger.info(f"Loaded {len(self.knowledge_cache)} knowledge documents from database.")
-                return
-            except Exception as e:
-                logger.warning(f"DB knowledge load failed, falling back to files: {e}")
+            logger.info("Global KB cache disabled in DB mode; tenant retrieval is database-scoped.")
+            return
 
         if not self.kb_dir.exists():
             logger.warning(f"Knowledge Base directory '{self.kb_dir}' not found.")
@@ -91,7 +91,8 @@ class KnowledgeBaseManager:
                     })
                 return docs
             except Exception as e:
-                logger.warning(f"DB list_documents failed, file fallback: {e}")
+                logger.warning(f"DB list_documents failed (no file fallback): {e}")
+                return []
 
         self.reload()
         docs = []
@@ -131,7 +132,8 @@ class KnowledgeBaseManager:
                 from src.knowledge.db_knowledge_base import db_knowledge_base
                 return db_knowledge_base.get_document_content(filename)
             except Exception as e:
-                logger.warning(f"DB get_document failed, file fallback: {e}")
+                logger.warning(f"DB get_document failed (no file fallback): {e}")
+                return None
 
         clean_name = sanitize_safe_filename(filename)
         target = (self.kb_dir / clean_name).resolve()
@@ -150,11 +152,11 @@ class KnowledgeBaseManager:
             try:
                 from src.knowledge.db_knowledge_base import db_knowledge_base
                 res = db_knowledge_base.save_document(filename, content, user_id=user_id)
-                self.knowledge_cache[res["filename"]] = content
                 res["message"] = f"تم حفظ المستند '{res['filename']}' وفهرسته للبحث الذكي بنجاح."
                 return res
             except Exception as e:
-                logger.warning(f"DB save failed, file fallback: {e}")
+                logger.warning(f"DB save failed (no file fallback): {e}")
+                raise
 
         clean_name = sanitize_safe_filename(filename)
         target = (self.kb_dir / clean_name).resolve()
@@ -177,11 +179,10 @@ class KnowledgeBaseManager:
             try:
                 from src.knowledge.db_knowledge_base import db_knowledge_base
                 ok = db_knowledge_base.delete_document(filename)
-                if ok:
-                    self.knowledge_cache.pop(sanitize_safe_filename(filename), None)
                 return ok
             except Exception as e:
-                logger.warning(f"DB delete failed, file fallback: {e}")
+                logger.warning(f"DB delete failed (no file fallback): {e}")
+                return False
 
         clean_name = sanitize_safe_filename(filename)
         target = (self.kb_dir / clean_name).resolve()
@@ -201,6 +202,9 @@ class KnowledgeBaseManager:
     # ------------------------------------------------------------------
     def get_combined_context(self) -> str:
         """Returns all knowledge base content formatted for LLM system prompting."""
+        if self._mode == "db":
+            # There is no safe global context in a multi-tenant database.
+            return ""
         if not self.knowledge_cache:
             self.reload()
 
@@ -228,7 +232,7 @@ class KnowledgeBaseManager:
                     return context
                 return ""
             except Exception as e:
-                logger.warning(f"DB RAG search failed, in-memory fallback: {e}")
+                logger.warning(f"DB RAG search failed (no in-memory fallback): {e}")
         # The legacy file cache has no tenant boundary. It is never a safe
         # fallback for a SaaS reply, even when a user_id is present.
         return ""

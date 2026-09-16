@@ -5,6 +5,7 @@ Real inbox: threads built from actual `messages` records (zero-fabrication).
 Mutations here send REAL DMs from the owner's connected accounts —
 admin-gated via /api/inbox/conversations prefix (ADMIN_MUTATION_PREFIXES).
 """
+import asyncio
 import re
 from datetime import datetime, timezone as tz
 from typing import Any, Dict, Optional
@@ -33,15 +34,7 @@ async def save_onboarding_wizard(payload: OnboardingSavePayload, request: Reques
     """Saves business knowledge, configures agent persona, and sets booking link."""
     user_id = _session_user_id(request)
     from src.knowledge.db_knowledge_base import db_knowledge_base
-    # 1. Save Knowledge Base text if provided
-    if payload.knowledge_text and payload.knowledge_text.strip():
-        db_knowledge_base.save_document(
-            "business_profile.md",
-            f"# نبذة عن الشركة والخدمات (Business Profile)\n\n{payload.knowledge_text.strip()}\n",
-            user_id=user_id,
-        )
-
-    # 2. Update agent guidelines with role, tone, and booking link
+    # 1. Update agent guidelines with role, tone, and booking link
     guidelines_content = f"""# إرشادات وسياسات الوكيل الذكي (Agent Guidelines)
 
 - **الدور المعتمد (Role):** {payload.role}
@@ -54,8 +47,28 @@ async def save_onboarding_wizard(payload: OnboardingSavePayload, request: Reques
 2. التركيز على فهم احتياج العميل ومساعدته للوصول للقرار المناسب.
 3. مشاركة رابط حجز المواعيد عندما يطلب العميل مقابلة أو استشارة.
 """
-    db_knowledge_base.save_document(
-        "rules_and_guidelines.md", guidelines_content, user_id=user_id)
+    try:
+        # Chunk embedding is synchronous in the database adapter.  Run it in
+        # worker threads so onboarding cannot stall the async server.
+        if payload.knowledge_text and payload.knowledge_text.strip():
+            await asyncio.to_thread(
+                db_knowledge_base.save_document,
+                "business_profile.md",
+                f"# نبذة عن الشركة والخدمات (Business Profile)\n\n{payload.knowledge_text.strip()}\n",
+                user_id=user_id,
+            )
+        await asyncio.to_thread(
+            db_knowledge_base.save_document,
+            "rules_and_guidelines.md",
+            guidelines_content,
+            user_id=user_id,
+        )
+    except Exception as exc:
+        logger.error("Onboarding KB persistence failed for user %s: %s", user_id, exc)
+        raise HTTPException(
+            status_code=503,
+            detail="تعذر حفظ معرفة النشاط وإعدادات الوكيل. لم يتم اعتبار الإعداد مكتملًا؛ أعد المحاولة.",
+        )
 
     return {
         "status": "success",

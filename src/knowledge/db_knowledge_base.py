@@ -23,7 +23,11 @@ from src.core.supabase_client import supabase_db
 GEMINI_EMBED_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
 )
+GEMINI_BATCH_EMBED_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents"
+)
 EMBED_DIMS = 3072
+EMBED_BATCH_SIZE = 32
 CHUNK_MAX_CHARS = 900
 CHUNK_OVERLAP_CHARS = 120
 
@@ -38,7 +42,7 @@ class DBKnowledgeBase:
     # Gemini embeddings
     # ------------------------------------------------------------------
     def _embed(self, text: str) -> Optional[List[float]]:
-        """Returns a 768-dim embedding for text via Gemini, with a small cache."""
+        """Returns a 3072-dim embedding for text via Gemini, with a small cache."""
         key = hashlib.md5(text.encode("utf-8")).hexdigest()
         if key in self._embed_cache:
             return self._embed_cache[key]
@@ -64,6 +68,68 @@ class DBKnowledgeBase:
         except Exception as e:
             logger.warning(f"Gemini embedding error: {e}")
         return None
+
+    def _embed_many(self, texts: List[str]) -> List[Optional[List[float]]]:
+        """Embeds uncached chunks in bounded Gemini batch requests.
+
+        Gemini's ``batchEmbedContents`` returns vectors in the same order as
+        submitted requests.  Using it reduces a large PDF upload from one HTTP
+        request per chunk to one request per bounded batch; callers run this
+        synchronous adapter in a worker thread, never in the ASGI event loop.
+        """
+        vectors: List[Optional[List[float]]] = [None] * len(texts)
+        if not texts:
+            return vectors
+
+        missing: List[Tuple[int, str, str]] = []
+        for index, text in enumerate(texts):
+            key = hashlib.md5(text.encode("utf-8")).hexdigest()
+            cached = self._embed_cache.get(key)
+            if cached:
+                vectors[index] = cached
+            else:
+                missing.append((index, text, key))
+
+        if not missing or not settings.GEMINI_API_KEY:
+            return vectors
+
+        for offset in range(0, len(missing), EMBED_BATCH_SIZE):
+            batch = missing[offset:offset + EMBED_BATCH_SIZE]
+            try:
+                response = httpx.post(
+                    GEMINI_BATCH_EMBED_URL,
+                    headers={"Content-Type": "application/json", "X-goog-api-key": settings.GEMINI_API_KEY},
+                    json={
+                        "requests": [
+                            {
+                                "model": "models/gemini-embedding-001",
+                                "content": {"parts": [{"text": text[:6000]}]},
+                            }
+                            for _, text, _ in batch
+                        ]
+                    },
+                    timeout=30.0,
+                )
+                returned = response.json().get("embeddings", []) if response.status_code == 200 else []
+                if len(returned) != len(batch):
+                    raise ValueError(
+                        f"Gemini returned {len(returned)} embeddings for a batch of {len(batch)}"
+                    )
+                for (index, _text, key), embedding in zip(batch, returned):
+                    vector = embedding.get("values") if isinstance(embedding, dict) else None
+                    if vector and len(vector) == EMBED_DIMS:
+                        vectors[index] = vector
+                        self._embed_cache[key] = vector
+                    else:
+                        logger.warning("Gemini batch embedding returned an invalid vector dimension")
+            except Exception as exc:
+                logger.warning("Gemini batch embedding failed; retrying this batch per chunk: %s", exc)
+                # Retain availability if batch support is unavailable for a
+                # configured project/model.  This runs in the worker thread.
+                for index, text, _key in batch:
+                    vectors[index] = self._embed(text)
+
+        return vectors
 
     # ------------------------------------------------------------------
     # Chunking (paragraph-aware, fixed-size with overlap)
@@ -151,8 +217,8 @@ class DBKnowledgeBase:
         self._delete_chunks(doc_id)
         chunks = self._chunk_text(content)
         embedded_count = 0
-        for idx, chunk in enumerate(chunks):
-            vec = self._embed(chunk)
+        vectors = self._embed_many(chunks)
+        for idx, (chunk, vec) in enumerate(zip(chunks, vectors)):
             payload: Dict[str, Any] = {
                 "document_id": doc_id,
                 "chunk_index": idx,
@@ -266,12 +332,14 @@ class DBKnowledgeBase:
             if not (supabase_db.is_connected and supabase_db.client):
                 return self._fallback_keyword_search(query, top_k, user_id=user_id)
             qvec = self._embed(query)
+            if not qvec:
+                # ``embedding <=> NULL`` cannot produce a meaningful semantic
+                # ranking.  Do an explicitly scoped keyword-only search rather
+                # than letting the RPC assign arbitrary semantic row numbers.
+                logger.info("Query embedding unavailable; using tenant-scoped keyword search only.")
+                return self._fallback_keyword_search(query, top_k, user_id=user_id)
             params: Dict[str, Any] = {"query_text": query, "match_count": top_k}
-            if qvec:
-                params["query_embedding"] = qvec
-            else:
-                # keyword-only: pass null embedding
-                params["query_embedding"] = None
+            params["query_embedding"] = qvec
             params["p_user_id"] = user_id
             res = supabase_db.client.rpc("match_kb_chunks", params).execute()
             rows = res.data or []

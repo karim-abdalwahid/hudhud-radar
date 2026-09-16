@@ -38,11 +38,13 @@ def _session_user_id(request: Request) -> str:
 # 6. Content Studio (AI Generation, Publishing & Scheduling)
 # --------------------------------------------------------------------
 @router.post("/api/content/generate", response_model=ContentGenerationResponse, tags=["Content Studio"])
-async def generate_ai_content(payload: ContentGenerationRequest):
-    """Generates viral Facebook/Instagram copy, Reels scripts, or Story sequences using AI."""
+async def generate_ai_content(payload: ContentGenerationRequest, request: Request):
+    """Generates copy grounded only in the authenticated tenant's knowledge."""
     try:
-        res = await content_engine.generate_content(payload)
+        res = await content_engine.generate_content(payload, user_id=_session_user_id(request))
         return res
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Error in content generation: {e}")
         raise HTTPException(status_code=500, detail=f"Content generation error: {str(e)}")

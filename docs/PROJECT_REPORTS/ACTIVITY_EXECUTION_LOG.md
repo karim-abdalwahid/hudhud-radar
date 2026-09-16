@@ -64,3 +64,9 @@
 - **Action:** تدقيق read-only لمسارات LLM reply/content، onboarding persona/brain، provider manager، وcredits ledger قبل أي تنفيذ.
 - **Result:** RAG tenant-isolated سليم، لكن `agent_brain` لا يُستخدم، persona ليست runtime deterministic، و`usage_events`/`ai_credits` لا تتحرك؛ content generation لا يحمل owner أو إعداداته.
 - **Evidence:** 18 tests passed (provider/RAG suites)؛ التقرير والقرار المطلوب في archive 028. لا تغيير كود أو قاعدة بيانات في Pass 1.
+
+## 2026-09-17 — KB / Content runtime hardening حي
+- **Action:** تحقق من مراجعة مستقلة ثم إصلاح رفع KB على Vercel، cache/fallback، `NULL` embeddings، context المحتوى، أداء ingestion، lookup الاتصالات، وCI.
+- **Live database action:** تطبيق `20260917000100_guard_null_kb_query_embedding.sql` عبر `supabase db push --linked` بنجاح؛ semantic RPC لا يساهم بنتائج عند vector مفقود.
+- **Result:** الرفع لا يعتمد على disk؛ فشل DB صريح؛ البحث لا يعود لذاكرة مشتركة؛ content prompt يحمل معرفة session tenant فقط؛ batch embedding bounded وconnections exact-filtered.
+- **Evidence:** 43 اختبارًا مركزًا و**325 passed, 2 skipped** في suite الكامل؛ التفاصيل: archive 029 وسجل الجلسة 2026-09-16.

@@ -1871,3 +1871,29 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - Recommended v1: platform-managed provider keys; each customer selects only an enabled admin-approved model; one successful external AI reply or content generation consumes one credit; failures and local fallback do not consume a credit.
 - A customer-owned provider/key model is a larger product/security feature requiring encrypted credential lifecycle and distinct billing. Codex did not assume it.
 - No code, migration, Supabase change, token operation, or production setting was changed in this Pass 1 block.
+
+---
+
+## [Entry 051] 2026-09-17 — KB/Content Runtime Hardening and Live NULL-Embedding Guard
+- **Timestamp**: 2026-09-17T00:13:16+03:00
+- **Actor**: Owner & Codex
+- **Status**: ✅ IMPLEMENTED, TESTED, AND APPLIED TO LIVE SUPABASE
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-16_session.md`
+- **Archived walkthrough**: `PROJECT_ARCHIVE/029_20260917_0013_kb_content_runtime_hardening.md`
+
+### Owner authorization and audit verdict
+- The owner supplied an independent review and explicitly authorized immediate repair of every verified issue. The review was materially correct: Vercel-risky local KB writes, content generation without tenant KB, a global KB cache/fallback, unsafe semantic ranking when query embedding is absent, synchronous upload embedding, connection scans, and missing CI were confirmed from current code.
+- The backend-only Supabase Data API model remains intentional. Because `service_role` bypasses RLS, application-level owner propagation and fail-closed reads remain mandatory defenses; this work adds to them and does not weaken grants/policies.
+
+### Completed runtime changes
+- Local `docs/KNOWLEDGE_BASE` output is now a best-effort development copy. Upload extraction survives a read-only filesystem, but database persistence is mandatory and returns an honest `503` on failure. Upload/create/update/onboarding embedding work now runs off the ASGI event loop.
+- DB-mode `KnowledgeBaseManager` no longer loads all tenant documents into a filename-keyed process cache or falls back to repository files. `/api/knowledge/search` returns an explicit unavailable response rather than searching shared cache when Supabase is unavailable.
+- Content generation derives `user_id` only from the verified session, retrieves that tenant's RAG and sales context, and places it in a no-cross-tenant/no-invention prompt. Its static fallback no longer applies a historical brand hashtag.
+- Query embedding failure now uses owner-scoped keyword retrieval. Migration `20260917000100_guard_null_kb_query_embedding.sql` was applied live and independently prevents semantic CTE rows when `query_embedding IS NULL`; `database/migrations/023_guard_null_kb_query_embedding.sql` mirrors it.
+- Chunk ingestion uses bounded Gemini batch embedding (32 chunks) with a worker-thread individual fallback; account ownership lookup now asks Postgres for exact active account rows, including the linked Instagram JSON condition, rather than scanning all active connections.
+- Added `.github/workflows/tests.yml` to execute isolated pytest on main pushes and pull requests without production secrets.
+
+### Evidence and remaining boundaries
+- Focused regression tests: **43 passed**. Full suite: **325 passed, 2 skipped, 1 warning** in 53.65 seconds; the two skips require unavailable `THREADS_APP_ID` test configuration. Compilation and diff whitespace checks passed.
+- The Supabase CLI reported successful application of exactly `20260917000100_guard_null_kb_query_embedding.sql`.
+- Root-level script cleanup was intentionally not performed because another agent has local work. The Phase 9.4 product decision for provider selection, deterministic persona/brain runtime, and usage-credit consumption remains open exactly as documented in Entry 050/archive 028.

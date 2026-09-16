@@ -90,3 +90,26 @@ webhook recipient account
   provider لكل tenant عبر `provider_manager`، **ليسا جزءاً مكتملاً من هذا
   المسار بعد**. لا يوثق هذا الإجراء أنهما يعملان قبل تنفيذ واختبار Phase 9.4.
 - أي إضافة لهذه القدرات تمر عبر [[SOP_01_New_Feature_Development]] و[[SOP_03_Database_Migrations]] وتحدث هذا الإجراء بإضافة مؤرخة.
+
+---
+
+## ملحق تشغيلي — 2026-09-17: سلامة runtime للرفع والـContent Studio
+
+1. مصدر الحقيقة للمعرفة التشغيلية هو `kb_documents`/`kb_chunks` المملوكان
+   للـtenant. أي كتابة محلية تحت `docs/KNOWLEDGE_BASE` best-effort للتطوير فقط؛
+   failure من filesystem read-only لا يجعل رفع العميل فاشلًا، لكن failure من
+   database persistence يرجع خطأ ولا يسمح بادعاء نجاح الرفع.
+2. لا يستعمل endpoint بحث أو reply أو content generation cache عالميًا أو
+   ملف repo كـfallback. انقطاع DB يؤدي إلى `503` للبحث أو محتوى عام لا يدعي
+   حقائق activity، وليس إلى بيانات عميل آخر.
+3. embedding استعلام مفقود ينتقل إلى keyword search المملوك للعميل. SQL RPC
+   يجب أن يحوي guard `query_embedding IS NOT NULL` في semantic branch؛ migration
+   التشغيلية الحالية هي `20260917000100_guard_null_kb_query_embedding.sql`.
+4. Content Studio يستخرج owner من session فقط ثم يجلب `search_context` و
+   `sales_context` للمالك نفسه قبل بناء prompt. لا يقبل `user_id` من payload.
+5. استيعاب PDF/chunks المتعدد يجري في worker thread؛ دفعات Gemini bounded
+   بـ32 chunk وتفشل إلى individual embedding في worker إن لزم. لا تنفذ شبكة
+   embedding المتزامنة مباشرة داخل ASGI event loop.
+6. اختبار قبول إضافي: filesystem يرفض الكتابة المحلية لكن DB mock يؤكد حفظ
+   المستند؛ DB disconnected يرجع 503 بلا global cache؛ و`_embed()` الذي يعيد
+   `None` لا يستدعي RPC الدلالي.

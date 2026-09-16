@@ -44,7 +44,7 @@ async def test_generate_post_aida_framework():
         platform=ContentPlatform.BOTH,
         cta_keyword="ابدأ",
     )
-    result = await content_engine.generate_content(req)
+    result = await content_engine.generate_content(req, user_id="tenant-content-engine")
     assert result is not None
     assert result.post_type == PostType.POST
     assert len(result.generated_text) > 50
@@ -62,7 +62,7 @@ async def test_generate_reel_script_structure():
         platform=ContentPlatform.INSTAGRAM,
         cta_keyword="متجر",
     )
-    result = await content_engine.generate_content(req)
+    result = await content_engine.generate_content(req, user_id="tenant-content-engine")
     assert result is not None
     assert result.post_type == PostType.REEL
     assert result.script_breakdown is not None
@@ -80,7 +80,7 @@ async def test_generate_story_sequence():
         platform=ContentPlatform.BOTH,
         cta_keyword="إعلان",
     )
-    result = await content_engine.generate_content(req)
+    result = await content_engine.generate_content(req, user_id="tenant-content-engine")
     assert result is not None
     assert result.post_type == PostType.STORY
     assert result.script_breakdown is not None

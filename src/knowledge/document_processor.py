@@ -18,11 +18,35 @@ from src.knowledge.utils import sanitize_safe_filename
 
 
 class DocumentProcessor:
-    """Processes various document formats and visual assets into Markdown Knowledge Base files."""
+    """Extracts upload content; an optional local Markdown copy is best-effort only.
+
+    The database-backed knowledge base is the production source of truth.  A
+    local copy remains useful during development, but it must never make a
+    tenant upload fail on a read-only serverless filesystem.
+    """
 
     def __init__(self, kb_dir: str = "docs/KNOWLEDGE_BASE"):
         self.kb_dir = Path(kb_dir)
-        self.kb_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.kb_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            # Vercel and similar serverless deployments expose the project
+            # filesystem as read-only.  Extraction can still be persisted to
+            # kb_documents by the upload route, so this is not fatal.
+            logger.info(f"Legacy KB directory is unavailable (DB mode remains usable): {exc}")
+
+    def _write_legacy_copy(self, target_file: Path, content: str) -> bool:
+        """Writes a development-only copy without making ingestion depend on it."""
+        try:
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            target_file.write_text(content, encoding="utf-8")
+            return True
+        except OSError as exc:
+            logger.info(
+                f"Skipped legacy KB file write for {target_file.name}; "
+                f"database persistence is the source of truth: {exc}"
+            )
+            return False
 
     def process_text_or_markdown(self, filename: str, content: str) -> Dict[str, Any]:
         """Saves or updates a Markdown or Plain Text document in the knowledge base."""
@@ -34,9 +58,7 @@ class DocumentProcessor:
             stem = Path(clean_name).stem
             content = f"# {stem}\n\n{content}"
 
-        target_file.write_text(content, encoding="utf-8")
-        from src.agent.knowledge_base import knowledge_base
-        knowledge_base.reload()
+        legacy_file_saved = self._write_legacy_copy(target_file, content)
 
         word_count = len(content.split())
         logger.info(f"Processed and stored text document: {target_file.name} ({word_count} words)")
@@ -44,6 +66,7 @@ class DocumentProcessor:
             "status": "success",
             "filename": target_file.name,
             "path": str(target_file),
+            "legacy_file_saved": legacy_file_saved,
             "words": word_count,
             "type": "markdown",
             "content": content,
@@ -72,9 +95,7 @@ class DocumentProcessor:
             + "\n".join(extracted_pages)
         )
 
-        target_file.write_text(full_content, encoding="utf-8")
-        from src.agent.knowledge_base import knowledge_base
-        knowledge_base.reload()
+        legacy_file_saved = self._write_legacy_copy(target_file, full_content)
 
         word_count = len(full_content.split())
         logger.info(f"Successfully processed PDF '{filename}' ({num_pages} pages, {word_count} words).")
@@ -84,6 +105,7 @@ class DocumentProcessor:
             "pages": num_pages,
             "words": word_count,
             "type": "pdf",
+            "legacy_file_saved": legacy_file_saved,
             "content": full_content,
             "message": f"تم استخراج نصوص ملف الـ PDF '{filename}' بنجاح وحفظها في قاعدة المعرفة ({num_pages} صفحات)."
         }
@@ -126,9 +148,7 @@ class DocumentProcessor:
                 "تحتوي على معلومات تسويقية وعروض مرئية معتمدة للنشاط التجاري."
             )
 
-        target_file.write_text(extracted_markdown, encoding="utf-8")
-        from src.agent.knowledge_base import knowledge_base
-        knowledge_base.reload()
+        legacy_file_saved = self._write_legacy_copy(target_file, extracted_markdown)
 
         word_count = len(extracted_markdown.split())
         logger.info(f"Successfully processed image '{filename}' with Vision ({word_count} words).")
@@ -137,6 +157,7 @@ class DocumentProcessor:
             "filename": target_file.name,
             "words": word_count,
             "type": "image_vision",
+            "legacy_file_saved": legacy_file_saved,
             "content": extracted_markdown,
             "message": f"تم تحليل الصورة بالذكاء الاصطناعي (Gemini Vision) واستخراج محتواها المعرفي بنجاح إلى '{target_file.name}'."
         }
