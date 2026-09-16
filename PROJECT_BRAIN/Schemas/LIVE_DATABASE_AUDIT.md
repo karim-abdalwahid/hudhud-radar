@@ -158,3 +158,18 @@ erDiagram
 
 ## ⚠️ البند الوحيد المفتوح
 `page_performance_metrics` و`messages` فارغان بسبب **توكن Meta المُبطل** (الكود 190: تغيير كلمة مرور فيسبوك) — بانتظار توليد توكن جديد من المالك. ليس عيباً هيكلياً.
+
+---
+
+## تحديث حي — 2026-09-16: عزل SaaS صار إلزاميًا ومطبقًا
+
+> هذا ملحق زمني ولا يعيد كتابة تقرير 2026-09-06 أعلاه.
+
+- ترحيل Supabase الفعلي: `20260916190000_harden_backend_and_remove_unowned_legacy_data.sql` طبق بنجاح.
+- `leads`, `messages`, `content_posts`, `kb_documents`, `automations_workflows`, `activity_logs`, `page_performance_metrics`, و`payment_events` تعتمد ملكية tenant إلزامية حيث يلزم، و`campaigns` اكتسب `user_id` مع FK cascade.
+- uniqueness للـmetrics أصبح `(user_id, platform, metric_date)`؛ الحساب الخارجي النشط لا يسمح بربطه بأكثر من tenant عبر `(platform, account_id)`.
+- `activity_logs.user_id` و`kb_documents.user_id` صارا cascade-safe (بدل `SET NULL` المتعارض مع `NOT NULL`).
+- تم حذف كل legacy rows بلا مالك بموافقة المالك، بما فيها telemetry المجهولة؛ postflight تحقق من صفر rows بلا owner في الجداول المتأثرة.
+- RLS/Data API: لا صلاحيات `anon` أو `authenticated` على جداول/sequence التطبيق؛ `service_role` فقط هو عميل backend. سياسات PUBLIC الواسعة وRPC notification العام أزيلت/أعيدت صياغتها.
+- RAG الحي يتطلب `user_id` ويستخدم فقط `match_kb_chunks(vector, text, integer, uuid)`؛ لا يوجد overload عالمي.
+- الدليل الكامل: [[PROJECT_MEMORY]] Entry 046 و`PROJECT_ARCHIVE/025_20260916_2316_walkthrough_saas_tenant_hardening.md`.

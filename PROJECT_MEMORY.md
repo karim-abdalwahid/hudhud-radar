@@ -1749,3 +1749,55 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 
 ### 35. Post-Entry Addition — Supabase migration history reconciled and tenant RAG applied
 - Supabase CLI history was reconciled without dropping any database objects: the legacy remote-only history was retired, the already-live security migration was marked applied, and the current local/remote history now matches. `supabase/migrations/20260915225700_kb_tenant_fail_closed.sql` was applied successfully to Cloud. Live verification confirmed the four-argument tenant RPC accepts a scoped request and the legacy three-argument unscoped call is rejected. `db pull` remains blocked only by Windows reserving Docker's required shadow port 54320; this does not affect applied migrations or the live schema.
+
+---
+
+## [Entry 046] 2026-09-16 — SaaS Tenant Hardening, Approved Legacy Cleanup, Full Verification, and Documentation Contract
+- **Timestamp**: 2026-09-16T23:16:51+03:00
+- **Actor**: Owner & Codex
+- **Status**: ✅ IMPLEMENTED, APPLIED TO LIVE SUPABASE, VERIFIED, PUSHED
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-16_session.md`
+- **Archived walkthrough**: `PROJECT_ARCHIVE/025_20260916_2316_walkthrough_saas_tenant_hardening.md`
+
+### 1. Owner requests, decisions, and boundaries
+- The owner required a full understanding of the project plans, SOPs, memory, paths, schema, and Supabase relationships before repairing production problems. A persistent Codex reference was requested outside the repository at `C:\Users\Dell\Desktop\$AI_TESTING\codex` so future work can resume without rediscovering the whole codebase.
+- The owner clarified that the GitHub target is **`karim-abdalwahid/hudhud-radar`** only, never the unrelated `Hudhud` repository. Local work belonging to another agent must remain untouched; no reset, checkout, or unrelated deletion was authorized or performed.
+- The owner asked whether the supplied SaaS/RAG review was correct, then approved implementation and GitHub upload. The intended SaaS contract is: every paying customer connects their own social accounts, uploads their own knowledge, and the AI sells/replies using only that customer's data.
+- The owner explicitly authorized deletion of every historical database record that has no owner. This authorization covered anonymous legacy telemetry as well as tenant-bearing business rows.
+- At the end of the session, the owner reiterated the permanent governance requirement: every meaningful request, decision, implementation, result, and future change must be recorded in `PROJECT_MEMORY.md`, the project documentation/Brain, the live session log, and the external Codex reference. This entry and its linked documents fulfill the retrospective record for the whole session; the rule remains mandatory going forward.
+
+### 2. Investigation and root causes confirmed
+- The original RAG finding was correct: the live inbound reply path previously had `lead_data.user_id` available but did not propagate it through conversation generation, knowledge retrieval, or sales-closing context. An omitted owner could fall back to an unscoped search and risk returning another tenant's knowledge.
+- The broader database/operation audit found the same old global-workspace assumption in comment capture, Threads reply capture, marketing lead imports, inbox reads and writes, automations, content scheduling/publishing, Meta/Threads credential fallback, analytics/reports, global event deduplication, metric uniqueness, and shared `app_settings` credentials/caches.
+- Historical RLS policy names claiming `service_role` were misleading where the policy applied to `PUBLIC`; browser roles also retained unneeded table/function privileges. `create_notification` was an unsafe public `SECURITY DEFINER` RPC.
+
+### 3. Implemented tenant-safety model
+- Added/strengthened `ConnectionService` as the source of truth for exact active tenant-platform-account ownership, entitlement-gated encrypted tokens, connection metadata, publishing credentials, and fail-closed account lookup.
+- All Meta/Instagram/Threads ingress now resolves the receiving business account to exactly one tenant before processing. Leads, messages, outbound sends, dedup keys, profile enrichment, and RAG context are stamped/scoped by that tenant. Missing, inactive, or ambiguous ownership causes an honest skip rather than global fallback.
+- Comment capture and Threads reply capture are idempotent within `(tenant, platform_message_id)` rather than globally. Threads OAuth/token handling and the marketing/insights paths use per-user connections; legacy shared token stores and shared feed/cache paths were retired or deliberately disabled.
+- Knowledge Base retrieval requires `user_id` end-to-end; the only live SQL function is the four-argument `match_kb_chunks(vector, text, integer, uuid)` function. Missing owner returns no tenant context.
+- Inbox, leads, content, automations, scheduler/publisher, reports, analytics, notifications, payment event handling, and service-layer production reads/writes were made tenant-scoped or fail-closed. Reporting exporters now require an explicit tenant rather than generating a cross-tenant file.
+- Added defensive database-connected guards in `IdentityResolver`, `LeadService`, analytics, and metrics so an omitted filter cannot silently read/write another customer's data.
+
+### 4. Live Supabase migration and authorized cleanup
+- Applied successfully with `npx supabase db push --linked`:
+  `supabase/migrations/20260916190000_harden_backend_and_remove_unowned_legacy_data.sql`.
+- The migration deleted the owner-approved legacy rows: **11 messages, 3 leads, 75 content posts, 21 page-performance rows, 185 activity logs, 11,957 anonymous site-traffic rows, 7 global event-dedup rows**, and the four shared app settings `meta_credentials`, `threads_credentials`, `automations_workflows`, and `meta_cached_posts`.
+- The preflight confirmed there were **no** duplicate active external platform accounts, campaign rows needing ownership, ownerless KB documents, ownerless payment events, ownerless notifications, or ownerless automation workflows.
+- The migration makes ownership non-null for affected customer data, adds `campaigns.user_id`, replaces metric uniqueness with `(user_id, platform, metric_date)`, and creates a global active `(platform, account_id)` uniqueness guard.
+- During review, two otherwise hidden account-deletion failures were corrected: the old `activity_logs.user_id` and `kb_documents.user_id` foreign keys used `ON DELETE SET NULL` while ownership becomes non-null. Both are now `ON DELETE CASCADE`.
+- The Data API is backend-only: permissive policies and `anon`/`authenticated` table/sequence/function access were revoked; `create_notification` is fixed-search-path `SECURITY INVOKER` and executable only by `service_role`.
+
+### 5. Evidence and release
+- Post-migration live verification confirmed zero remaining null-owner rows in every affected table, zero legacy shared settings, and that an anonymous REST request to `leads` is blocked with HTTP 401.
+- Full local suite completed: **320 passed, 2 skipped**. The skips require an unavailable `THREADS_APP_ID` test setting; there were no failures. Python compilation and `git diff --check` also passed (only Windows CRLF warnings).
+- The changes were committed and pushed only to the approved repository/branch:
+  `d32d9bc fix: enforce tenant isolation across SaaS data flows`
+  → `origin/main` at `https://github.com/karim-abdalwahid/hudhud-radar.git`.
+- External continuity references were updated outside Git at:
+  `C:\Users\Dell\Desktop\$AI_TESTING\codex\HUDHUDRADAR_REFERENCE.md` and
+  `C:\Users\Dell\Desktop\$AI_TESTING\codex\HUDHUDRADAR_DATABASE_OPERATION_AUDIT_2026-09-16.md`.
+
+### 6. Standing follow-up
+- Rotate the Meta and Threads credentials/tokens that were previously stored in the old shared credential shape, even though those settings are now deleted and browser access is blocked.
+- For every future task, update the live session log during work; append an Entry here when a work block completes; update the relevant Project Brain/artifact and the external Codex reference; archive any new plan, walkthrough, or audit under `PROJECT_ARCHIVE/` with the next catalog number.

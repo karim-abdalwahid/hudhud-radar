@@ -34,3 +34,12 @@
 - Entry 044 أُلحق بـ PROJECT_MEMORY (يشير لسجل الجلسة) + إصلاح 3 بايتات ترميز في الملف.
 - قاعدة سجل الجلسة الحي + قاعدة UTF-8 سُجلتا في Activity_Logging_Standard.md (إلزاميتان لكل جلسة قادمة).
 - الجلسة شملت: إكمال Wave 9.7، حادثة سقوط الإنتاج وإصلاحها بحارس دائم، PostHog حي، حساب المالك، تدقيق المنصات الثلاث، Wave 9.9 + Phase 10 مسجلين.
+
+## 2026-09-16 — SaaS tenant hardening وSupabase cleanup حي
+- **Action:** تدقيق كامل لمسارات قاعدة البيانات وربطها بالـSaaS/RAG ثم إصلاح عملي لعزل المستأجرين.
+- **Scope:** RAG، webhooks، comment/Threads bridges، CRM، connections/tokens، content/scheduler، automations، marketing/metrics، reports، billing، Data API/RLS.
+- **Decision:** المالك وافق صراحةً على حذف كل legacy rows بلا `user_id` وعدم لمس أي local work غير مرتبط أو repository غير `hudhud-radar`.
+- **Live migration:** `20260916190000_harden_backend_and_remove_unowned_legacy_data.sql` applied successfully with `supabase db push --linked`.
+- **Result:** حذف 11 messages، 3 leads، 75 posts، 21 metrics، 185 logs، 11,957 anonymous traffic، 7 dedup rows، و4 shared settings؛ postflight = صفر null-owner وanon REST blocked 401.
+- **Verification:** 320 passed، 2 skipped فقط لغياب Threads app-id؛ commit/push `d32d9bc` إلى `origin/main`.
+- **Records:** `PROJECT_MEMORY.md` Entry 046، session log `2026-09-16_session.md`، archive 025، ومرجع Codex الخارجي محدث.
