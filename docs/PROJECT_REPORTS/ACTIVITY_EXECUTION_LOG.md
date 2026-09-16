@@ -59,3 +59,8 @@
 - **Result:** توثيق التشغيل الآن يميز بوضوح بين التاريخ والنموذج الحي: per-tenant encrypted connections، owner-first ingress، RAG fail-closed، Data API backend-only، وحالة Phase 9 الصادقة.
 - **Verification:** الملفات والـwikilinks الجديدة موجودة و`git diff --check` نجح؛ لا تغير application code أو Supabase في هذا block. الدليل: archive 027.
 - **Release:** commit/push `6de0bba` إلى `karim-abdalwahid/hudhud-radar:main`؛ توثيق فقط.
+
+## 2026-09-16 — Phase 9.4 AI runtime audit (Pass 1)
+- **Action:** تدقيق read-only لمسارات LLM reply/content، onboarding persona/brain، provider manager، وcredits ledger قبل أي تنفيذ.
+- **Result:** RAG tenant-isolated سليم، لكن `agent_brain` لا يُستخدم، persona ليست runtime deterministic، و`usage_events`/`ai_credits` لا تتحرك؛ content generation لا يحمل owner أو إعداداته.
+- **Evidence:** 18 tests passed (provider/RAG suites)؛ التقرير والقرار المطلوب في archive 028. لا تغيير كود أو قاعدة بيانات في Pass 1.

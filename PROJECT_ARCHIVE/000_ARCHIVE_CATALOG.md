@@ -47,6 +47,7 @@
 | **025** | `2026-09-16 23:16` | SaaS Tenant Hardening Walkthrough | [`025_20260916_2316_walkthrough_saas_tenant_hardening.md`](./025_20260916_2316_walkthrough_saas_tenant_hardening.md) | **إصلاح شامل لعزل العملاء وتطبيقه حيًا**: RAG/CRM/Meta/Threads/content/automations/analytics scoped بالمالك، حذف legacy ownerless data بموافقة المالك، تحصين Data API، والتحقق 320 passed وpostflight حي. |
 | **026** | `2026-09-16 23:28` | Documentation & Plan Alignment Audit | [`026_20260916_2328_documentation_plan_alignment_audit.md`](./026_20260916_2328_documentation_plan_alignment_audit.md) | **مراجعة مواءمة بعد تحصين عزل العملاء**: تؤكد عدم التعارض الوظيفي، وتفصل وثائق SOP/Brain التي تحتاج تحديث حالة أو إصدار SaaS tenant-aware بعد موافقة المالك. |
 | **027** | `2026-09-16 23:44` | Documentation Walkthrough | [`027_20260916_2344_walkthrough_sop_brain_saas_alignment.md`](./027_20260916_2344_walkthrough_sop_brain_saas_alignment.md) | **تطبيق مواءمة توثيق SaaS**: ملاحق SOP/architecture/roadmap، SOP-09 v2، وعقد tenant data الحالي؛ لا تغيير كود أو Supabase. |
+| **028** | `2026-09-16 23:50` | Phase 9.4 Runtime Audit — Pass 1 | [`028_20260916_2350_phase_9_4_ai_runtime_audit_pass1.md`](./028_20260916_2350_phase_9_4_ai_runtime_audit_pass1.md) | **تدقيق AI runtime/credits/providers**: RAG آمن، لكن brain/persona/credits/content generation غير موصولة؛ يحدد قرار v1 قبل Pass 2. |
 
 ---
 

@@ -1853,3 +1853,21 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 ### Post-release addendum — 2026-09-16T23:44:23+03:00
 - The documentation-only alignment batch was committed and pushed to the approved repository only: `6de0bba docs: align SOPs and plans with SaaS isolation` → `origin/main` (`karim-abdalwahid/hudhud-radar`).
 - The release contains 25 documentation files and no production Python, migration, database, credential, or deployment changes. The final commit/reference record is appended here rather than revising the entry above.
+
+---
+
+## [Entry 050] 2026-09-16 — Phase 9.4 AI Runtime Audit (Pass 1)
+- **Timestamp**: 2026-09-16T23:50:07+03:00
+- **Actor**: Owner & Codex
+- **Status**: ✅ AUDIT COMPLETE — PASS 2 AWAITS PRODUCT DECISION
+- **Archive:** `PROJECT_ARCHIVE/028_20260916_2350_phase_9_4_ai_runtime_audit_pass1.md`
+
+### Confirmed facts
+- Tenant RAG and inbound owner propagation remain correct. The focused provider/RAG suite passed **18 tests**; warnings are dependency deprecations only.
+- The Phase 9.4 gaps are real: `users.agent_brain` is never saved/read by runtime, onboarding persona is not a deterministic system instruction, `usage_events`/`ai_credits` have no consumption path, and AI content generation does not receive tenant runtime context.
+- `AIProviderManager` is a global admin registry/discovery layer, not an invocation/tenant-selection service. Existing global Gemini calls remain hardcoded in reply/content engines.
+
+### Decision required for implementation
+- Recommended v1: platform-managed provider keys; each customer selects only an enabled admin-approved model; one successful external AI reply or content generation consumes one credit; failures and local fallback do not consume a credit.
+- A customer-owned provider/key model is a larger product/security feature requiring encrypted credential lifecycle and distinct billing. Codex did not assume it.
+- No code, migration, Supabase change, token operation, or production setting was changed in this Pass 1 block.
