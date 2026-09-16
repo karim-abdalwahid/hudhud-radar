@@ -59,10 +59,16 @@ async def cron_scheduler_tick(request: Request):
 
 @router.get("/api/cron/insights-sync", tags=["Cron"])
 async def cron_insights_sync(request: Request):
-    """Cron trigger for daily Meta Insights sync (Facebook + Instagram metrics)."""
+    """Cron trigger for each customer's daily Meta Insights sync."""
     _verify_cron_secret(request)
     try:
-        result = await meta_insights_sync.sync_recent_metrics(days=7)
+        rows = supabase_db.select("platform_connections", {"status": "active"}) or []
+        owner_ids = sorted({str(row.get("user_id")) for row in rows if row.get("user_id")})
+        outcomes = []
+        for owner_id in owner_ids:
+            outcomes.append({"user_id": owner_id,
+                             "result": await meta_insights_sync.sync_recent_metrics(owner_id, days=7)})
+        result = {"status": "success", "tenants_checked": len(owner_ids), "outcomes": outcomes}
     except Exception as e:
         logger.error(f"insights sync cron failed (reported 200): {e}")
         return {"status": "partial", "error": str(e)[:200]}

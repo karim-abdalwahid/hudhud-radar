@@ -201,13 +201,11 @@ def register_compliance_routes(app: FastAPI):
             return JSONResponse(status_code=500, content={"error": "deletion failed"})
 
         confirmation_code = secrets_mod.token_hex(8)
-        supabase_db.insert("activity_logs", {
-            "action_type": "data_deletion_request",
-            "platform": "system",
-            "target_id": user_id or user_email or "unknown",
-            "status": "success",
-            "details": {"deleted": deleted, "confirmation_code": confirmation_code},
-        })
+        # The user may have just been deleted, and an app-scoped Meta id may
+        # not map to a Hudhud user at all.  Do not recreate tenantless audit
+        # rows after the SaaS hardening migration; the server log retains the
+        # operational event instead.
+        logger.info("Completed Meta data-deletion callback: deleted=%s", deleted)
 
         # Meta-required response schema (Data Deletion Request Callback spec)
         return JSONResponse(content={
@@ -254,9 +252,7 @@ def register_compliance_routes(app: FastAPI):
             if not verified:
                 return JSONResponse(status_code=403, content={"error": "invalid signature"})
 
-            # Deauthorized → stored tokens for the platform connection are dead.
-            # Phase 9.7: revoke per-user connections matching the platform user
-            # id; legacy global cache cleared as well (compat until 9.8 cutover).
+            # Deauthorized → matching tenant-owned platform tokens are dead.
             try:
                 from src.modules.connections.service import connection_service
                 pid = str(data.get("user_id", ""))
@@ -267,23 +263,10 @@ def register_compliance_routes(app: FastAPI):
                     connection_service.revoke_by_platform_user("facebook", "")
             except Exception as rev_err:
                 logger.warning(f"per-user revoke skipped: {rev_err}")
-            try:
-                supabase_db.set_setting("meta_credentials", {})
-            except Exception:
-                pass
-            try:
-                supabase_db.set_setting("threads_credentials", {})
-            except Exception:
-                pass
-
-            supabase_db.insert("activity_logs", {
-                "action_type": "app_deauthorized",
-                "platform": "system",
-                "user_id": None,
-                "target_id": str(data.get("user_id", "")),
-                "status": "success",
-                "details": {"note": "Deauthorization callback — platform connections revoked"},
-            })
+            # The callback carries a Meta app-scoped id, not necessarily a
+            # Hudhud tenant id.  Keep it out of the tenant audit table rather
+            # than creating an ownerless row.
+            logger.info("Processed Meta deauthorization callback for platform id=%s", data.get("user_id", ""))
             return {"success": True, "revoked": True}
         except Exception as e:
             logger.error(f"Deauthorize callback error: {e}")
@@ -323,26 +306,13 @@ def register_compliance_routes(app: FastAPI):
             if not verified:
                 return JSONResponse(status_code=403, content={"error": "invalid signature"})
 
-            # The user uninstalled → revoke their Threads connection (Phase 9.7)
-            # + legacy global cache (compat until 9.8 cutover).
+            # The user uninstalled → revoke their tenant-owned Threads connection.
             try:
                 from src.modules.connections.service import connection_service
                 connection_service.revoke_by_platform_user("threads", str(data.get("user_id", "")))
             except Exception:
                 pass
-            try:
-                supabase_db.set_setting("threads_credentials", {})
-            except Exception:
-                pass
-
-            supabase_db.insert("activity_logs", {
-                "action_type": "threads_app_uninstalled",
-                "platform": "system",
-                "user_id": None,
-                "target_id": str(data.get("user_id", "")),
-                "status": "success",
-                "details": {"note": "Threads credentials cleared"},
-            })
+            logger.info("Processed Threads uninstall callback for platform id=%s", data.get("user_id", ""))
             return {}
         except Exception as e:
             logger.error(f"Uninstall callback error: {e}")

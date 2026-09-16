@@ -135,14 +135,9 @@ def register(app: FastAPI) -> None:
         if not event_id or not event_deduplicator.claim(event_id, f"payment:{provider}"):
             return {"status": "duplicate_ignored"}
 
-        # Audit log FIRST (idempotent record even if later steps fail)
-        supabase_db.insert("payment_events", {
-            "provider": provider, "event_id": event["event_id"] or "unknown",
-            "event_type": event["event_type"], "user_id": None,
-            "payload": event.get("raw", {}),
-        })
-
-        # Resolve local user by email (Google/Email accounts share the table)
+        # Resolve local user before persistence.  A gateway event without a
+        # verified Hudhud owner is operationally logged, but is never stored
+        # as a tenantless payment row.
         user_email = (event.get("user_email") or "").strip().lower()
         target_user = None
         if user_email:
@@ -151,6 +146,18 @@ def register(app: FastAPI) -> None:
                 target_user = user_store.get_by_email(user_email)
             except Exception:
                 target_user = None
+
+        if target_user and target_user.get("id"):
+            supabase_db.insert("payment_events", {
+                "provider": provider, "event_id": event["event_id"] or "unknown",
+                "event_type": event["event_type"], "user_id": target_user["id"],
+                "payload": event.get("raw", {}),
+            })
+        else:
+            logger.warning(
+                "%s payment event %s has no matching Hudhud user; no tenant record was created",
+                provider, event.get("event_id") or "unknown",
+            )
 
         # Apply payment truth
         from src.modules.billing.services import entitlement_service

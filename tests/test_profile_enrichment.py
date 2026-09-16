@@ -71,6 +71,10 @@ async def test_orchestrator_fetches_real_profile_before_extraction(monkeypatch):
         "src.modules.connections.service.connection_service.owner_for_account",
         lambda *_: "owner_1",
     )
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.get_active_token_for_account",
+        lambda *_: "tenant-page-token",
+    )
 
     event = {
         "platform": PlatformSource.FACEBOOK,
@@ -110,6 +114,10 @@ async def test_orchestrator_survives_profile_fetch_failure(monkeypatch):
         "src.modules.connections.service.connection_service.owner_for_account",
         lambda *_: "owner_1",
     )
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.get_active_token_for_account",
+        lambda *_: "tenant-page-token",
+    )
 
     event = {
         "platform": PlatformSource.FACEBOOK,
@@ -130,6 +138,8 @@ async def test_orchestrator_survives_profile_fetch_failure(monkeypatch):
 def test_inbox_thread_includes_avatar():
     """/api/inbox/conversations must expose the lead's avatar for UI rendering."""
     from unittest.mock import patch
+    from starlette.requests import Request
+    from src.core.auth import SESSION_COOKIE_NAME, create_session_token
     from src.core.supabase_client import InMemoryDatabase
     import src.modules.inbox_onboarding as inbox_mod
 
@@ -139,9 +149,11 @@ def test_inbox_thread_includes_avatar():
         "full_name": "Mohamed Hassan",
         "avatar_url": "https://platform-lookaside.fbsbx.com/mohamed.jpg",
         "facebook_account_id": "psid_real",
+        "user_id": "tenant-profile",
     })
     db.insert("messages", {
         "lead_id": lead["id"],
+        "user_id": "tenant-profile",
         "sender_type": "lead",
         "content": "hello",
         "sent_at": "2026-09-10T22:00:00+00:00",
@@ -149,9 +161,13 @@ def test_inbox_thread_includes_avatar():
 
     with patch.object(inbox_mod, "supabase_db", db), \
          patch.object(inbox_mod.lead_service, "get_messages_for_lead",
-                      return_value=db.select("messages", {"lead_id": lead["id"]})):
+                      return_value=db.select("messages", {"lead_id": lead["id"], "user_id": "tenant-profile"})):
         import asyncio
-        resp = asyncio.run(inbox_mod.get_inbox_conversations())
+        token = create_session_token("tenant-profile", "user", "profile@example.test")
+        request = Request({"type": "http", "headers": [
+            (b"cookie", f"{SESSION_COOKIE_NAME}={token}".encode())
+        ]})
+        resp = asyncio.run(inbox_mod.get_inbox_conversations(request))
 
     convs = resp["conversations"]
     assert len(convs) == 1

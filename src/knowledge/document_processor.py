@@ -46,6 +46,7 @@ class DocumentProcessor:
             "path": str(target_file),
             "words": word_count,
             "type": "markdown",
+            "content": content,
             "message": f"تم حفظ واستيعاب المستند '{target_file.name}' في قاعدة المعرفة بنجاح."
         }
 
@@ -83,6 +84,7 @@ class DocumentProcessor:
             "pages": num_pages,
             "words": word_count,
             "type": "pdf",
+            "content": full_content,
             "message": f"تم استخراج نصوص ملف الـ PDF '{filename}' بنجاح وحفظها في قاعدة المعرفة ({num_pages} صفحات)."
         }
 
@@ -135,6 +137,7 @@ class DocumentProcessor:
             "filename": target_file.name,
             "words": word_count,
             "type": "image_vision",
+            "content": extracted_markdown,
             "message": f"تم تحليل الصورة بالذكاء الاصطناعي (Gemini Vision) واستخراج محتواها المعرفي بنجاح إلى '{target_file.name}'."
         }
 

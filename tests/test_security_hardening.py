@@ -124,19 +124,20 @@ def test_llm_status_requires_admin(client_as_user: TestClient):
     assert r.status_code == 403
 
 
-def test_threads_publish_requires_admin(client_as_user: TestClient):
+def test_threads_publish_is_tenant_scoped_not_admin_only(client_as_user: TestClient):
     r = client_as_user.post("/api/threads/publish", json={"text": "hi"})
-    assert r.status_code == 403
+    assert r.status_code == 200
+    assert r.json()["status"] == "skipped"
 
 
-def test_marketing_sync_requires_admin(client_as_user: TestClient):
-    assert client_as_user.post("/api/marketing/sync-leads").status_code == 403
-    assert client_as_user.post("/api/marketing/sync-campaigns").status_code == 403
+def test_marketing_sync_is_tenant_scoped_not_admin_only(client_as_user: TestClient):
+    assert client_as_user.post("/api/marketing/sync-leads").status_code == 200
+    assert client_as_user.post("/api/marketing/sync-campaigns").status_code == 200
 
 
-def test_inbox_send_message_requires_admin(client_as_user: TestClient):
+def test_inbox_send_message_requires_owned_lead(client_as_user: TestClient):
     r = client_as_user.post("/api/inbox/conversations/some-lead/send-message", json={"text": "hi"})
-    assert r.status_code == 403
+    assert r.status_code == 404
 
 
 def test_admin_alerts_requires_admin(client_as_user: TestClient):

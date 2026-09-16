@@ -27,6 +27,8 @@ class ContentStudioService:
 
     def create_post(self, post_in: ContentPostCreate, user_id: Optional[str] = None) -> ContentPostResponse:
         """Create a new post/reel/story record (owned by the session user — Wave 9.8)."""
+        if not user_id:
+            raise ValueError("A tenant owner is required to create content")
         now = datetime.now(timezone.utc).isoformat()
         row_id = str(uuid.uuid4())
         
@@ -41,7 +43,7 @@ class ContentStudioService:
             "creation_mode": post_in.creation_mode.value if hasattr(post_in.creation_mode, 'value') else post_in.creation_mode,
             "generation_prompt": post_in.generation_prompt,
             "performance_metrics": {},
-            **({"user_id": user_id} if user_id else {}),
+            "user_id": user_id,
             "created_at": now,
             "updated_at": now,
         }
@@ -50,9 +52,12 @@ class ContentStudioService:
         logger.info("Content post created successfully", extra={"post_id": row_id, "platform": row_data["platform"]})
         return ContentPostResponse(**inserted)
 
-    def get_post(self, post_id: str) -> Optional[ContentPostResponse]:
-        """Fetch a single post by ID."""
-        rows = self.db.select(self.table, {"id": post_id})
+    def get_post(self, post_id: str, user_id: Optional[str] = None) -> Optional[ContentPostResponse]:
+        """Fetch a single post, optionally restricted to its tenant owner."""
+        filters = {"id": post_id}
+        if user_id:
+            filters["user_id"] = user_id
+        rows = self.db.select(self.table, filters)
         if rows:
             return ContentPostResponse(**rows[0])
         return None
@@ -72,8 +77,11 @@ class ContentStudioService:
         rows.sort(key=lambda x: x.get("created_at", ""), reverse=True)
         return [ContentPostResponse(**r) for r in rows[:limit]]
 
-    def update_post(self, post_id: str, updates: ContentPostUpdate) -> Optional[ContentPostResponse]:
-        """Update fields of an existing post."""
+    def update_post(self, post_id: str, updates: ContentPostUpdate,
+                    user_id: Optional[str] = None) -> Optional[ContentPostResponse]:
+        """Update a post, rejecting an id outside the caller's tenant when scoped."""
+        if user_id and not self.get_post(post_id, user_id=user_id):
+            return None
         update_data = {k: v for k, v in updates.model_dump().items() if v is not None}
         if "status" in update_data and hasattr(update_data["status"], "value"):
             update_data["status"] = update_data["status"].value
@@ -89,6 +97,8 @@ class ContentStudioService:
             return ContentPostResponse(**updated)
         return None
 
-    def delete_post(self, post_id: str) -> bool:
-        """Delete a post."""
+    def delete_post(self, post_id: str, user_id: Optional[str] = None) -> bool:
+        """Delete a post, rejecting an id outside the caller's tenant when scoped."""
+        if user_id and not self.get_post(post_id, user_id=user_id):
+            return False
         return self.db.delete(self.table, post_id)

@@ -131,7 +131,9 @@ class MetaTokenManager:
     async def generate_and_save_permanent_token(
         self,
         any_user_token: str,
-        target_page_id: Optional[str] = None
+        target_page_id: Optional[str] = None,
+        *,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Full End-to-End Permanent Token Workflow:
@@ -140,8 +142,14 @@ class MetaTokenManager:
         3. Retrieves permanent never-expiring Page Access Token.
         4. Matches target page_id (or defaults to the first available).
         5. Discovers Instagram Business ID.
-        6. Updates .env and runtime settings automatically.
+        6. Saves the token only to the specified customer's encrypted
+           platform connection.
         """
+        if not user_id:
+            raise MetaAPIError(
+                "user_id مطلوب لحفظ Meta token. التوكنات العامة وملف .env "
+                "غير مسموح بهما في مشروع SaaS متعدد العملاء."
+            )
         # 1. Extend token
         long_lived = await self.get_long_lived_user_token(any_user_token)
         long_token = long_lived["access_token"]
@@ -165,31 +173,28 @@ class MetaTokenManager:
         page_id = selected_page["page_id"]
         page_name = selected_page["page_name"]
         ig_account = selected_page.get("instagram_business_account") or {}
-        ig_id = ig_account.get("id") or settings.META_INSTAGRAM_ACCOUNT_ID
+        ig_id = ig_account.get("id")
 
-        # 4. Update .env file
-        self._save_to_env({
-            "META_PAGE_ACCESS_TOKEN": permanent_token,
-            "META_PAGE_ID": page_id,
-            "META_INSTAGRAM_ACCOUNT_ID": ig_id or ""
-        })
+        # Never write a page token to deployment settings, .env, or a shared
+        # app_settings value.  A Facebook connection may carry its linked IG
+        # account as metadata; ConnectionService resolves that exact account
+        # for incoming Instagram webhooks and publishing.
+        from src.modules.connections.service import connection_service
+        saved = connection_service.store(
+            user_id=user_id,
+            platform="facebook",
+            access_token=permanent_token,
+            account_id=str(page_id),
+            account_name=page_name,
+            metadata={
+                "linked_ig_id": str(ig_id) if ig_id else "",
+                "linked_ig_username": ig_account.get("username", ""),
+            },
+        )
+        if not saved:
+            raise MetaAPIError("تعذر حفظ اتصال Meta المشفّر للمستخدم")
 
-        # 5. Update runtime settings
-        settings.META_PAGE_ACCESS_TOKEN = permanent_token
-        settings.META_PAGE_ID = page_id
-        if ig_id:
-            settings.META_INSTAGRAM_ACCOUNT_ID = ig_id
-
-        # 5b. Persist in Supabase app_settings for cloud/serverless persistence
-        supabase_db.set_setting("meta_credentials", {
-            "page_access_token": permanent_token,
-            "page_id": page_id,
-            "page_name": page_name,
-            "instagram_account_id": ig_id or "",
-            "instagram_username": ig_account.get("username", "")
-        })
-
-        # 6. Auto-subscribe Page to Webhooks
+        # Auto-subscribe only this saved Page to webhooks.
         await self.auto_subscribe_page_webhook(page_id, permanent_token)
 
         return {
@@ -225,38 +230,6 @@ class MetaTokenManager:
             logger.warning(f"Could not auto-subscribe page {page_id} to webhooks: {e}")
         return False
 
-    def _save_to_env(self, updates: Dict[str, str]):
-        """Persists updated keys into .env safely."""
-        env_path = ".env"
-        try:
-            with open(env_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-
-            new_lines = []
-            keys_updated = set()
-
-            for line in lines:
-                matched = False
-                for key, val in updates.items():
-                    if line.startswith(f"{key}=") or line.startswith(f"#{key}="):
-                        new_lines.append(f"{key}={val}\n")
-                        keys_updated.add(key)
-                        matched = True
-                        break
-                if not matched:
-                    new_lines.append(line)
-
-            for key, val in updates.items():
-                if key not in keys_updated and val:
-                    new_lines.append(f"{key}={val}\n")
-
-            with open(env_path, "w", encoding="utf-8") as f:
-                f.writelines(new_lines)
-            logger.info("Updated .env with new permanent Meta credentials.")
-        except Exception as e:
-            logger.error(f"Error saving permanent token to .env: {e}")
-
-
 meta_token_manager = MetaTokenManager()
 
 
@@ -265,17 +238,19 @@ if __name__ == "__main__":
     import asyncio
 
     async def main():
-        if len(sys.argv) < 2:
-            print("Usage: python -m src.meta_api.token_manager <USER_ACCESS_TOKEN> [TARGET_PAGE_ID]")
+        if len(sys.argv) < 3:
+            print("Usage: python -m src.meta_api.token_manager <USER_ACCESS_TOKEN> <HUDHUD_USER_ID> [TARGET_PAGE_ID]")
             sys.exit(1)
 
         token = sys.argv[1].strip()
-        target_page = sys.argv[2].strip() if len(sys.argv) > 2 else None
+        user_id = sys.argv[2].strip()
+        target_page = sys.argv[3].strip() if len(sys.argv) > 3 else None
 
         print(f"🔄 Exchanging user token for permanent Page Access Token...")
         try:
-            res = await meta_token_manager.generate_and_save_permanent_token(token, target_page)
-            print(f"✅ SUCCESS! Permanent token generated and saved to .env:")
+            res = await meta_token_manager.generate_and_save_permanent_token(
+                token, target_page, user_id=user_id)
+            print(f"✅ SUCCESS! Permanent token generated and saved to the customer's encrypted connection:")
             print(f"   - Page ID: {res['page_id']} ({res['page_name']})")
             print(f"   - Instagram ID: {res['instagram_id']} (@{res.get('instagram_username')})")
             print(f"   - Token Preview: {res['token_preview']}")

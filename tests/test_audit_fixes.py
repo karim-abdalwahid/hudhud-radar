@@ -1,5 +1,5 @@
 """Regression tests for the full-backend audit fixes (Phase 3-5):
-- meta/configure no longer NameErrors (PROJECT_ROOT) -> never 5xx
+- meta/configure is tenant-scoped and never writes a global .env token
 - knowledge create/update validation -> 400 (was 500)
 - publish double-execution guard (CAS claim)
 - dedup duplicate-key tolerance (no DB-dedup self-disable)"""
@@ -14,9 +14,10 @@ def test_meta_configure_empty_payload_not_500(client):
     assert r.status_code < 500, r.text[:200]
 
 
-def test_meta_configure_path_imported():
+def test_meta_configure_is_tenant_scoped():
     from src.modules.meta import routes as m
-    assert hasattr(m, "PROJECT_ROOT") and hasattr(m, "Path")
+    assert hasattr(m, "_require_session_user")
+    assert hasattr(m, "configure_meta_credentials")
 
 
 def test_knowledge_create_invalid_returns_400(client):

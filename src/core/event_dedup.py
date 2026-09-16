@@ -43,10 +43,16 @@ class EventDeduplicator:
             self._db_disabled = True
             return False
 
-    def already_processed(self, event_key: str) -> bool:
+    @staticmethod
+    def _scoped_key(event_key: str, scope: Optional[str]) -> str:
+        """Namespace a webhook event by its verified tenant when available."""
+        return f"tenant:{scope}:{event_key}" if scope else event_key
+
+    def already_processed(self, event_key: str, scope: Optional[str] = None) -> bool:
         """Returns True if this exact event was already processed."""
         if not event_key:
             return False
+        event_key = self._scoped_key(event_key, scope)
         if event_key in self._memory_seen:
             return True
         if self._db_ready():
@@ -61,10 +67,12 @@ class EventDeduplicator:
                 self._db_disabled = True
         return False
 
-    def mark_processed(self, event_key: str, event_type: str = "message") -> bool:
+    def mark_processed(self, event_key: str, event_type: str = "message",
+                       scope: Optional[str] = None) -> bool:
         """Records an event as processed. Returns True if newly recorded."""
         if not event_key:
             return False
+        event_key = self._scoped_key(event_key, scope)
         self._remember_memory(event_key)
         if self._db_ready():
             try:
@@ -83,11 +91,12 @@ class EventDeduplicator:
                 self._db_disabled = True
         return False
 
-    def claim(self, event_key: str, event_type: str = "message") -> bool:
+    def claim(self, event_key: str, event_type: str = "message",
+              scope: Optional[str] = None) -> bool:
         """Atomically claims an event: True if this caller should process it."""
-        if not event_key or self.already_processed(event_key):
+        if not event_key or self.already_processed(event_key, scope=scope):
             return False
-        self.mark_processed(event_key, event_type)
+        self.mark_processed(event_key, event_type, scope=scope)
         return True
 
 

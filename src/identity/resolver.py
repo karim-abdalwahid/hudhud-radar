@@ -26,6 +26,12 @@ class IdentityResolver:
         3. Either links with 100% confidence, creates new lead, or flags candidate for manual review.
         Returns: (lead_record, is_new_record, optional_queue_id)
         """
+        # Tenantless resolution would scan every customer's CRM before the
+        # database constraint eventually rejects the write. Refuse before
+        # either read or write whenever this is the real database.
+        if not incoming.user_id and getattr(self.db, "is_connected", False):
+            raise ValueError("A tenant owner is required to resolve a lead")
+
         # 1. Deterministic Search: Check by specific platform account ID
         existing_lead = None
         if incoming.source == PlatformSource.FACEBOOK and incoming.facebook_account_id:

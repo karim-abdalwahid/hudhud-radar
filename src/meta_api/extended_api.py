@@ -18,49 +18,34 @@ from src.core.logger import logger
 from src.core.supabase_client import supabase_db
 
 
-def _resolve_credentials() -> Dict[str, Optional[str]]:
-    """Single source of truth for active Meta credentials (env + Supabase overlay)."""
-    token = settings.META_PAGE_ACCESS_TOKEN
-    page_id = settings.META_PAGE_ID
-    ig_id = settings.META_INSTAGRAM_ACCOUNT_ID
-    try:
-        cached = supabase_db.get_setting("meta_credentials") or {}
-        token = cached.get("page_access_token") or token
-        page_id = cached.get("page_id") or page_id
-        ig_id = cached.get("instagram_account_id") or ig_id
-    except Exception:
-        pass
-    return {"token": token, "page_id": page_id, "ig_id": ig_id}
-
-
 class MetaInsightsSync:
     """Syncs daily reach/impressions/engagement metrics into page_performance_metrics."""
 
-    async def sync_recent_metrics(self, days: int = 7) -> Dict[str, Any]:
-        creds = _resolve_credentials()
-        token = creds["token"]
-        if not token or token.startswith("your-"):
-            return {"status": "skipped", "reason": "META_PAGE_ACCESS_TOKEN not configured"}
+    async def sync_recent_metrics(self, user_id: str, days: int = 7) -> Dict[str, Any]:
+        """Sync an individual tenant's entitled social accounts only."""
+        from src.modules.connections.service import connection_service
+        facebook = connection_service.get_publish_credentials(user_id, "facebook")
+        instagram = connection_service.get_publish_credentials(user_id, "instagram")
+        if not facebook and not instagram:
+            return {"status": "skipped", "reason": "no active entitled Meta connection"}
 
-        since = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
-        until = int(datetime.now(timezone.utc).timestamp())
         results: Dict[str, Any] = {"facebook": None, "instagram": None}
 
         async with httpx.AsyncClient(timeout=15.0) as client:
             # Facebook Page Insights (v26 metric names — page_impressions deprecated)
-            if creds["page_id"]:
+            if facebook:
                 try:
                     resp = await client.get(
-                        f"{settings.META_GRAPH_API_BASE_URL}/{creds['page_id']}/insights",
+                        f"{settings.META_GRAPH_API_BASE_URL}/{facebook['account_id']}/insights",
                         params={
                             "metric": "page_views_total,page_post_engagements,page_follows",
                             "period": "day",
                             "date_preset": "last_7d",
-                            "access_token": token,
+                            "access_token": facebook["access_token"],
                         },
                     )
                     if resp.status_code == 200:
-                        results["facebook"] = self._store_metric_rows("facebook", resp.json())
+                        results["facebook"] = self._store_metric_rows(user_id, "facebook", resp.json())
                     else:
                         logger.warning(f"FB insights sync failed: {resp.status_code} {resp.text[:200]}")
                 except Exception as e:
@@ -68,28 +53,29 @@ class MetaInsightsSync:
 
             # Instagram Business Insights (requires instagram_manage_insights scope;
             # falls back to profile-level follower count when scope missing)
-            if creds["ig_id"]:
+            if instagram:
                 try:
                     resp = await client.get(
-                        f"{settings.META_GRAPH_API_BASE_URL}/{creds['ig_id']}/insights",
+                        f"{settings.META_GRAPH_API_BASE_URL}/{instagram['account_id']}/insights",
                         params={
                             "metric": "reach,views,follower_count",
                             "period": "day",
                             "date_preset": "last_7d",
-                            "access_token": token,
+                            "access_token": instagram["access_token"],
                         },
                     )
                     if resp.status_code == 200:
-                        results["instagram"] = self._store_metric_rows("instagram", resp.json())
+                        results["instagram"] = self._store_metric_rows(user_id, "instagram", resp.json())
                     else:
                         logger.warning(f"IG insights sync failed ({resp.status_code}) — falling back to profile stats")
-                        results["instagram"] = self._store_profile_fallback("instagram", creds["ig_id"], token)
+                        results["instagram"] = self._store_profile_fallback(
+                            user_id, "instagram", instagram["account_id"], instagram["access_token"])
                 except Exception as e:
                     logger.warning(f"IG insights sync error: {e}")
 
         return {"status": "success", "synced": results}
 
-    def _store_profile_fallback(self, platform: str, ig_id: str, token: str) -> int:
+    def _store_profile_fallback(self, user_id: str, platform: str, ig_id: str, token: str) -> int:
         """When insights scope is missing, still record today's follower count."""
         try:
             r = httpx.get(
@@ -101,6 +87,7 @@ class MetaInsightsSync:
                 d = r.json()
                 today = date.today().isoformat()
                 supabase_db.upsert("page_performance_metrics", {
+                    "user_id": user_id,
                     "platform": platform,
                     "metric_date": today,
                     "reach": 0,
@@ -109,13 +96,13 @@ class MetaInsightsSync:
                     "followers_count": d.get("followers_count", 0),
                     "leads_captured": 0,
                     "metadata": {"source": "profile_fallback", "media_count": d.get("media_count", 0)},
-                }, on_conflict="platform,metric_date")
+                }, on_conflict="user_id,platform,metric_date")
                 return 1
         except Exception as e:
             logger.debug(f"Profile fallback failed: {e}")
         return 0
 
-    def _store_metric_rows(self, platform: str, payload: Dict[str, Any]) -> int:
+    def _store_metric_rows(self, user_id: str, platform: str, payload: Dict[str, Any]) -> int:
         """Upserts daily metric rows; returns count of stored days."""
         stored = 0
         daily: Dict[str, Dict[str, Any]] = {}
@@ -142,6 +129,7 @@ class MetaInsightsSync:
             engagement_rate = round((row["engagement"] / row["reach"]), 3) if row["reach"] else 0.0
             try:
                 supabase_db.upsert("page_performance_metrics", {
+                    "user_id": user_id,
                     "platform": platform,
                     "metric_date": metric_date,
                     "reach": row["reach"],
@@ -150,7 +138,7 @@ class MetaInsightsSync:
                     "followers_count": row["followers"],
                     "leads_captured": 0,
                     "metadata": {"source": "insights_sync", "synced_at": datetime.now(timezone.utc).isoformat()},
-                }, on_conflict="platform,metric_date")
+                }, on_conflict="user_id,platform,metric_date")
                 stored += 1
             except Exception as e:
                 logger.warning(f"Metric upsert failed for {platform}/{metric_date}: {e}")
@@ -167,15 +155,12 @@ class ThreadsPublisher:
 
     @staticmethod
     def _resolve_token(user_id: Optional[str] = None) -> Optional[str]:
-        """Per-user token (fail-closed entitlement gate), with legacy global
-        fallback while no per-user connections exist (Wave 9.8 interim)."""
+        """Resolve an entitled user's Threads token without cross-tenant fallback."""
         if user_id:
             from src.modules.connections.service import connection_service
             tok = connection_service.get_active_token(user_id, "threads")
-            if tok:
-                return tok
-        from src.meta_api.threads_oauth import get_active_threads_token
-        return get_active_threads_token()
+            return tok
+        return None
 
     async def publish_thread(self, text: str, link: Optional[str] = None,
                              user_id: Optional[str] = None,
@@ -276,12 +261,14 @@ class ThreadsPublisher:
 class MarketingLeadsSync:
     """Meta Marketing API: Lead Ads retrieval + campaign performance -> campaigns table."""
 
-    async def sync_lead_forms(self, form_id: Optional[str] = None) -> Dict[str, Any]:
-        creds = _resolve_credentials()
-        token = creds["token"]
-        page_id = creds["page_id"]
-        if not token or token.startswith("your-") or not page_id:
-            return {"status": "skipped", "reason": "token/page missing"}
+    async def sync_lead_forms(self, user_id: str,
+                              form_id: Optional[str] = None) -> Dict[str, Any]:
+        from src.modules.connections.service import connection_service
+        creds = connection_service.get_publish_credentials(user_id, "facebook")
+        if not creds:
+            return {"status": "skipped", "reason": "active entitled Facebook connection missing"}
+        token = creds["access_token"]
+        page_id = creds["account_id"]
 
         async with httpx.AsyncClient(timeout=20.0) as client:
             # 1. List lead gen forms owned by the page (or use provided form)
@@ -306,16 +293,19 @@ class MarketingLeadsSync:
                     continue
                 for lead in leads_resp.json().get("data", []):
                     fields = {f["name"]: f["values"][0] for f in lead.get("field_data", []) if f.get("values")}
-                    if self._store_ad_lead(form.get("name", "Lead Form"), lead, fields):
+                    if self._store_ad_lead(user_id, form.get("name", "Lead Form"), lead, fields):
                         total_new += 1
             return {"status": "success", "new_leads": total_new, "forms_checked": len(forms[:10])}
 
-    def _store_ad_lead(self, form_name: str, lead: Dict[str, Any], fields: Dict[str, str]) -> bool:
+    def _store_ad_lead(self, user_id: str, form_name: str, lead: Dict[str, Any],
+                       fields: Dict[str, str]) -> bool:
         """Stores an ad lead with full provenance. Skips if already stored (platform id unique)."""
-        existing = supabase_db.select("leads", {"profile_url": f"leadgen:{lead.get('id')}"})
+        existing = supabase_db.select("leads", {
+            "profile_url": f"leadgen:{lead.get('id')}", "user_id": user_id})
         if existing:
             return False
         supabase_db.insert("leads", {
+            "user_id": user_id,
             "source": "other",
             "full_name": fields.get("full_name") or fields.get("name"),
             "contact_email": fields.get("email"),
@@ -332,15 +322,17 @@ class MarketingLeadsSync:
         })
         return True
 
-    async def sync_campaign_insights(self) -> Dict[str, Any]:
+    async def sync_campaign_insights(self, user_id: str) -> Dict[str, Any]:
         """Pulls ad campaign performance into the campaigns table."""
-        creds = _resolve_credentials()
-        token = creds["token"]
-        if not token or token.startswith("your-"):
-            return {"status": "skipped", "reason": "token missing"}
-        act_id = getattr(settings, "META_AD_ACCOUNT_ID", None)
+        from src.modules.connections.service import connection_service
+        creds = connection_service.get_publish_credentials(user_id, "facebook")
+        if not creds:
+            return {"status": "skipped", "reason": "active entitled Facebook connection missing"}
+        token = creds["access_token"]
+        metadata = connection_service.get_connection_metadata(user_id, "facebook")
+        act_id = str(metadata.get("ad_account_id") or "").removeprefix("act_")
         if not act_id:
-            return {"status": "skipped", "reason": "META_AD_ACCOUNT_ID not configured"}
+            return {"status": "skipped", "reason": "this customer's Facebook connection has no ad_account_id"}
 
         async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.get(
@@ -359,14 +351,16 @@ class MarketingLeadsSync:
                 for action in insights.get("actions", []):
                     if action.get("action_type") in ("messaging_conversation_started_7d", "onsite_conversion.messaging_conversation_started_7d"):
                         messages_sent = int(action.get("value", 0))
-                if self._upsert_campaign(camp, insights, messages_sent):
+                if self._upsert_campaign(user_id, camp, insights, messages_sent):
                     synced += 1
             return {"status": "success", "campaigns_synced": synced}
 
-    def _upsert_campaign(self, camp: Dict[str, Any], insights: Dict[str, Any], messages_sent: int) -> bool:
+    def _upsert_campaign(self, user_id: str, camp: Dict[str, Any],
+                         insights: Dict[str, Any], messages_sent: int) -> bool:
         name = camp.get("name", f"Campaign {camp.get('id')}")
-        existing = supabase_db.select("campaigns", {"name": name})
+        existing = supabase_db.select("campaigns", {"name": name, "user_id": user_id})
         payload = {
+            "user_id": user_id,
             "name": name,
             "platform": "facebook",
             "status": (camp.get("status") or "unknown").lower(),
@@ -442,7 +436,8 @@ class ThreadsLeadsSync:
 
     async def capture_thread_reply(self, reply: Dict[str, Any], token: str,
                                    thread_id: Optional[str] = None,
-                                   own_username: Optional[str] = None) -> Optional[Dict[str, Any]]:
+                                   own_username: Optional[str] = None,
+                                   user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Turns one Threads reply into (or appends to) a lead with its message."""
         from datetime import datetime, timezone as tz
         from src.leads.models import MessageCreate, PlatformSource, SenderType
@@ -454,6 +449,9 @@ class ThreadsLeadsSync:
         username = reply.get("username")
         author_id = (reply.get("from_user") or {}).get("id") or reply.get("from_user_id")
 
+        if not user_id:
+            logger.error("Threads reply bridge ignored: missing tenant owner.")
+            return None
         if not reply_id or (not username and not author_id):
             logger.warning("Threads reply bridge skipped: no id/author identity.")
             return None
@@ -463,7 +461,9 @@ class ThreadsLeadsSync:
             return {"status": "skipped", "reason": "self_reply"}
 
         # Idempotency: one reply → one message ever
-        existing_msg = db.select("messages", {"platform_message_id": reply_id})
+        existing_msg = db.select(
+            "messages", {"platform_message_id": reply_id, "user_id": user_id}
+        )
         if existing_msg:
             return {"lead_id": existing_msg[0].get("lead_id"), "duplicate": True}
 
@@ -478,6 +478,7 @@ class ThreadsLeadsSync:
             "name": profile.get("name"),
             "thread_profile_picture_url": profile.get("thread_profile_picture_url"),
         })
+        lead_in = lead_in.model_copy(update={"user_id": user_id})
         lead_record, is_new, queue_id = resolver.resolve_and_save_lead(lead_in)
         lead_id = lead_record["id"]
 
@@ -490,6 +491,7 @@ class ThreadsLeadsSync:
 
         message = MessageCreate(
             lead_id=lead_id,
+            user_id=user_id,
             platform=PlatformSource.THREADS,
             platform_message_id=reply_id,
             sender_type=SenderType.LEAD,
@@ -544,7 +546,7 @@ class ThreadsLeadsSync:
                 for reply in replies_resp.json().get("data", []):
                     result = await self.capture_thread_reply(
                         reply, token=token, thread_id=thread["id"],
-                        own_username=own_username)
+                        own_username=own_username, user_id=user_id)
                     if result is None:
                         skipped += 1
                     elif result.get("duplicate"):

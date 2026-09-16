@@ -116,50 +116,15 @@ async def test_analyze_one_retries_503_then_fails_cleanly(analyzer, monkeypatch,
 
 
 @pytest.mark.asyncio
-async def test_full_pipeline_saves_knowledge_docs(analyzer, monkeypatch):
-    saved = {}
-
-    def fake_save(filename, content, **kw):
-        saved[filename] = content
-        return {"status": "success", "filename": filename}
-
-    analyzer._analyze_one = _async_return(_valid_analysis())
-    monkeypatch.setattr(
-        "src.meta_api.extended_api._resolve_credentials",
-        lambda: {"token": "test-token"},
-    )
-    monkeypatch.setattr(
-        "src.knowledge.meta_analyzer.db_knowledge_base.save_document", fake_save
-    )
-    monkeypatch.setattr(
-        "src.meta_api.feed_sync.meta_feed_sync.get_synced_posts",
-        lambda **kw: [{"id": "p1", "content_text": "اكتب ابدأ", "published_at": "",
-                       "platform": "instagram", "post_type": "reel"}],
-    )
-
-    res = await analyzer.analyze_recent(limit=5)
-    assert res["status"] == "success"
-    assert res["posts_analyzed"] == 1
-    assert "audience_insights.md" in saved
-    assert "cta_effectiveness.md" in saved
-    assert "content_performance.md" in saved
-    # Honest CTA breakdown: 1 of 2 = 50% CTA-response, 50% real questions
-    assert "استجابة CTA: 1 (50%)" in saved["cta_effectiveness.md"]
-    assert "اهتمام حقيقي" in saved["cta_effectiveness.md"]
+async def test_full_pipeline_refuses_global_meta_feed(analyzer):
+    """No analyzer may consume the old globally cached Meta posts."""
+    res = await analyzer.analyze_recent(limit=5, user_id="tenant-a")
+    assert res["status"] == "skipped"
+    assert "per-account" in res["reason"]
 
 
 @pytest.mark.asyncio
-async def test_no_results_never_fabricates(analyzer, monkeypatch):
-    analyzer._analyze_one = _async_return([])  # everything fails
-    monkeypatch.setattr(
-        "src.meta_api.extended_api._resolve_credentials",
-        lambda: {"token": "test-token"},
-    )
-    monkeypatch.setattr(
-        "src.meta_api.feed_sync.meta_feed_sync.get_synced_posts",
-        lambda **kw: [{"id": "p9", "content_text": "x"}],
-    )
+async def test_analyzer_requires_tenant_owner(analyzer):
     res = await analyzer.analyze_recent(limit=3)
-    assert res["status"] == "no_results"
-    assert res["posts_analyzed"] == 0
-    assert res.get("reason")  # explicit — never fabricate
+    assert res["status"] == "skipped"
+    assert "tenant owner" in res["reason"]

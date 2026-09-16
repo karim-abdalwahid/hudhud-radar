@@ -77,7 +77,8 @@ async def test_scheduler_blocks_non_compliant_post():
             content_text="اكسب فلوس مجانية وثراء سريع بدون مجهود اضغط هنا!",
             status=ContentStatus.SCHEDULED,
             scheduled_for=datetime.now(timezone.utc)
-        )
+        ),
+        user_id="tenant-compliance",
     )
 
     result = await scheduler.publish_single_post(post)

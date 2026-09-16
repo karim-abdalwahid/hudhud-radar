@@ -73,15 +73,15 @@ def test_client_no_simulation_in_source():
 
 
 @pytest.mark.asyncio
-async def test_client_reads_supabase_credentials(monkeypatch):
+async def test_client_never_reads_shared_supabase_credentials(monkeypatch):
     from src.meta_api.client import MetaGraphClient
     monkeypatch.setattr(
         "src.meta_api.client.supabase_db.get_setting",
         lambda key: {"token": "supa-token", "page_id": "supa-page"} if key == "meta_credentials" else None,
     )
     c = MetaGraphClient()
-    assert c.access_token == "supa-token"
-    assert c.page_id == "supa-page"
+    assert c.access_token != "supa-token"
+    assert c.page_id != "supa-page"
 
 
 # --------------------------------------------------------------------
@@ -155,13 +155,19 @@ async def test_automation_counts_only_real_success(monkeypatch):
 
     import httpx
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _Ctx())
-    monkeypatch.setattr(settings, "META_PAGE_ACCESS_TOKEN", "tok")
-    monkeypatch.setattr(settings, "META_PAGE_ID", "p1")
+    from src.modules.connections.service import connection_service
+    monkeypatch.setattr(connection_service, "owner_for_account", lambda platform, account: "tenant-1")
+    monkeypatch.setattr(
+        connection_service, "get_active_token_for_account",
+        lambda user_id, platform, account: "tok",
+    )
+    monkeypatch.setattr(svc, "list_workflows", lambda user_id: list(svc._workflows.values()))
     saved = {}
     monkeypatch.setattr(svc, "_save", lambda: saved.update({"saved": True}))
 
     res = await svc.process_comment_event({
-        "platform": "facebook", "text": "ابدأ", "comment_id": "c1", "media_id": "m1",
+        "platform": "facebook", "account_id": "p1", "text": "ابدأ",
+        "comment_id": "c1", "media_id": "m1",
     })
     assert res["status"] == "failed"  # previously: unconditional "executed"
     assert svc._workflows["wf1"].executions_count == 0  # previously: incremented blindly

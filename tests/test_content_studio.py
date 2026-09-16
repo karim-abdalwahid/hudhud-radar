@@ -101,7 +101,7 @@ def test_content_post_lifecycle(content_service):
         creation_mode=CreationMode.MANUAL,
     )
     # 1. Create
-    created = content_service.create_post(post_in)
+    created = content_service.create_post(post_in, user_id="tenant-content")
     assert created.id is not None
     assert created.status == ContentStatus.DRAFT
     assert created.content_text == post_in.content_text
@@ -186,7 +186,7 @@ async def test_scheduler_executes_due_posts(content_service):
         status=ContentStatus.SCHEDULED,
         scheduled_for=past_time,
     )
-    post = content_service.create_post(post_in)
+    post = content_service.create_post(post_in, user_id="tenant-content")
 
     mock_publisher = MagicMock()
     mock_publisher.publish_content = AsyncMock(return_value={

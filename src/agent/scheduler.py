@@ -32,6 +32,42 @@ class ContentScheduler:
     STUCK_PUBLISHING_MINUTES = 15
     CONTAINER_TICK_LIMIT = 40  # ~40 ticks of patience (~40-80 min)
 
+    def publisher_for_post(self, post: ContentPostResponse):
+        """Build a Graph publisher from this post owner's entitled accounts.
+
+        Scheduled work is global by design (cron sees every due row), but the
+        Graph credentials must be selected from the row owner, never from a
+        process-wide Meta token.
+        """
+        owner = getattr(post, "user_id", None)
+        # An explicitly injected publisher is a test/development seam.  It is
+        # never selected in the real scheduled-worker path, which retains the
+        # strict owner-bound credential lookup below.
+        from src.core.supabase_client import supabase_db
+        if self.publisher is not meta_publisher and not supabase_db.is_connected:
+            return self.publisher
+        if not owner:
+            if not supabase_db.is_connected:
+                return self.publisher
+            raise ValueError("Scheduled post has no tenant owner")
+        from src.modules.connections.service import connection_service
+        from src.meta_api.publishing import MetaPublisher
+        platform = getattr(post.platform, "value", post.platform)
+        fb = connection_service.get_publish_credentials(owner, "facebook") \
+            if platform in ("facebook", "both") else None
+        ig = connection_service.get_publish_credentials(owner, "instagram") \
+            if platform in ("instagram", "both") else None
+        if platform in ("facebook", "both") and not fb:
+            raise ValueError("Active entitled Facebook connection missing for post owner")
+        if platform in ("instagram", "both") and not ig:
+            raise ValueError("Active entitled Instagram connection missing for post owner")
+        return MetaPublisher(
+            page_id=fb["account_id"] if fb else None,
+            instagram_id=ig["account_id"] if ig else None,
+            facebook_access_token=fb["access_token"] if fb else None,
+            instagram_access_token=ig["access_token"] if ig else None,
+        )
+
     async def check_and_publish_due_posts(self) -> List[Dict[str, Any]]:
         """Short-budget tick: resume ready containers, requeue stuck posts,
         start at most MAX_STARTS_PER_TICK new due posts. Never blocks long."""
@@ -69,9 +105,16 @@ class ContentScheduler:
             cid = metrics.get("ig_container_id")
             if not cid:
                 continue  # handled by _requeue_stuck_publishing
+            try:
+                publisher = self.publisher_for_post(post)
+            except Exception as e:
+                self.service.update_post(post.id, ContentPostUpdate(
+                    status=ContentStatus.FAILED, error_message=str(e)[:300]))
+                out.append({"post_id": post.id, "status": "failed", "detail": str(e)[:150]})
+                continue
             ready = False
             try:
-                ready = await self.publisher.wait_for_instagram_container_ready(
+                ready = await publisher.wait_for_instagram_container_ready(
                     cid, max_retries=1, delay_seconds=0)
             except Exception as e:
                 logger.warning(f"Container poll failed for {post.id}: {e}")
@@ -89,8 +132,8 @@ class ContentScheduler:
                     out.append({"post_id": post.id, "status": "awaiting_container"})
                 continue
             try:
-                pub = await self.publisher.publish_instagram_container(cid)
-                media_id = str(pub.get("id") or pub.get("media_id") or pub.get("code") or "")
+                pub = await publisher.publish_instagram_container(cid)
+                media_id = str(pub.get("post_id") or pub.get("id") or pub.get("media_id") or pub.get("code") or "")
             except Exception as e:
                 self.service.update_post(post.id, ContentPostUpdate(
                     status=ContentStatus.FAILED,
@@ -159,6 +202,13 @@ class ContentScheduler:
             return {"post_id": post.id, "status": "rejected_by_compliance"}
         self.service.update_post(post.id, ContentPostUpdate(status=ContentStatus.PUBLISHING))
 
+        try:
+            publisher = self.publisher_for_post(post)
+        except Exception as e:
+            self.service.update_post(post.id, ContentPostUpdate(
+                status=ContentStatus.FAILED, error_message=str(e)[:300]))
+            return {"post_id": post.id, "status": "failed", "errors": {"connection": str(e)[:200]}}
+
         ids, errors = {}, {}
         media = (post.media_urls or [None])[0]
         if str(plat) in ("facebook", "both"):
@@ -166,7 +216,7 @@ class ContentScheduler:
             # finish inside this tick. Uses the unified publisher path.
             try:
                 from src.content_studio.models import ContentPlatform as _CP, PostType as _PT
-                fb_res = await self.publisher.publish_content(
+                fb_res = await publisher.publish_content(
                     platform=_CP.FACEBOOK,
                     post_type=post.post_type,
                     text=post.content_text,
@@ -185,7 +235,7 @@ class ContentScheduler:
                 errors["instagram"] = "Instagram publishing requires a media URL"
             else:
                 try:
-                    cid = await self.publisher.create_instagram_container(
+                    cid = await publisher.create_instagram_container(
                         media_url=media, caption=post.content_text,
                         media_type=self.IG_MEDIA_TYPES.get(str(ptype), "IMAGE"))
                 except Exception as e:
@@ -273,7 +323,8 @@ class ContentScheduler:
         self.service.update_post(post_id, ContentPostUpdate(status=ContentStatus.PUBLISHING))
 
         try:
-            publish_res = await self.publisher.publish_content(
+            publisher = self.publisher_for_post(post)
+            publish_res = await publisher.publish_content(
                 platform=post.platform,
                 post_type=post.post_type,
                 text=post.content_text,

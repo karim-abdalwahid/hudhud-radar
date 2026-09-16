@@ -27,6 +27,8 @@ def bridged_db(monkeypatch, mock_db):
     monkeypatch.setattr(bridge_mod, "supabase_db", mock_db)
     monkeypatch.setattr(bridge_mod, "identity_resolver", IdentityResolver(db=mock_db))
     monkeypatch.setattr(leads_service_mod.lead_service, "db", mock_db)
+    from src.modules.connections.service import connection_service
+    monkeypatch.setattr(connection_service, "owner_for_account", lambda *_: "tenant-bridge")
     return mock_db
 
 
@@ -190,7 +192,7 @@ async def test_threads_reply_capture_creates_lead(monkeypatch):
     reply = {"id": "reply_1", "text": "مهتم بالخدمة", "timestamp": "2026-09-10T10:00:00+00:00",
              "username": "th_reply_guy", "from_user": {"id": "th_author_5"}}
 
-    result = await sync.capture_thread_reply(reply, token="tok")
+    result = await sync.capture_thread_reply(reply, token="tok", user_id="tenant-bridge")
 
     assert result["lead_id"]
     leads = mock_db.select("leads", {"threads_account_id": "th_author_5"})
@@ -211,7 +213,7 @@ async def test_threads_reply_without_author_id_still_captures_by_username(monkey
     reply = {"id": "reply_2", "text": "good", "timestamp": "2026-09-10T10:00:00+00:00",
              "username": "no_id_user"}
 
-    result = await sync.capture_thread_reply(reply, token="tok")
+    result = await sync.capture_thread_reply(reply, token="tok", user_id="tenant-bridge")
 
     assert result["lead_id"]
     leads = [l for l in mock_db.select("leads")
@@ -228,8 +230,8 @@ async def test_threads_reply_idempotent(monkeypatch):
     reply = {"id": "reply_dup", "text": "again", "timestamp": "2026-09-10T10:00:00+00:00",
              "username": "dup_user", "from_user": {"id": "th_dup"}}
 
-    await sync.capture_thread_reply(reply, token="tok")
-    await sync.capture_thread_reply(reply, token="tok")
+    await sync.capture_thread_reply(reply, token="tok", user_id="tenant-bridge")
+    await sync.capture_thread_reply(reply, token="tok", user_id="tenant-bridge")
 
     leads = mock_db.select("leads", {"threads_account_id": "th_dup"})
     assert len(leads) == 1
@@ -240,21 +242,28 @@ async def test_threads_reply_idempotent(monkeypatch):
 # 4. Inbox exposes Threads channel
 # --------------------------------------------------------------------
 def test_inbox_thread_channel_threads(monkeypatch):
+    from starlette.requests import Request
+    from src.core.auth import SESSION_COOKIE_NAME, create_session_token
     from src.core.supabase_client import InMemoryDatabase
     import src.modules.inbox_onboarding as inbox_mod
 
     db = InMemoryDatabase()
     lead = db.insert("leads", {"source": "threads", "full_name": "Omar Sami",
                                "username": "th_reply_guy",
-                               "threads_account_id": "th_author_5"})
-    db.insert("messages", {"lead_id": lead["id"], "sender_type": "lead",
-                           "platform": "threads", "content": "hi",
-                           "sent_at": "2026-09-10T10:00:00+00:00"})
+                               "threads_account_id": "th_author_5", "user_id": "tenant-bridge"})
+    db.insert("messages", {"lead_id": lead["id"], "user_id": "tenant-bridge", "sender_type": "lead",
+                               "platform": "threads", "content": "hi",
+                               "sent_at": "2026-09-10T10:00:00+00:00"})
 
     monkeypatch.setattr(inbox_mod, "supabase_db", db)
     monkeypatch.setattr(inbox_mod.lead_service, "get_messages_for_lead",
-                        lambda lead_id: db.select("messages", {"lead_id": lead["id"]}))
-    resp = asyncio.run(inbox_mod.get_inbox_conversations())
+                        lambda lead_id, user_id=None: db.select(
+                            "messages", {"lead_id": lead["id"], "user_id": user_id}))
+    token = create_session_token("tenant-bridge", "user", "bridge@example.test")
+    request = Request({"type": "http", "headers": [
+        (b"cookie", f"{SESSION_COOKIE_NAME}={token}".encode())
+    ]})
+    resp = asyncio.run(inbox_mod.get_inbox_conversations(request))
 
     conv = next(c for c in resp["conversations"] if c["lead_id"] == lead["id"])
     assert conv["channel"] == "threads"

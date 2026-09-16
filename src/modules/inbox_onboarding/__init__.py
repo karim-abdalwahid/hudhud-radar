@@ -13,8 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from src.modules.context import (  # noqa: F401
-    settings, logger, supabase_db, safe_error, _safe_error,
-    lead_service, knowledge_base,
+    settings, logger, supabase_db, safe_error, _safe_error, lead_service,
 )
 from src.core.modules import module_registry
 
@@ -30,13 +29,16 @@ class OnboardingSavePayload(BaseModel):
 
 
 @router.post("/api/onboarding/save-all", tags=["Onboarding"])
-async def save_onboarding_wizard(payload: OnboardingSavePayload):
+async def save_onboarding_wizard(payload: OnboardingSavePayload, request: Request):
     """Saves business knowledge, configures agent persona, and sets booking link."""
+    user_id = _session_user_id(request)
+    from src.knowledge.db_knowledge_base import db_knowledge_base
     # 1. Save Knowledge Base text if provided
     if payload.knowledge_text and payload.knowledge_text.strip():
-        knowledge_base.save_document(
+        db_knowledge_base.save_document(
             "business_profile.md",
-            f"# نبذة عن الشركة والخدمات (Business Profile)\n\n{payload.knowledge_text.strip()}\n"
+            f"# نبذة عن الشركة والخدمات (Business Profile)\n\n{payload.knowledge_text.strip()}\n",
+            user_id=user_id,
         )
 
     # 2. Update agent guidelines with role, tone, and booking link
@@ -52,11 +54,8 @@ async def save_onboarding_wizard(payload: OnboardingSavePayload):
 2. التركيز على فهم احتياج العميل ومساعدته للوصول للقرار المناسب.
 3. مشاركة رابط حجز المواعيد عندما يطلب العميل مقابلة أو استشارة.
 """
-    knowledge_base.save_document("rules_and_guidelines.md", guidelines_content)
-
-    # 3. Update LLM Provider in runtime
-    if payload.brain in ["gemini", "openai"]:
-        settings.LLM_PROVIDER = payload.brain
+    db_knowledge_base.save_document(
+        "rules_and_guidelines.md", guidelines_content, user_id=user_id)
 
     return {
         "status": "success",
@@ -69,19 +68,20 @@ async def save_onboarding_wizard(payload: OnboardingSavePayload):
 
 
 @router.get("/api/inbox/conversations", tags=["Live Inbox"])
-async def get_inbox_conversations():
+async def get_inbox_conversations(request: Request):
     """
     Returns real conversation threads built from actual `messages` records.
     Zero-fabrication: every message shown exists in the database.
     """
     from src.core.event_dedup import event_deduplicator  # noqa: F401 (import guard)
-    leads = supabase_db.select("leads", {}) or []
+    user_id = _session_user_id(request)
+    leads = supabase_db.select("leads", {"user_id": user_id}) or []
     threads = []
     for lead in leads[:50]:
         lead_id = lead.get("id")
         platform = (lead.get("source") or "other").lower()
         # Real message history from the messages table (Zero-Fabrication policy)
-        msgs = lead_service.get_messages_for_lead(lead_id) or []
+        msgs = lead_service.get_messages_for_lead(lead_id, user_id=user_id) or []
         message_items = []
         last_inbound_at = None
         for m in msgs:
@@ -129,6 +129,23 @@ class ManualMessagePayload(BaseModel):
     text: str
 
 
+def _session_user_id(request: Request) -> str:
+    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    if not session or not session.get("sub"):
+        raise HTTPException(status_code=401, detail="غير مصرح")
+    return str(session["sub"])
+
+
+def _owned_lead(lead_id: str, request: Request) -> Dict[str, Any]:
+    """Return only the session user's CRM lead; never accept a raw id alone."""
+    user_id = _session_user_id(request)
+    lead = lead_service.get_lead_by_id(lead_id, user_id=user_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return lead
+
+
 def _get_lead_recipient(lead: Dict[str, Any]) -> Optional[str]:
     """Resolves the platform recipient id for direct messaging a lead."""
     source = (lead.get("source") or "").lower()
@@ -150,17 +167,29 @@ async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_m
         raise HTTPException(status_code=400, detail="لا يوجد معرّف حساب مرتبط بهذا العميل لإرسال رسالة")
     source = (lead.get("source") or "").lower()
     platform = PlatformSource.FACEBOOK if source == "facebook" else PlatformSource.INSTAGRAM
+    owner_user_id = str(lead.get("user_id") or "")
+    if not owner_user_id:
+        raise HTTPException(status_code=409, detail="Lead has no tenant owner")
+    from src.modules.connections.service import connection_service
+    credentials = connection_service.get_publish_credentials(owner_user_id, platform.value)
+    if not credentials:
+        raise HTTPException(status_code=403, detail="لا يوجد اتصال منصة مفعل لهذا الحساب")
 
     send_result = {}
     if platform == PlatformSource.FACEBOOK:
         send_result = await meta_client.send_facebook_message(recipient_id=recipient, message_text=text,
-                                                              tag=tag)
+                                                              tag=tag,
+                                                              access_token=credentials["access_token"],
+                                                              user_id=owner_user_id)
     else:
         send_result = await meta_client.send_instagram_message(recipient_id=recipient, message_text=text,
-                                                               tag=tag)
+                                                               tag=tag,
+                                                               access_token=credentials["access_token"],
+                                                               user_id=owner_user_id)
 
     stored = lead_service.add_message(MessageCreate(
         lead_id=lead["id"],
+        user_id=owner_user_id,
         platform=platform,
         platform_message_id=send_result.get("message_id"),
         sender_type=SenderType.AGENT,
@@ -172,14 +201,12 @@ async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_m
 
 
 @router.post("/api/inbox/conversations/{lead_id}/takeover", tags=["Live Inbox"])
-async def set_human_takeover(lead_id: str, payload: TakeoverPayload):
+async def set_human_takeover(lead_id: str, payload: TakeoverPayload, request: Request):
     """
     Human Takeover: pauses/resumes the AI agent for this lead.
     The orchestrator checks this flag before generating auto-replies.
     """
-    lead = lead_service.get_lead_by_id(lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
+    lead = _owned_lead(lead_id, request)
     updated = lead_service.update_lead(lead_id, {"human_takeover": bool(payload.takeover)})
     return {
         "status": "success",
@@ -191,28 +218,14 @@ async def set_human_takeover(lead_id: str, payload: TakeoverPayload):
 
 @router.post("/api/inbox/conversations/{lead_id}/send-message", tags=["Live Inbox"])
 async def send_manual_inbox_message(lead_id: str, payload: ManualMessagePayload,
-                                    request: Request = None):
+    request: Request = None):
     """
     Sends a REAL human message to the lead (Human Takeover chat) and stores it.
     Also enables takeover automatically so the AI does not double-reply.
     Entitlement gate (Phase 9.7): non-admin senders need the lead's platform
     service in their subscription — fail-closed regardless of token capability.
     """
-    lead = lead_service.get_lead_by_id(lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
-    # entitlement gate — admins operate the workspace and bypass
-    try:
-        from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
-        session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") \
-            if request else None
-        if session and session.get("role") != "admin":
-            from src.modules.connections.service import connection_service
-            connection_service.assert_entitled(session["sub"], lead.get("platform") or "facebook")
-    except HTTPException:
-        raise
-    except Exception:
-        pass
+    lead = _owned_lead(lead_id, request)
     text = (payload.text or "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="نص الرسالة فارغ")
@@ -231,16 +244,16 @@ async def send_manual_inbox_message(lead_id: str, payload: ManualMessagePayload,
 
 
 @router.post("/api/inbox/conversations/{lead_id}/send-booking-link", tags=["Live Inbox"])
-async def send_booking_link_message(lead_id: str):
+async def send_booking_link_message(lead_id: str, request: Request):
     """
     Sends the configured booking link (saved via Onboarding -> rules_and_guidelines.md)
     as a real DM. Zero-fabrication: if no link is configured, an explicit error is returned.
     """
-    lead = lead_service.get_lead_by_id(lead_id)
-    if not lead:
-        raise HTTPException(status_code=404, detail="Lead not found")
+    lead = _owned_lead(lead_id, request)
 
-    guidelines = knowledge_base.get_document("rules_and_guidelines.md") or ""
+    from src.knowledge.db_knowledge_base import db_knowledge_base
+    guidelines = db_knowledge_base.get_document_content(
+        "rules_and_guidelines.md", user_id=str(lead["user_id"])) or ""
     match = re.search(r"https?://[^\s\)\]]+", guidelines)
     if not match:
         raise HTTPException(

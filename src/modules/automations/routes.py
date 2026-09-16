@@ -29,57 +29,72 @@ router = APIRouter()
 from src.automations.models import WorkflowCreate, WorkflowUpdate
 
 
+def _session_user_id(request: Request) -> str:
+    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    if not session or not session.get("sub"):
+        raise HTTPException(status_code=401, detail="غير مصرح")
+    return str(session["sub"])
+
+
 @router.get("/api/automations", tags=["Automations"])
-async def list_automations():
-    """Lists all configured automation workflows."""
-    return {"status": "success", "workflows": [w.model_dump() for w in automations_service.list_workflows()]}
+async def list_automations(request: Request):
+    """Lists only the current tenant's automation workflows."""
+    user_id = _session_user_id(request)
+    return {"status": "success", "workflows": [
+        w.model_dump() for w in automations_service.list_workflows(user_id=user_id)]}
 
 
 @router.post("/api/automations", tags=["Automations"])
-async def create_automation(payload: WorkflowCreate):
+async def create_automation(payload: WorkflowCreate, request: Request):
     """Creates a new automation workflow."""
-    wf = automations_service.create_workflow(payload)
+    try:
+        wf = automations_service.create_workflow(payload, user_id=_session_user_id(request))
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     return {"status": "success", "workflow": wf.model_dump()}
 
 
 @router.get("/api/automations/{wf_id}", tags=["Automations"])
-async def get_automation(wf_id: str):
+async def get_automation(wf_id: str, request: Request):
     """Fetches details of a specific automation workflow."""
-    wf = automations_service.get_workflow(wf_id)
+    wf = automations_service.get_workflow(wf_id, user_id=_session_user_id(request))
     if not wf:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return {"status": "success", "workflow": wf.model_dump()}
 
 
 @router.put("/api/automations/{wf_id}", tags=["Automations"])
-async def update_automation(wf_id: str, payload: WorkflowUpdate):
+async def update_automation(wf_id: str, payload: WorkflowUpdate, request: Request):
     """Updates an automation workflow nodes, connections, and metadata."""
-    wf = automations_service.update_workflow(wf_id, payload)
+    wf = automations_service.update_workflow(wf_id, payload, user_id=_session_user_id(request))
     if not wf:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return {"status": "success", "workflow": wf.model_dump()}
 
 
 @router.delete("/api/automations/{wf_id}", tags=["Automations"])
-async def delete_automation(wf_id: str):
+async def delete_automation(wf_id: str, request: Request):
     """Deletes an automation workflow."""
-    ok = automations_service.delete_workflow(wf_id)
+    ok = automations_service.delete_workflow(wf_id, user_id=_session_user_id(request))
     if not ok:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return {"status": "success", "message": "Workflow deleted"}
 
 
 @router.post("/api/automations/{wf_id}/toggle", tags=["Automations"])
-async def toggle_automation_status(wf_id: str):
+async def toggle_automation_status(wf_id: str, request: Request):
     """Toggles active/paused status of a workflow."""
-    wf = automations_service.toggle_status(wf_id)
+    wf = automations_service.toggle_status(wf_id, user_id=_session_user_id(request))
     if not wf:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return {"status": "success", "status_state": wf.status, "workflow": wf.model_dump()}
 
 
 @router.post("/api/automations/{wf_id}/test", tags=["Automations"])
-async def test_automation_workflow(wf_id: str, sample_payload: Optional[Dict[str, Any]] = None):
+async def test_automation_workflow(wf_id: str, request: Request,
+                                   sample_payload: Optional[Dict[str, Any]] = None):
     """Simulates an execution run across all nodes and connectors in the workflow."""
-    result = automations_service.simulate_execution(wf_id, sample_payload)
+    result = automations_service.simulate_execution(
+        wf_id, sample_payload, user_id=_session_user_id(request))
     return result

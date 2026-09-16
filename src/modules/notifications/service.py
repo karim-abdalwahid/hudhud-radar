@@ -62,6 +62,8 @@ class NotificationService:
 
     def mark_read(self, user_id: str, notification_id: str) -> bool:
         try:
+            if not supabase_db.select("notifications", {"id": notification_id, "user_id": user_id}):
+                return False
             supabase_db.update("notifications", notification_id, {"read": True})
             return True
         except Exception as e:

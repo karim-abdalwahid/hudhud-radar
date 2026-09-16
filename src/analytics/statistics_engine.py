@@ -2,7 +2,7 @@
 Statistics Engine for Root-Cause Analysis and Operational Insights.
 Calculates what succeeded, what failed, why it failed, trends, and actionable insights.
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from collections import Counter
 from src.core.supabase_client import supabase_db
 
@@ -13,11 +13,17 @@ class StatisticsEngine:
     def __init__(self, db=supabase_db):
         self.db = db
 
-    def get_operations_summary(self) -> Dict[str, Any]:
+    def _require_owner_for_production_read(self, user_id: Optional[str]) -> None:
+        """Prevent an omitted filter from becoming a cross-tenant report."""
+        if not user_id and getattr(self.db, "is_connected", False):
+            raise ValueError("A tenant owner is required for production analytics")
+
+    def get_operations_summary(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Calculates comprehensive summary of all operations executed by the agent.
         """
-        logs = self.db.select("activity_logs")
+        self._require_owner_for_production_read(user_id)
+        logs = self.db.select("activity_logs", {"user_id": user_id} if user_id else None)
         total_ops = len(logs)
         if total_ops == 0:
             return {
@@ -81,9 +87,10 @@ class StatisticsEngine:
             "insights": insights
         }
 
-    def get_lead_conversion_metrics(self) -> Dict[str, Any]:
+    def get_lead_conversion_metrics(self, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Calculates lead capture and conversion efficiency."""
-        leads = self.db.select("leads")
+        self._require_owner_for_production_read(user_id)
+        leads = self.db.select("leads", {"user_id": user_id} if user_id else None)
         total_leads = len(leads)
         if total_leads == 0:
             return {

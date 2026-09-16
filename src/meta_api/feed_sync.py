@@ -18,77 +18,33 @@ CACHE_FILE = Path(__file__).resolve().parent.parent / "knowledge" / "meta_live_c
 
 
 class MetaLiveFeedSync:
-    """Synchronizes and serves real published posts and reels from Meta Graph API."""
+    """Retired unscoped Meta-feed service.
+
+    It is retained only so legacy imports fail safely while per-tenant feed
+    synchronization is designed.  It must never read deployment credentials
+    or a shared cache, because either would mix customer accounts.
+    """
 
     def __init__(self):
         self._cached_posts: List[Dict[str, Any]] = []
         self._cache_updated_at: Optional[str] = None
-        self._load_cache_from_disk()
 
     @property
     def base_url(self) -> str:
         return settings.META_GRAPH_API_BASE_URL
 
     def _get_credentials(self) -> Dict[str, str]:
-        """Resolves active Meta credentials dynamically from Supabase or settings."""
-        token = settings.META_PAGE_ACCESS_TOKEN or ""
-        page_id = settings.META_PAGE_ID or ""
-        ig_id = settings.META_INSTAGRAM_ACCOUNT_ID or ""
-        try:
-            from src.core.supabase_client import supabase_db
-            cached = supabase_db.get_setting("meta_credentials")
-            if cached and isinstance(cached, dict):
-                token = cached.get("page_access_token") or token
-                page_id = cached.get("page_id") or page_id
-                ig_id = cached.get("instagram_account_id") or ig_id
-        except Exception as e:
-            logger.debug(f"Could not load dynamic credentials from Supabase: {e}")
-        return {"token": token, "page_id": page_id, "ig_id": ig_id}
+        """Never supply credentials to the former global feed path."""
+        return {"token": "", "page_id": "", "ig_id": ""}
 
     def _load_cache_from_disk(self):
-        """Loads cached posts from Supabase cloud or disk cache."""
-        # 1. Check Supabase cloud cache first (holds full archive of 121+ items with real views)
-        try:
-            from src.core.supabase_client import supabase_db
-            data = supabase_db.get_setting("meta_cached_posts")
-            if data and isinstance(data, dict):
-                posts = data.get("posts", [])
-                if len(posts) > len(self._cached_posts):
-                    self._cached_posts = posts
-                    self._cache_updated_at = data.get("updated_at")
-        except Exception as e:
-            logger.debug(f"Could not load meta posts from Supabase: {e}")
-
-        # 2. Fallback to local disk file if Supabase not loaded
-        if not self._cached_posts and CACHE_FILE.exists():
-            try:
-                data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-                self._cached_posts = data.get("posts", [])
-                self._cache_updated_at = data.get("updated_at")
-            except Exception as e:
-                logger.error(f"Error loading live meta posts cache from disk: {e}")
+        """Do not load tenantless historical Meta data."""
+        self._cached_posts = []
+        self._cache_updated_at = None
 
     def _save_cache_to_disk(self):
-        """Persists cached posts to disk and Supabase for instant rendering."""
-        payload = {
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "total_count": len(self._cached_posts),
-            "posts": self._cached_posts
-        }
-        try:
-            CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-            CACHE_FILE.write_text(
-                json.dumps(payload, ensure_ascii=False, indent=2),
-                encoding="utf-8"
-            )
-        except Exception as e:
-            logger.error(f"Error saving live meta posts cache to disk: {e}")
-
-        try:
-            from src.core.supabase_client import supabase_db
-            supabase_db.set_setting("meta_cached_posts", payload)
-        except Exception as e:
-            logger.error(f"Error saving live meta posts cache to Supabase: {e}")
+        """No-op: shared local/cloud Meta caches are prohibited."""
+        return None
 
     async def _fetch_facebook_video_metrics(self, client: httpx.AsyncClient, video_id: str, token: str) -> Dict[str, Any]:
         """Fetches real views, picture thumbnail, and likes/comments counts for a specific Facebook video/reel object."""
@@ -364,7 +320,19 @@ class MetaLiveFeedSync:
         return views
 
     async def sync_all_live_content(self, limit_per_platform: int = 100) -> Dict[str, Any]:
-        """Fetches from Facebook (all video reels & posts) and Instagram (all reels & media), strictly deduplicates, and caches."""
+        """Refuse global synchronization until a tenant-aware replacement exists."""
+        return {
+            "status": "skipped",
+            "reason": "Global Meta feed sync is disabled; use a tenant-scoped connection.",
+            "facebook_count": 0,
+            "instagram_count": 0,
+            "total_synced": 0,
+            "cache_updated_at": None,
+            "posts": [],
+        }
+
+        # Historical implementation below is intentionally unreachable until
+        # it is replaced with user_id-bound credentials and storage.
         # 1. First fetch FB posts to extract shares mapping, thumbnails mapping, and additional posts
         fb_posts = await self.fetch_facebook_posts(limit=limit_per_platform)
         shares_by_target: Dict[str, int] = {}
@@ -485,31 +453,18 @@ class MetaLiveFeedSync:
         post_type: Optional[str] = None,
         limit: int = 150
     ) -> List[Dict[str, Any]]:
-        """Returns currently cached real posts with optional platform and post_type filters."""
-        if not self._cached_posts:
-            self._load_cache_from_disk()
-        posts = self._cached_posts
-        if platform and platform != "all":
-            posts = [p for p in posts if p.get("platform") == platform]
-        if post_type and post_type != "all":
-            posts = [p for p in posts if p.get("post_type") == post_type]
-        return posts[:limit]
+        """No global Meta archive is available to a tenant."""
+        return []
 
     def get_cache_metadata(self) -> Dict[str, Any]:
         """Returns cache statistics and last-sync timestamp."""
-        if not self._cached_posts:
-            self._load_cache_from_disk()
-        fb = [p for p in self._cached_posts if p.get("platform") == "facebook"]
-        ig = [p for p in self._cached_posts if p.get("platform") == "instagram"]
-        reels = [p for p in self._cached_posts if p.get("post_type") == "reel"]
-        normal_posts = [p for p in self._cached_posts if p.get("post_type") == "post"]
         return {
-            "total": len(self._cached_posts),
-            "facebook_count": len(fb),
-            "instagram_count": len(ig),
-            "reels_count": len(reels),
-            "posts_count": len(normal_posts),
-            "cache_updated_at": self._cache_updated_at
+            "total": 0,
+            "facebook_count": 0,
+            "instagram_count": 0,
+            "reels_count": 0,
+            "posts_count": 0,
+            "cache_updated_at": None,
         }
 
 

@@ -16,6 +16,9 @@ class FakeDB(InMemoryDatabase):
     is_connected = False
 
 
+TEST_OWNER = "tenant-cron"
+
+
 def make_service():
     return ContentStudioService(db=FakeDB())
 
@@ -25,7 +28,8 @@ def scheduled_ig(service):
         platform=ContentPlatform.INSTAGRAM, post_type=PostType.POST,
         content_text="منشور اختبار كرون", status=ContentStatus.SCHEDULED,
         media_urls=["https://cdn.example.com/i.jpg"],
-        scheduled_for=datetime.now(timezone.utc) - timedelta(minutes=5)))
+        scheduled_for=datetime.now(timezone.utc) - timedelta(minutes=5)),
+        user_id=TEST_OWNER)
 
 
 def make_scheduler(service, publisher):
@@ -74,7 +78,8 @@ def test_stuck_publishing_requeued(compliant):
     service = make_service()
     post = service.create_post(ContentPostCreate(
         platform=ContentPlatform.FACEBOOK, post_type=PostType.POST,
-        content_text="بوست عالق", status=ContentStatus.PUBLISHING))
+        content_text="بوست عالق", status=ContentStatus.PUBLISHING),
+        user_id=TEST_OWNER)
     # age it beyond the stuck window (patch the raw row: the memory-store
     # update() helper always re-stamps updated_at itself)
     for row in service.db.tables["content_posts"]:

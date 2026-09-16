@@ -19,8 +19,6 @@ from src.config import settings
 from src.core.logger import logger
 from src.core.supabase_client import supabase_db
 
-from src.meta_api.threads_oauth import get_active_threads_token
-
 CACHE_TTL = 120  # seconds — avoid hammering external APIs on every dashboard poll
 TOKEN_WARN_DAYS = 14
 
@@ -52,30 +50,13 @@ def _check_meta_token() -> Dict[str, Any]:
 
 
 def _check_threads_token() -> Dict[str, Any]:
-    """Checks Threads token existence + expiry window."""
-    creds = {}
-    try:
-        creds = supabase_db.get_setting("threads_credentials") or {}
-    except Exception:
-        pass
-    token = creds.get("access_token")
-    if not token:
-        return {"id": "threads_token", "level": "info",
-                "title_ar": "حساب Threads غير مربوط بعد — اربطه من الإعدادات",
-                "title_en": "Threads not connected yet — connect from Settings"}
-    expires_at = creds.get("expires_at", 0)
-    days_left = (expires_at - time.time()) / 86400
-    if days_left <= 0:
-        return {"id": "threads_token", "level": "critical",
-                "title_ar": "🔴 توكن Threads انتهى — أعد الربط من الإعدادات",
-                "title_en": "🔴 Threads token EXPIRED — reconnect from Settings"}
-    if days_left < TOKEN_WARN_DAYS:
-        return {"id": "threads_token", "level": "warning",
-                "title_ar": f"⚠️ توكن Threads ينتهي بعد {int(days_left)} يوم — اضغط Refresh Token",
-                "title_en": f"⚠️ Threads token expires in {int(days_left)} days — press Refresh Token"}
-    return {"id": "threads_token", "level": "ok",
-            "title_ar": f"Threads مربوط (@{creds.get('threads_username', '')}) — {int(days_left)} يوم متبقي",
-            "title_en": f"Threads connected (@{creds.get('threads_username', '')}) — {int(days_left)} days left"}
+    """Do not inspect one customer's token from a global admin health check."""
+    return {
+        "id": "threads_token",
+        "level": "info",
+        "title_ar": "يظهر وضع Threads داخل صفحة اتصالات كل عميل",
+        "title_en": "Threads status is shown in each customer's Connections page",
+    }
 
 
 def _check_gemini() -> Dict[str, Any]:

@@ -51,7 +51,7 @@ def test_list_templates_admin_only(anon_client: TestClient, client_as_user: Test
     assert client_as_user.get("/api/admin/templates").status_code == 403
 
 
-def test_list_seeded_templates(client: TestClient):
+def test_list_seeded_templates(client: TestClient, fake_tpl_db):
     r = client.get("/api/admin/templates")
     assert r.status_code == 200
     keys = [t["key"] for t in r.json()["templates"]]

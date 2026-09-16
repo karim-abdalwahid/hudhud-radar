@@ -18,17 +18,16 @@ MAX_SEND_RETRIES = 2
 RETRY_BASE_DELAY_SECONDS = 1.0
 
 
-def resolve_page_token(account_id: Optional[str]) -> Optional[str]:
-    """Wave 9.8: per-user token for a page/account id from platform_connections
-    (encrypted at rest). None → callers use the legacy global token. A
-    decryption failure is NOT fatal — it degrades to the legacy token."""
-    if not account_id or str(account_id).startswith("your-"):
+def resolve_page_token(user_id: Optional[str], account_id: Optional[str]) -> Optional[str]:
+    """Resolve a token only when both tenant and recipient account are known."""
+    if not user_id or not account_id or str(account_id).startswith("your-"):
         return None
     try:
-        from src.core.supabase_client import supabase_db
-        if not supabase_db.is_connected:
+        from src.core.supabase_client import supabase_db as active_db
+        if not active_db.is_connected:
             return None
-        rows = (supabase_db.select("platform_connections", {"status": "active"}) or [])
+        rows = (active_db.select("platform_connections", {
+            "user_id": user_id, "status": "active"}) or [])
         for r in rows:
             if r.get("platform") not in ("facebook", "instagram"):
                 continue
@@ -40,7 +39,7 @@ def resolve_page_token(account_id: Optional[str]) -> Optional[str]:
                 if tok:
                     return tok
             except Exception as e:
-                logger.warning(f"Per-page token decrypt failed for account {account_id} (legacy fallback): {e}")
+                logger.warning(f"Per-page token decrypt failed for account {account_id}: {e}")
                 return None
     except Exception as e:
         logger.warning(f"Per-page token resolution unavailable: {e}")
@@ -58,29 +57,12 @@ class MetaGraphClient:
         page_id: Optional[str] = None,
         instagram_id: Optional[str] = None
     ):
-        # Resolve from Supabase app_settings first (source of truth after
-        # owner token exchange), falling back to env. Previously this client
-        # read ONLY env → dashboard said "connected" while sends were simulated.
-        stored = self._load_stored_credentials()
-        self.access_token = access_token or (stored.get("token") if stored else None) or settings.META_PAGE_ACCESS_TOKEN
-        self.page_id = page_id or (stored.get("page_id") if stored else None) or settings.META_PAGE_ID
-        self.instagram_id = instagram_id or (stored.get("instagram_id") if stored else None) or settings.META_INSTAGRAM_ACCOUNT_ID
-
-    @staticmethod
-    def _load_stored_credentials() -> Optional[Dict[str, Any]]:
-        try:
-            creds = supabase_db.get_setting("meta_credentials")
-            if isinstance(creds, dict):
-                token = creds.get("token") or creds.get("page_access_token")
-                if token:
-                    return {
-                        "token": token,
-                        "page_id": creds.get("page_id"),
-                        "instagram_id": creds.get("instagram_account_id") or creds.get("instagram_id"),
-                    }
-        except Exception as e:
-            logger.debug(f"Stored meta_credentials unavailable: {e}")
-        return None
+        # SaaS paths pass an exact tenant credential for every Graph call.
+        # Environment values only keep isolated local/single-workspace tooling
+        # usable; this client never reads a shared database token.
+        self.access_token = access_token or settings.META_PAGE_ACCESS_TOKEN
+        self.page_id = page_id or settings.META_PAGE_ID
+        self.instagram_id = instagram_id or settings.META_INSTAGRAM_ACCOUNT_ID
 
     async def _post_with_retry(
         self, url: str, params: Dict[str, Any], json_payload: Dict[str, Any],
@@ -117,11 +99,19 @@ class MetaGraphClient:
                 raise
         raise last_error or MetaAPIError(f"{action} failed after retries")
 
-    async def get_profile(self, user_id: str, fields: str = "id,name,first_name,last_name,profile_pic,username") -> Dict[str, Any]:
+    async def get_profile(
+        self,
+        user_id: str,
+        fields: str = "id,name,first_name,last_name,profile_pic,username",
+        access_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Fetches public user profile information via Graph API."""
         rate_limiter.check_and_acquire("facebook")
         url = f"{self.BASE_URL}/{user_id}"
-        params = {"fields": fields, "access_token": self.access_token}
+        token = access_token or self.access_token
+        if not token:
+            raise MetaAPIError("Meta access token is not configured")
+        params = {"fields": fields, "access_token": token}
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -139,7 +129,8 @@ class MetaGraphClient:
         recipient_id: str,
         platform: str,
         last_interaction_time: Optional[datetime],
-        tag: Optional[str] = None
+        tag: Optional[str] = None,
+        user_id: Optional[str] = None,
     ):
         """Validates Meta 24-hour standard messaging policy window."""
         if settings.ENFORCE_24H_WINDOW and not tag and last_interaction_time:
@@ -148,7 +139,8 @@ class MetaGraphClient:
             if diff > timedelta(hours=24):
                 hours = diff.total_seconds() / 3600
                 logger.error(f"Cannot send {platform.capitalize()} DM to {recipient_id}: 24h window expired ({hours:.1f}h)")
-                self._log_activity("send_message", platform, recipient_id, "failed", f"24h window expired ({hours:.1f}h)")
+                self._log_activity("send_message", platform, recipient_id, "failed",
+                                   f"24h window expired ({hours:.1f}h)", user_id=user_id)
                 raise MessagingWindowExpiredError(recipient_id=recipient_id, elapsed_hours=hours)
 
     async def send_facebook_message(
@@ -158,7 +150,8 @@ class MetaGraphClient:
         last_interaction_time: Optional[datetime] = None,
         tag: Optional[str] = None,
         access_token: Optional[str] = None,
-        messaging_type: Optional[str] = None
+        messaging_type: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Sends a Direct Message to a Facebook Page conversation.
@@ -168,7 +161,7 @@ class MetaGraphClient:
         messaging_type: e.g. HUMAN_AGENT — the sanctioned out-of-window path.
         """
         if messaging_type != "HUMAN_AGENT":
-            self._validate_messaging_window(recipient_id, "facebook", last_interaction_time, tag)
+            self._validate_messaging_window(recipient_id, "facebook", last_interaction_time, tag, user_id)
 
         token = access_token or self.access_token
         rate_limiter.check_and_acquire("facebook")
@@ -189,20 +182,20 @@ class MetaGraphClient:
             # no simulated delivery receipts, no fake activity_logs success.
             if not token or token.startswith("your-"):
                 logger.error(f"FB DM to {recipient_id} NOT sent: Meta token not configured (fail-closed, no simulation).")
-                self._log_activity("send_message", "facebook", recipient_id, "failed", "Meta token not configured")
+                self._log_activity("send_message", "facebook", recipient_id, "failed", "Meta token not configured", user_id)
                 raise MetaAPIError("Meta Page Access Token غير مضبوط — لم يتم إرسال الرسالة (لا توجد محاكاة)", status_code=503)
 
             resp = await self._post_with_retry(url, params, payload, "facebook", recipient_id, "send_message")
             if resp.status_code != 200:
                 err_msg = resp.text
-                self._log_activity("send_message", "facebook", recipient_id, "failed", err_msg)
+                self._log_activity("send_message", "facebook", recipient_id, "failed", err_msg, user_id)
                 raise MetaAPIError(f"Meta Send API Error: {err_msg}", status_code=resp.status_code)
 
             data = resp.json()
-            self._log_activity("send_message", "facebook", recipient_id, "success", None)
+            self._log_activity("send_message", "facebook", recipient_id, "success", None, user_id)
             return data
         except httpx.RequestError as e:
-            self._log_activity("send_message", "facebook", recipient_id, "failed", str(e))
+            self._log_activity("send_message", "facebook", recipient_id, "failed", str(e), user_id)
             raise MetaAPIError(f"Network error sending message: {str(e)}")
 
     async def send_instagram_message(
@@ -212,7 +205,8 @@ class MetaGraphClient:
         last_interaction_time: Optional[datetime] = None,
         access_token: Optional[str] = None,
         messaging_type: Optional[str] = None,
-        tag: Optional[str] = None
+        tag: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Sends an Instagram Direct Message adhering to Instagram Business Messaging rules.
@@ -221,9 +215,9 @@ class MetaGraphClient:
         tag: approved message tag (MESSAGE_TAG path) for out-of-window sends.
         """
         if tag:
-            self._validate_messaging_window(recipient_id, "instagram", last_interaction_time, tag)
+            self._validate_messaging_window(recipient_id, "instagram", last_interaction_time, tag, user_id)
         elif messaging_type != "HUMAN_AGENT":
-            self._validate_messaging_window(recipient_id, "instagram", last_interaction_time)
+            self._validate_messaging_window(recipient_id, "instagram", last_interaction_time, user_id=user_id)
 
         token = access_token or self.access_token
         rate_limiter.check_and_acquire("instagram")
@@ -244,32 +238,47 @@ class MetaGraphClient:
             # no simulated delivery receipts, no fake activity_logs success.
             if not token or token.startswith("your-"):
                 logger.error(f"IG DM to {recipient_id} NOT sent: Meta token not configured (fail-closed, no simulation).")
-                self._log_activity("send_message", "instagram", recipient_id, "failed", "Meta token not configured")
+                self._log_activity("send_message", "instagram", recipient_id, "failed", "Meta token not configured", user_id)
                 raise MetaAPIError("Meta Page Access Token غير مضبوط — لم يتم إرسال الرسالة (لا توجد محاكاة)", status_code=503)
 
             resp = await self._post_with_retry(url, params, payload, "instagram", recipient_id, "send_ig_message")
             if resp.status_code != 200:
                 err_msg = resp.text
-                self._log_activity("send_message", "instagram", recipient_id, "failed", err_msg)
+                self._log_activity("send_message", "instagram", recipient_id, "failed", err_msg, user_id)
                 raise MetaAPIError(f"Instagram Send API Error: {err_msg}", status_code=resp.status_code)
 
             data = resp.json()
-            self._log_activity("send_message", "instagram", recipient_id, "success", None)
+            self._log_activity("send_message", "instagram", recipient_id, "success", None, user_id)
             return data
         except httpx.RequestError as e:
-            self._log_activity("send_message", "instagram", recipient_id, "failed", str(e))
+            self._log_activity("send_message", "instagram", recipient_id, "failed", str(e), user_id)
             raise MetaAPIError(f"Network error sending IG message: {str(e)}")
 
-    def _log_activity(self, action_type: str, platform: str, target_id: str, status: str, error_reason: Optional[str]):
-        """Records the action into the activity_logs table for auditability."""
-        supabase_db.insert("activity_logs", {
+    def _log_activity(self, action_type: str, platform: str, target_id: str,
+                      status: str, error_reason: Optional[str], user_id: Optional[str] = None):
+        """Records an owned action into the tenant audit trail.
+
+        ``activity_logs.user_id`` is intentionally mandatory in production.
+        A webhook/system event that cannot be tied to a customer must not
+        create a tenantless database record (or become visible in reports).
+        Its details remain in the application log for operators instead.
+        """
+        if not user_id:
+            logger.warning(
+                "Skipping tenantless activity log: action=%s platform=%s target=%s",
+                action_type, platform, target_id,
+            )
+            return
+        row = {
             "action_type": action_type,
             "platform": platform,
             "target_id": target_id,
             "status": status,
             "error_reason": error_reason,
             "details": {"timestamp": datetime.now(timezone.utc).isoformat()}
-        })
+        }
+        row["user_id"] = user_id
+        supabase_db.insert("activity_logs", row)
 
 
 meta_client = MetaGraphClient()

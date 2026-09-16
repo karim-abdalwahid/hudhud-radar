@@ -61,6 +61,9 @@ class ContentPostUpdate(BaseModel):
 
 class ContentPostResponse(ContentPostBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # Always present in Supabase after tenant hardening. Optional only so
+    # isolated legacy unit-test fixtures can still be parsed.
+    user_id: Optional[str] = None
     published_at: Optional[datetime] = None
     meta_post_id: Optional[str] = None
     error_message: Optional[str] = None

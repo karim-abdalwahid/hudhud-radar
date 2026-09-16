@@ -94,9 +94,22 @@ async def test_document_processor_image_vision(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_meta_crawler_and_synthesizer(tmp_path):
+async def test_meta_crawler_and_synthesizer(tmp_path, monkeypatch):
     """Tests historical scraping aggregation and deterministic knowledge synthesis."""
-    crawler = MetaContentCrawler(access_token=None, page_id=None, instagram_id=None)
+    # Keep this deterministic: credentials belong to real tenants and tests
+    # must never reach a connected Meta account or a real Gemini project.
+    crawler = MetaContentCrawler(access_token="test-token", page_id="page-1", instagram_id="ig-1")
+    monkeypatch.setattr(crawler, "fetch_facebook_feed", AsyncMock(return_value=[{
+        "id": "fb-1", "platform": "facebook", "text": "خدمة إدارة المبيعات للشركات",
+        "created_time": "2026-01-01T00:00:00Z", "comments": ["بكام الخدمة؟"],
+    }]))
+    monkeypatch.setattr(crawler, "fetch_instagram_media", AsyncMock(return_value=[{
+        "id": "ig-1", "platform": "instagram", "media_type": "IMAGE",
+        "text": "احجز استشارتك التسويقية", "created_time": "2026-01-02T00:00:00Z",
+        "comments": ["محتاج تفاصيل"],
+    }]))
+    import src.knowledge.meta_crawler as crawler_module
+    monkeypatch.setattr(crawler_module.settings, "GEMINI_API_KEY", "")
     raw_data = await crawler.fetch_all_historical_content()
 
     assert raw_data["facebook_posts_count"] > 0
@@ -192,10 +205,10 @@ def test_fastapi_knowledge_endpoints(client, monkeypatch):
     })
     assert put_resp.status_code == 200
 
-    # 5. Sync from Meta
+    # 5. The former global Meta sync is intentionally disabled until it can
+    # scope fetched posts to the current tenant.
     sync_resp = client.post("/api/knowledge/sync-meta")
-    assert sync_resp.status_code == 200
-    assert sync_resp.json()["status"] == "success"
+    assert sync_resp.status_code == 409
 
     # 6. Upload file
     file_payload = {"file": ("uploaded_test.txt", b"Uploaded via REST multipart", "text/plain")}

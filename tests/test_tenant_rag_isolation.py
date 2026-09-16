@@ -46,6 +46,10 @@ async def test_orchestrator_stamps_owner_and_ignores_unknown_recipient(monkeypat
         "src.modules.connections.service.connection_service.owner_for_account",
         lambda *_: "tenant-a",
     )
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.get_active_token_for_account",
+        lambda *_: "tenant-page-token",
+    )
     resolve = MagicMock(return_value=({"id": "lead-1", "human_takeover": True, "user_id": "tenant-a"}, True, None))
     monkeypatch.setattr(orch.resolver, "resolve_and_save_lead", resolve)
 

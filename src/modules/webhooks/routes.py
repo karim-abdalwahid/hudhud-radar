@@ -69,18 +69,31 @@ async def receive_meta_webhook(request: Request, background_tasks: BackgroundTas
     comment_events = webhook_handler.parse_comment_events(payload)
 
     from src.core.event_dedup import event_deduplicator
+    from src.modules.connections.service import connection_service
 
     queued = 0
     for ev in events:
         if not ev.get("is_echo"):
+            platform = getattr(ev.get("platform"), "value", ev.get("platform"))
+            owner_user_id = connection_service.owner_for_account(platform, ev.get("recipient_id"))
+            if not owner_user_id:
+                logger.warning("Message webhook ignored before queue: unmapped recipient account")
+                continue
             # Idempotency: skip events Meta already delivered (prevents duplicate AI replies)
-            if not event_deduplicator.claim(f"msg:{ev.get('message_id') or ev.get('sender_id')}:{ev.get('timestamp', '')}", "message"):
+            if not event_deduplicator.claim(
+                f"msg:{ev.get('message_id') or ev.get('sender_id')}:{ev.get('timestamp', '')}",
+                "message", scope=owner_user_id):
                 continue
             background_tasks.add_task(agent_orchestrator.process_incoming_message_event, ev)
             queued += 1
 
     for cev in comment_events:
-        if not event_deduplicator.claim(f"comment:{cev.get('comment_id')}", "comment"):
+        platform = getattr(cev.get("platform"), "value", cev.get("platform"))
+        owner_user_id = connection_service.owner_for_account(platform, cev.get("account_id"))
+        if not owner_user_id:
+            logger.warning("Comment webhook ignored before queue: unmapped recipient account")
+            continue
+        if not event_deduplicator.claim(f"comment:{cev.get('comment_id')}", "comment", scope=owner_user_id):
             continue
         # Bridge: every comment becomes (or appends to) a CRM lead — independent
         # of automations so lead capture never depends on workflow config.
@@ -144,6 +157,8 @@ async def receive_threads_webhook(request: Request, background_tasks: Background
         return {"status": "ignored", "reason": "unknown object"}
 
     from src.meta_api.extended_api import threads_leads_sync
+    from src.core.event_dedup import event_deduplicator
+    from src.modules.connections.service import connection_service
 
     queued = 0
     for entry in (payload.get("entry") if isinstance(payload.get("entry"), list) else []):
@@ -159,6 +174,12 @@ async def receive_threads_webhook(request: Request, background_tasks: Background
                 continue
             reply_id = val.get("id")
             if not reply_id:
+                continue
+            owner_user_id = connection_service.owner_for_account("threads", entry_user_id)
+            if not owner_user_id:
+                logger.warning("Threads webhook ignored before queue: unmapped recipient account")
+                continue
+            if not event_deduplicator.claim(f"threads_reply:{reply_id}", "threads_reply", scope=owner_user_id):
                 continue
             reply = {
                 "id": reply_id,
@@ -178,10 +199,17 @@ async def _capture_threads_reply_safe(reply: dict, entry_user_id: Optional[str])
     """Background wrapper: resolves the owning connection's token and captures."""
     try:
         from src.meta_api.extended_api import threads_leads_sync
-        token = threads_leads_sync._resolve_token(None)
-        if not token:
-            logger.warning("Threads webhook: no active token — event skipped.")
+        from src.modules.connections.service import connection_service
+        owner_user_id = connection_service.owner_for_account("threads", entry_user_id)
+        if not owner_user_id:
+            logger.warning("Threads webhook: no unique owner — event skipped.")
             return
-        await threads_leads_sync.capture_thread_reply(reply, token=token)
+        token = connection_service.get_active_token_for_account(
+            owner_user_id, "threads", entry_user_id)
+        if not token:
+            logger.warning("Threads webhook: no entitled account token — event skipped.")
+            return
+        await threads_leads_sync.capture_thread_reply(
+            reply, token=token, user_id=owner_user_id)
     except Exception as e:
         logger.error(f"Threads webhook capture failed: {e}")

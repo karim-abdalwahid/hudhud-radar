@@ -102,7 +102,7 @@ class DBKnowledgeBase:
         return chunks or ([text] if text else [])
 
     # ------------------------------------------------------------------
-    # Document CRUD (per-user aware: user_id=None = legacy global)
+    # Document CRUD (tenant-owned; no legacy global documents in production)
     # ------------------------------------------------------------------
     def save_document(self, filename: str, content: str, source: str = "upload",
                       user_id: Optional[str] = None, is_core: bool = False) -> Dict[str, Any]:
@@ -110,6 +110,8 @@ class DBKnowledgeBase:
         content = (content or "").strip()
         if not filename or not content:
             raise ValueError("اسم الملف والمحتوى مطلوبان")
+        if not user_id:
+            raise ValueError("مالك قاعدة المعرفة مطلوب")
 
         # Per-user upsert: filename uniqueness is scoped to (user_id, filename)
         # since migration 017 — so we select-then-insert/update manually.
@@ -117,12 +119,12 @@ class DBKnowledgeBase:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select("id").eq(
                     "filename", filename)
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                q = q.eq("user_id", user_id)
                 existing = q.execute().data or []
             else:
                 existing = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
                             if r.get("filename") == filename
-                            and (r.get("user_id") or None) == user_id
+                            and r.get("user_id") == user_id
                             and "id" in r]
                 existing = existing[:1]
         except Exception as e:
@@ -134,7 +136,7 @@ class DBKnowledgeBase:
             "source": source,
             "word_count": len(content.split()),
             "is_core": is_core,
-            **({"user_id": user_id} if user_id else {}),
+            "user_id": user_id,
         }
         try:
             if existing:
@@ -173,16 +175,18 @@ class DBKnowledgeBase:
                 "embedded": fully_embedded, "embedded_chunks": embedded_count}
 
     def get_document(self, filename: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        if not user_id:
+            return None
         try:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select("*").eq(
                     "filename", self._safe_filename(filename))
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                q = q.eq("user_id", user_id)
                 rows = q.execute().data or []
                 return rows[0] if rows else None
             rows = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
                     if r.get("filename") == self._safe_filename(filename)
-                    and (r.get("user_id") or None) == user_id]
+                    and r.get("user_id") == user_id]
             return rows[0] if rows else None
         except Exception as e:
             logger.error(f"KB get_document failed: {e}")
@@ -193,15 +197,17 @@ class DBKnowledgeBase:
         return doc["content"] if doc else None
 
     def list_documents(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        if not user_id:
+            return []
         try:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select(
                     "filename,word_count,source,is_core,updated_at")
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                q = q.eq("user_id", user_id)
                 docs = q.execute().data or []
             else:
                 docs = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
-                        if (r.get("user_id") or None) == user_id]
+                        if r.get("user_id") == user_id]
             docs.sort(key=lambda d: (not d.get("is_core", False), d.get("filename", "")))
             return [
                 {
@@ -281,11 +287,11 @@ class DBKnowledgeBase:
         try:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select("filename,content")
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                q = q.eq("user_id", user_id)
                 docs = q.execute().data or []
             else:
                 docs = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
-                        if (r.get("user_id") or None) == user_id]
+                        if r.get("user_id") == user_id]
             terms = [t for t in re.split(r"\s+", query.lower()) if len(t) > 1]
             for d in docs:
                 content = d.get("content") or ""

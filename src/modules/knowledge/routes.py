@@ -46,22 +46,21 @@ async def analyze_meta_posts(request: Request, limit: int = Query(10, ge=1, le=4
     (CTA-response vs real-question vs complaint/spam), and saves REAL
     knowledge documents with mandatory citations. Zero guessing.
     """
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") if request.cookies.get(SESSION_COOKIE_NAME) else None
-    if not session or session.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحيات المدير")
-    from src.knowledge.meta_analyzer import meta_posts_analyzer
-    result = await meta_posts_analyzer.analyze_recent(limit=limit, user_id=_session_user(request))
-    if result.get("status") == "skipped":
-        raise HTTPException(status_code=400, detail=result.get("reason", "skipped"))
-    return result
+    _session_user(request)
+    raise HTTPException(
+        status_code=409,
+        detail="Meta analysis awaits a per-account crawler; the old global feed is disabled to protect tenant data.",
+    )
 
 
 @router.post("/api/knowledge/sync-meta", tags=["Knowledge Base & RAG"])
 async def sync_knowledge_from_meta(request: Request):
     """Scrapes historical Facebook/Instagram posts, reels, and comments and synthesizes business knowledge."""
-    raw_data = await meta_crawler.fetch_all_historical_content()
-    res = await knowledge_synthesizer.synthesize_and_save(raw_data, user_id=_session_user(request))
-    return res
+    _session_user(request)
+    raise HTTPException(
+        status_code=409,
+        detail="Meta knowledge sync awaits the per-account crawler; upload files or add documents directly.",
+    )
 
 
 def _session_user(request: Request) -> Optional[str]:
@@ -94,7 +93,6 @@ async def update_knowledge_document(filename: str, payload: SaveDocumentRequest,
                                               user_id=_session_user(request))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    knowledge_base.reload()
     return res
 
 
@@ -106,7 +104,6 @@ async def create_knowledge_document(payload: CreateDocumentRequest, request: Req
                                               user_id=_session_user(request))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    knowledge_base.reload()
     return res
 
 
@@ -116,7 +113,6 @@ async def delete_knowledge_document(filename: str, request: Request):
     success = db_knowledge_base.delete_document(filename, user_id=_session_user(request))
     if not success:
         raise HTTPException(status_code=404, detail=f"Document '{filename}' not found or could not be deleted")
-    knowledge_base.reload()
     return {"status": "success", "message": f"Document '{filename}' deleted successfully"}
 
 
@@ -138,8 +134,7 @@ async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
 
     # Resolve the uploading user (per-user knowledge ownership)
     from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
-    user_id = (session or {}).get("sub")
+    user_id = _session_user(request)
 
     try:
         file_bytes = await file.read()
@@ -164,12 +159,11 @@ async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
         try:
             from src.knowledge.db_knowledge_base import db_knowledge_base
             filename = result.get("filename") or safe_base
-            content = knowledge_base.knowledge_cache.get(filename) or ""
+            content = result.get("content") or ""
             if not content and ext in [".md", ".txt"]:
                 content = text_content
             if not content:
-                doc = db_knowledge_base.get_document_content(filename)
-                content = (doc or {}).get("content", "") if isinstance(doc, dict) else ""
+                content = db_knowledge_base.get_document_content(filename, user_id=user_id) or ""
             if content:
                 db_result = db_knowledge_base.save_document(
                     filename, content, source="upload", user_id=user_id)

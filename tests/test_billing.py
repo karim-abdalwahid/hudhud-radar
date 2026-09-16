@@ -172,20 +172,20 @@ def test_trial_auto_expires(fake_billing):
 
 
 # ── Composable pricing ───────────────────────────────────────────────────
-def test_quote_single_platform_no_discount():
+def test_quote_single_platform_no_discount(fake_billing):
     q = PricingService().quote(["facebook"])
     assert q["subtotal_usd"] == 15.0 and q["multi_platform_discount_percent"] == 0
     assert q["total_usd"] == 15.0
 
 
-def test_quote_two_platforms_discount10():
+def test_quote_two_platforms_discount10(fake_billing):
     q = PricingService().quote(["facebook", "instagram"])
     assert q["subtotal_usd"] == 30.0
     assert q["multi_platform_discount_percent"] == 10
     assert q["total_usd"] == 27.0
 
 
-def test_quote_three_platforms_discount20():
+def test_quote_three_platforms_discount20(fake_billing):
     q = PricingService().quote(["facebook", "instagram", "threads"])
     assert q["subtotal_usd"] == 40.0
     assert q["multi_platform_discount_percent"] == 20
@@ -200,7 +200,7 @@ def test_quote_percent_coupon(fake_billing):
     assert q["total_usd"] == 24.3
 
 
-def test_quote_unknown_platform_skipped():
+def test_quote_unknown_platform_skipped(fake_billing):
     q = PricingService().quote(["facebook", "tiktok"])
     assert q["platforms"] == ["facebook"]
     assert q["total_usd"] == 15.0
@@ -211,7 +211,8 @@ def test_subscription_api_auth_gated(anon_client: TestClient):
     assert anon_client.get("/api/billing/subscription").status_code == 401
 
 
-def test_admin_catalog_gates(client: TestClient, client_as_user: TestClient, anon_client: TestClient):
+def test_admin_catalog_gates(client: TestClient, client_as_user: TestClient,
+                             anon_client: TestClient, fake_billing):
     assert anon_client.get("/api/admin/billing/catalog").status_code == 401
     assert client_as_user.get("/api/admin/billing/catalog").status_code == 403
     r = client.get("/api/admin/billing/catalog")

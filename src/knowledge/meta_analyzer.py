@@ -211,60 +211,11 @@ class MetaPostsAnalyzer:
     # Main entry: analyze recent posts
     # ------------------------------------------------------------------
     async def analyze_recent(self, limit: int = 10, user_id: Optional[str] = None) -> Dict[str, Any]:
-        from src.meta_api.extended_api import _resolve_credentials
-        from src.meta_api.feed_sync import meta_feed_sync
-
-        creds = _resolve_credentials()
-        token = creds["token"]
-        if not token or token.startswith("your-"):
-            return {"status": "skipped", "reason": "Meta token غير متوفر"}
-        if not settings.GEMINI_API_KEY:
-            return {"status": "skipped", "reason": "GEMINI_API_KEY غير متوفر"}
-
-        posts = meta_feed_sync.get_synced_posts(platform="all", limit=limit) or []
-        if not posts:
-            # try a live sync then re-read
-            await meta_feed_sync.sync_all_live_content(limit_per_platform=25)
-            posts = meta_feed_sync.get_synced_posts(platform="all", limit=limit) or []
-        if not posts:
-            return {"status": "skipped", "reason": "لا منشورات متزامنة"}
-
-        results: List[Dict[str, Any]] = []
-        self._failures = []
-        for post in posts[:limit]:
-            pid = post.get("id", "")
-            comments = await self._fetch_comments(pid, token)
-            if not comments:
-                logger.info(f"Analyzer: post {pid} has no comments — skipping")
-                continue
-            analysis = await self._analyze_one(post, comments)
-            if analysis:
-                results.append(analysis)
-            else:
-                self._failures.append({"post_id": pid, "reason": "analysis failed — skipped (no fabrication)"})
-
-        if not results:
-            return {"status": "no_results", "posts_fetched": len(posts), "posts_analyzed": 0,
-                    "failures": self._failures, "reason": "لم ينجح تحليل أي منشور (لا بيانات مصطنعة)"}
-
-        aggregated = self._aggregate(results)
-        saved = []
-        for name, content in aggregated.items():
-            if content:
-                res = db_knowledge_base.save_document(
-                    f"{name}.md", content, source="meta_analysis",
-                    is_core=(name == "audience_insights"), user_id=user_id
-                )
-                saved.append(res.get("filename"))
-
-        return {
-            "status": "success",
-            "posts_fetched": len(posts),
-            "posts_analyzed": len(results),
-            "failures": self._failures,
-            "documents_saved": saved,
-            "analyzed_at": datetime.now(timezone.utc).isoformat(),
-        }
-
+        # The former implementation consumed a global post cache. Keeping it
+        # callable would mix customer posts, so the route is disabled until a
+        # crawler retrieves and labels posts from one exact connection.
+        if not user_id:
+            return {"status": "skipped", "reason": "tenant owner is required"}
+        return {"status": "skipped", "reason": "per-account Meta analyzer is not implemented yet"}
 
 meta_posts_analyzer = MetaPostsAnalyzer()

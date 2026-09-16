@@ -51,11 +51,14 @@ async def get_lead(lead_id: str, request: Request = None):
         session = verify_session_token(token) if token else None
     if not session:
         raise HTTPException(status_code=401, detail="غير مصرح")
-    lead = lead_service.get_lead_by_id(lead_id)
+    lead = lead_service.get_lead_by_id(
+        lead_id, user_id=session.get("sub") if session.get("role") != "admin" else None)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    # isolation: regular users cannot read other users' leads
-    if session.get("role") != "admin" and lead.get("user_id") not in (None, session.get("sub")):
+    # Tenantless legacy rows are never exposed to regular users.  Admins may
+    # inspect the workspace for support and data-recovery purposes.
+    if session.get("role") != "admin" and lead.get("user_id") != session.get("sub"):
         raise HTTPException(status_code=403, detail="غير مصرح — هذا العميل ليس ضمن حسابك")
-    messages = lead_service.get_messages_for_lead(lead_id)
+    messages = lead_service.get_messages_for_lead(
+        lead_id, user_id=session.get("sub") if session.get("role") != "admin" else None)
     return {"lead": lead, "messages": messages}

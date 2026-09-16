@@ -189,18 +189,25 @@ def test_unknown_provider_404(client: TestClient):
     assert r.status_code == 404
 
 
-def test_parse_event_resolves_platforms_from_product_id(client, polar_env):
+def test_parse_event_resolves_platforms_from_product_id(client, polar_env, monkeypatch):
     """checkout.created carries empty metadata — platforms resolved from
     product_id via the mapping (real Polar webhook behavior)."""
     g = PolarGateway()
+    monkeypatch.setattr(g, "_product_ids", lambda: {
+        "facebook": "f814fbcb-94bd-41fd-b020-cf1586518ecd",
+    })
     payload = _event_payload("evt-prod", "checkout.created", "x@test.com", [])
     payload["data"]["product_id"] = "f814fbcb-94bd-41fd-b020-cf1586518ecd"  # facebook mapping
     parsed = g.parse_event({}, payload)
     assert parsed["platforms"] == ["facebook"]
 
 
-def test_parse_event_products_array_resolution(client, polar_env):
+def test_parse_event_products_array_resolution(client, polar_env, monkeypatch):
     g = PolarGateway()
+    monkeypatch.setattr(g, "_product_ids", lambda: {
+        "instagram": "04509b5b-b2f5-4f78-87ba-4f11a3d8f712",
+        "threads": "8fb7d645-f441-45e5-a178-e2c5fe72fccb",
+    })
     payload = _event_payload("evt-prod2", "order.paid", "x@test.com", [])
     payload["data"]["products"] = [
         {"id": "04509b5b-b2f5-4f78-87ba-4f11a3d8f712"},   # instagram

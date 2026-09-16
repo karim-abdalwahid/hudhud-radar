@@ -53,6 +53,21 @@ class AgentOrchestrator:
                 "reason": "unmapped_recipient_account",
             }
 
+        page_token = connection_service.get_active_token_for_account(
+            owner_user_id, platform.value, recipient_id
+        )
+        if not page_token:
+            logger.warning(
+                "Webhook ignored: no entitled token for owner %s recipient %s",
+                owner_user_id, recipient_id or "<missing>",
+            )
+            return {
+                "reply_sent": None,
+                "is_converted": False,
+                "ignored": True,
+                "reason": "no_entitled_account_token",
+            }
+
         logger.info(f"Processing incoming {platform} message from {sender_id}: mid={message_id}")
 
         # 1. Zero-Assumption Profile Extraction — enrich with the REAL profile
@@ -61,7 +76,9 @@ class AgentOrchestrator:
             profile_payload = {"id": sender_id}
             try:
                 fb_profile = await self.client.get_profile(
-                    sender_id, fields="id,first_name,last_name,name,profile_pic"
+                    sender_id,
+                    fields="id,first_name,last_name,name,profile_pic",
+                    access_token=page_token,
                 )
                 if isinstance(fb_profile, dict) and not fb_profile.get("error"):
                     profile_payload.update(fb_profile)
@@ -72,7 +89,9 @@ class AgentOrchestrator:
             profile_payload = {"id": sender_id, "username": raw_event.get("sender", {}).get("username")}
             try:
                 ig_profile = await self.client.get_profile(
-                    sender_id, fields="id,username,name,profile_pic"
+                    sender_id,
+                    fields="id,username,name,profile_pic",
+                    access_token=page_token,
                 )
                 if isinstance(ig_profile, dict) and not ig_profile.get("error"):
                     profile_payload.update(ig_profile)
@@ -80,7 +99,13 @@ class AgentOrchestrator:
                 logger.warning(f"Profile enrichment skipped for Instagram sender {sender_id}: {e}")
             lead_in = ProfileDataExtractor.extract_from_instagram(profile_payload)
 
-        lead_in = lead_in.model_copy(update={"user_id": owner_user_id})
+        provenance = lead_in.data_provenance.model_copy(
+            update={"source_account_id": str(recipient_id or "")}
+        )
+        lead_in = lead_in.model_copy(update={
+            "user_id": owner_user_id,
+            "data_provenance": provenance,
+        })
 
         # 2. Identity Resolution & Linking
         lead_record, is_new, queue_id = self.resolver.resolve_and_save_lead(lead_in)
@@ -140,25 +165,10 @@ class AgentOrchestrator:
             lead_record.update(updates)
 
         # 6. Generate AI Response
-        history = self.lead_svc.get_messages_for_lead(lead_id)
+        history = self.lead_svc.get_messages_for_lead(lead_id, user_id=owner_user_id)
         reply_text, is_converted = await self.engine.generate_response(lead_record, text, history)
 
         # 7. Send Outbound Response adhering to 24-hr window & Rate Limits.
-        # Wave 9.8: prefer the owner's per-page token for this page/account;
-        # legacy global token is the fallback (zero behavior change today).
-        page_token = connection_service.get_active_token_for_account(
-            owner_user_id, platform.value, recipient_id
-        )
-        if not page_token:
-            logger.warning("AI reply skipped: no entitled active token for owner %s", owner_user_id)
-            return {
-                "lead_id": lead_id,
-                "is_new_lead": is_new,
-                "queue_id": queue_id,
-                "reply_sent": None,
-                "is_converted": is_converted,
-                "reason": "no_entitled_account_token",
-            }
         # Use the real event timestamp when available (accurate 24h-window basis).
         event_ts = event.get("timestamp")
         try:
@@ -176,14 +186,16 @@ class AgentOrchestrator:
                     recipient_id=sender_id,
                     message_text=reply_text,
                     last_interaction_time=last_interaction,
-                    access_token=page_token
+                    access_token=page_token,
+                    user_id=owner_user_id,
                 )
             else:
                 send_result = await self.client.send_instagram_message(
                     recipient_id=sender_id,
                     message_text=reply_text,
                     last_interaction_time=last_interaction,
-                    access_token=page_token
+                    access_token=page_token,
+                    user_id=owner_user_id,
                 )
 
             # 8. Store Outbound Message

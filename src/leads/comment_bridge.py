@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional
 
 from src.core.logger import logger
 from src.core.supabase_client import supabase_db
-from src.leads.models import LeadCreate, MessageCreate, PlatformSource, SenderType
+from src.leads.models import DataProvenance, LeadCreate, MessageCreate, PlatformSource, SenderType
 from src.identity.resolver import identity_resolver
 from src.leads.service import lead_service
 
@@ -22,32 +22,56 @@ async def capture_comment_lead(event: Dict[str, Any]) -> Optional[Dict[str, Any]
       FB: sender_id, sender_name, comment_id, text, post_id
     """
     platform = event.get("platform")
-    account_id = event.get("sender_id")
+    sender_id = event.get("sender_id")
+    recipient_account_id = event.get("account_id")
     comment_id = event.get("comment_id")
     text = event.get("text") or ""
 
-    if not platform or not account_id or not comment_id:
-        logger.warning("Comment bridge skipped: missing platform/sender/comment_id.")
+    if not platform or not sender_id or not recipient_account_id or not comment_id:
+        logger.warning("Comment bridge skipped: missing platform/sender/recipient/comment_id.")
+        return None
+
+    platform_value = platform.value if hasattr(platform, "value") else str(platform)
+    from src.modules.connections.service import connection_service
+    owner_user_id = connection_service.owner_for_account(platform_value, str(recipient_account_id))
+    if not owner_user_id:
+        logger.error(
+            "Comment bridge ignored: no unique owner for %s recipient %s",
+            platform_value, recipient_account_id,
+        )
         return None
 
     # Idempotency across re-deliveries/restarts (route-level dedup already ran)
-    existing_msg = supabase_db.select("messages", {"platform_message_id": comment_id})
+    existing_msg = supabase_db.select("messages", {
+        "platform_message_id": comment_id,
+        "user_id": owner_user_id,
+    })
     if existing_msg:
         return {"lead_id": existing_msg[0].get("lead_id"), "duplicate": True}
 
     if platform == PlatformSource.INSTAGRAM:
         username = event.get("username")
         lead_in = LeadCreate(
+            user_id=owner_user_id,
             source=PlatformSource.INSTAGRAM,
             username=username,
             profile_url=f"https://www.instagram.com/{username}/" if username else None,
-            instagram_account_id=account_id,
+            instagram_account_id=sender_id,
+            data_provenance=DataProvenance(
+                source_platform=PlatformSource.INSTAGRAM,
+                source_account_id=str(recipient_account_id),
+            ),
         )
     elif platform == PlatformSource.FACEBOOK:
         lead_in = LeadCreate(
+            user_id=owner_user_id,
             source=PlatformSource.FACEBOOK,
             full_name=event.get("sender_name"),
-            facebook_account_id=account_id,
+            facebook_account_id=sender_id,
+            data_provenance=DataProvenance(
+                source_platform=PlatformSource.FACEBOOK,
+                source_account_id=str(recipient_account_id),
+            ),
         )
     else:
         return None
@@ -57,6 +81,7 @@ async def capture_comment_lead(event: Dict[str, Any]) -> Optional[Dict[str, Any]
 
     message = MessageCreate(
         lead_id=lead_id,
+        user_id=owner_user_id,
         platform=platform,
         platform_message_id=comment_id,
         sender_type=SenderType.LEAD,
@@ -65,6 +90,7 @@ async def capture_comment_lead(event: Dict[str, Any]) -> Optional[Dict[str, Any]
         metadata={
             "type": "mention" if event.get("is_mention") else "comment",
             "media_id": event.get("media_id") or event.get("post_id"),
+            "recipient_account_id": str(recipient_account_id),
         },
     )
     lead_service.add_message(message)
