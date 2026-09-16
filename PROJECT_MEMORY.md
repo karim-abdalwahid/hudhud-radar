@@ -1849,3 +1849,7 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - `database/schema.sql` was intentionally not recoded or overwritten: legacy non-UTF-8 bytes make a safe append patch impossible, and the live migration chain—not that bootstrap snapshot—is authoritative. The new contract and SOP-03 record this fact.
 - Verification confirmed the new documents and internal wikilinks exist; `git diff --check` passes. No application code, test behavior, migration, Supabase row, secret, or deployment changed in this documentation block.
 - The append-only rule remains binding for `PROJECT_MEMORY.md` and the external Codex reference. The external reference was appended with this completion summary without replacing earlier history.
+
+### Post-release addendum — 2026-09-16T23:44:23+03:00
+- The documentation-only alignment batch was committed and pushed to the approved repository only: `6de0bba docs: align SOPs and plans with SaaS isolation` → `origin/main` (`karim-abdalwahid/hudhud-radar`).
+- The release contains 25 documentation files and no production Python, migration, database, credential, or deployment changes. The final commit/reference record is appended here rather than revising the entry above.

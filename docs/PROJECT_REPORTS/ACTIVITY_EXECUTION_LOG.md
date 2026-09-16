@@ -58,3 +58,4 @@
 - **Action:** بعد موافقة المالك، أضيفت ملاحق مؤرخة إلى SOPs والمعمارية والخطط، وأُنشئ SOP-09 v2 وعقد SaaS tenant data مستقل.
 - **Result:** توثيق التشغيل الآن يميز بوضوح بين التاريخ والنموذج الحي: per-tenant encrypted connections، owner-first ingress، RAG fail-closed، Data API backend-only، وحالة Phase 9 الصادقة.
 - **Verification:** الملفات والـwikilinks الجديدة موجودة و`git diff --check` نجح؛ لا تغير application code أو Supabase في هذا block. الدليل: archive 027.
+- **Release:** commit/push `6de0bba` إلى `karim-abdalwahid/hudhud-radar:main`؛ توثيق فقط.
