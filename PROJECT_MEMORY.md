@@ -1926,3 +1926,7 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - Verification passed: **339 passed, 2 skipped, 1 dependency-deprecation warning**, plus successful source compilation and whitespace validation. The skipped tests require `THREADS_APP_ID`, which is unavailable in this local runtime.
 - Supabase contains trial product mappings. The local runtime does not contain a Polar access token, so Codex did not claim a real checkout passed or change any secret. The owner must verify the deployment secret and Polar's three-day trial configuration before launch.
 - Phase 9.4 usage credits/provider selection remains unimplemented by design pending the documented product decision. Cancellation is also intentionally not guessed: decide end-of-period versus immediate revocation and customer-portal behavior before a cancellation endpoint is introduced.
+
+### Post-release addendum — 2026-09-22T06:42:35+03:00
+- The implementation, regression tests, archive, Project Brain status, activity record, and session log were committed and pushed only to the approved repository: `9501b6f fix: add customer account and harden billing flow` → `origin/main` at `karim-abdalwahid/hudhud-radar`.
+- The untracked owner-supplied `account/` directory was excluded from the commit and remains local and untouched. This is an append-only release record; it does not revise Entry 052.

@@ -76,3 +76,7 @@
 - **Completed:** Added `/account`, corrected account-safe rendering and Threads behavior, redirected OAuth to Account with Instagram CSRF state, made Analytics customer-visible but still owner-scoped, and repaired actual three-day trial checkout/webhook/entitlement behavior.
 - **Verification:** `339 passed, 2 skipped, 1 warning`; compile and diff checks passed. The supplied untracked `account/` folder was preserved untouched.
 - **Operational boundary:** No Polar secret was changed. Deployment needs a real Polar/Vercel configuration smoke test; cancellation semantics and Phase 9.4 metering/provider decisions remain pending.
+
+### Release — 2026-09-22
+- **Commit/push:** `9501b6f fix: add customer account and harden billing flow` → `karim-abdalwahid/hudhud-radar:main`.
+- **Scope preserved:** No write occurred in the unrelated `Hudhud` repository; owner-supplied untracked `account/` artifacts remain excluded locally.
