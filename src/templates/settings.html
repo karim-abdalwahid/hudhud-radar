@@ -113,50 +113,14 @@
                     </div>
 
                     <div style="margin: 16px 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                        <button type="button" id="btn-fb-sdk-login" class="btn-primary" onclick="startFacebookSdkLogin(false)" style="background: #1877f2; color: #fff; padding: 12px 22px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; border-radius: 8px; box-shadow: 0 4px 14px rgba(24, 119, 242, 0.35); cursor: pointer; border: none;">
+                        <button type="button" id="btn-fb-sdk-login" class="btn-primary" onclick="connectFacebookSaaS()" style="background: #1877f2; color: #fff; padding: 12px 22px; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 10px; border-radius: 8px; box-shadow: 0 4px 14px rgba(24, 119, 242, 0.35); cursor: pointer; border: none;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                             <span data-i18n="set.fb_login_btn">Connect with Facebook & Select Page (تسجيل الدخول واختيار الصفحة)</span>
                         </button>
-                        <button type="button" class="btn-secondary" onclick="startFacebookSdkLogin(true)" style="padding: 10px 16px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
-                            <span>🔄</span> <span>الدخول بحساب فيسبوك آخر (Switch Account)</span>
-                        </button>
                     </div>
                     <div id="fb-login-status-msg" style="margin-top: 10px; font-size: 13px;"></div>
-
-                    <!-- Interactive Page Selector Container (appears after login) -->
-                    <div id="pages-picker-container" style="display: none; margin-top: 16px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 16px;">
-                        <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--text-primary);" data-i18n="set.pick_page_title">👇 Select the Facebook Page you want to automate:</h4>
-                        <div id="pages-cards-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"></div>
-                    </div>
                 </div>
 
-                <!-- Hudhud Architecture: Never-Expiring Token Generator -->
-                <div class="panel-section" style="border-inline-start: 4px solid var(--accent-blue); background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), transparent);">
-                    <div class="panel-header">
-                        <div>
-                            <h3 class="panel-title" data-i18n="set.token_gen_title">⚡ Never-Expiring Token Generator (Hudhud Architecture)</h3>
-                            <div class="panel-desc" data-i18n="set.token_gen_desc">Generate a permanent Page Access Token that never expires via Dual-Exchange architecture</div>
-                        </div>
-                        <span class="badge badge-success" style="font-size: 11px;" data-i18n="set.recommended_badge">Dual Exchange Flow</span>
-                    </div>
-
-                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border-default); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; font-size: 13px; line-height: 1.6;">
-                        <strong style="color: var(--accent-blue);" data-i18n="set.token_gen_how">💡 How does this guarantee permanent access?</strong><br>
-                        <span data-i18n="set.token_gen_expl">Normal user tokens expire after 2 hours or 60 days. By upgrading to a Long-Lived User Token and retrieving the Page Token via /me/accounts, Meta issues a permanent Page Access Token that never expires.</span>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 12px;">
-                        <label data-i18n="set.user_token_label">User Access Token (from Graph API Explorer or Facebook Login)</label>
-                        <input type="password" id="input-exchange-user-token" data-i18n-placeholder="set.user_token_placeholder" placeholder="Paste any user token starting with EAABwz... to convert into a permanent token">
-                    </div>
-
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <button class="btn-primary" onclick="exchangePermanentToken()" style="background: linear-gradient(135deg, #2563eb, #1d4ed8);" data-i18n="set.exchange_btn">
-                            ⚡ Convert, Exchange & Authorize Permanent Token
-                        </button>
-                        <div id="exchange-status-msg" style="font-size: 12px;"></div>
-                    </div>
-                </div>
 
                 <!-- Meta Credentials Configuration Form -->
                 <div class="panel-section">
@@ -575,195 +539,38 @@
             }
         }
 
-        // Bulletproof Facebook OAuth: Direct Dialog + Popup Communication
-        function checkUrlHashForToken() {
-            if (window.location.hash && window.location.hash.includes('access_token=')) {
-                const hash = window.location.hash.substring(1);
-                const params = new URLSearchParams(hash);
-                const token = params.get('access_token');
-                if (token) {
-                    if (window.opener && !window.opener.closed) {
-                        try {
-                            window.opener.postMessage({ type: 'FB_AUTH_TOKEN', token: token }, window.location.origin);
-                            window.close();
-                            return;
-                        } catch (e) {
-                            console.warn("Could not postMessage to opener:", e);
-                        }
-                    }
-                    // Clean hash from address bar
-                    window.history.replaceState(null, '', window.location.pathname);
-                    fetchAndDisplayUserPages(token);
-                }
-            }
-        }
-
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'FB_AUTH_TOKEN' && event.data.token) {
-                const statusMsg = document.getElementById('fb-login-status-msg');
-                const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-                statusMsg.className = 'success-text';
-                statusMsg.textContent = isAr ? '✅ تم استلام تصريح الدخول من فيسبوك بنجاح! جاري جلب صفحاتك...' : '✅ Authorized by Facebook! Fetching your Pages...';
-                fetchAndDisplayUserPages(event.data.token);
-            }
-        });
-
-        function startFacebookSdkLogin(forceSwitch = false) {
+        // Official Multi-Tenant Facebook OAuth flow
+        async function connectFacebookSaaS() {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
             const statusMsg = document.getElementById('fb-login-status-msg');
-            const appId = (document.getElementById('input-app-id') && document.getElementById('input-app-id').value.trim()) || '2092880431308591';
-            const redirectUri = window.location.origin + '/settings';
-            const scopes = 'pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,pages_manage_posts,pages_read_user_content,read_insights,instagram_basic,instagram_manage_messages,instagram_manage_comments,instagram_content_publish,pages_utility_messaging';
-            let oauthUrl = `https://www.facebook.com/v26.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
-            
-            if (forceSwitch) {
-                oauthUrl += '&auth_type=reauthenticate';
-            }
-
             statusMsg.className = 'muted-text';
-            statusMsg.textContent = isAr ? '⏳ جاري فتح نافذة فيسبوك الرسمية لاختيار صفحتك...' : '⏳ Opening official Facebook dialog to select your page...';
-
-            // Open standard OAuth popup
-            const popup = window.open(oauthUrl, 'fb_oauth', 'width=650,height=750,status=yes,scrollbars=yes');
-            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-                // If browser strictly blocked popup, redirect directly
-                if (confirm(isAr ? 'المتصفح منع فتح النافذة المنبثقة تلقائياً. هل تريد فتح نافذة فيسبوك الآن للموافقة؟' : 'Browser blocked popup. Redirect directly to Facebook to authorize?')) {
-                    window.location.href = oauthUrl;
-                }
-            }
-        }
-
-        async function fetchAndDisplayUserPages(userToken) {
-            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-            const statusMsg = document.getElementById('fb-login-status-msg');
-            const container = document.getElementById('pages-picker-container');
-            const list = document.getElementById('pages-cards-list');
-
+            statusMsg.textContent = isAr ? '⏳ جاري فتح نافذة الربط مع فيسبوك...' : '⏳ Opening Facebook authorization window...';
             try {
-                const res = await fetch('/api/meta/user-pages', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ user_token: userToken })
-                });
+                const res = await fetch('/api/connections/facebook/authorize');
                 const data = await res.json();
-
-                if (!res.ok || !data.pages || data.pages.length === 0) {
+                if (!res.ok) {
                     statusMsg.className = 'error-text';
-                    statusMsg.textContent = '❌ ' + (data.detail || (isAr ? 'لم يتم العثور على صفحات يديرها هذا الحساب.' : 'No managed Facebook pages found.'));
+                    statusMsg.textContent = '❌ ' + (data.detail || (isAr ? 'الربط غير متاح حاليًا.' : 'Connection is unavailable.'));
                     return;
                 }
-
-                list.innerHTML = '';
-                container.style.display = 'block';
-                statusMsg.className = 'success-text';
-                statusMsg.textContent = isAr ? 
-                    `✅ تم العثور على ${data.pages.length} صفحة. اختر الصفحة التي تريد تفعيلها:` : 
-                    `✅ Found ${data.pages.length} page(s). Click to authorize and connect:`;
-
-                data.pages.forEach(p => {
-                    const igInfo = p.instagram_business_account;
-                    const card = document.createElement('div');
-                    card.style.cssText = 'background: var(--bg-input); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 14px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;';
-                    card.innerHTML = `
-                        <div>
-                            <div style="font-weight: 700; font-size: 15px; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
-                                <span>📄</span> <span>${p.page_name}</span>
-                            </div>
-                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 3px;">
-                                Page ID: <span class="mono">${p.page_id}</span>
-                            </div>
-                            <div style="margin-top: 8px; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; background: ${igInfo ? 'rgba(225, 48, 108, 0.1)' : 'var(--bg-subtle)'}; color: ${igInfo ? '#e1306c' : 'var(--text-muted)'};">
-                                ${igInfo ? `📸 Instagram: <strong>@${igInfo.username || igInfo.id}</strong>` : '⚠️ No linked Instagram found'}
-                            </div>
-                        </div>
-                        <button type="button" class="btn-primary" style="background: #10b981; font-size: 13px; padding: 8px 14px; align-self: flex-start; margin-top: 6px; border: none; cursor: pointer; border-radius: 6px;" onclick="connectSpecificPage('${p.page_id}', '${userToken}')">
-                            🚀 ${isAr ? 'ربط هذه الصفحة وتفعيل الأتمتة' : 'Connect & Authorize This Page'}
-                        </button>
-                    `;
-                    list.appendChild(card);
-                });
-
-                container.scrollIntoView({ behavior: 'smooth' });
-
+                window.open(data.authorize_url, 'hudhud_connect_facebook', 'width=650,height=750,status=yes,scrollbars=yes');
+                let tries = 0;
+                const poll = setInterval(async () => {
+                    tries++;
+                    const st = await fetch('/api/meta/status').then(r => r.json()).catch(() => ({}));
+                    if (st.configured || tries > 60) {
+                        clearInterval(poll);
+                        await loadSettingsStatus();
+                        statusMsg.className = 'success-text';
+                        statusMsg.textContent = isAr ? '✅ تم ربط الحساب بنجاح!' : '✅ Connected successfully!';
+                    }
+                }, 2500);
             } catch (e) {
                 statusMsg.className = 'error-text';
-                statusMsg.textContent = '❌ ' + (isAr ? 'فشل جلب الصفحات من الخادم.' : 'Failed to fetch pages from server.');
+                statusMsg.textContent = '❌ ' + (isAr ? 'فشل فتح نافذة الربط.' : 'Failed to connect.');
             }
         }
 
-        async function connectSpecificPage(pageId, userToken) {
-            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-            const statusMsg = document.getElementById('fb-login-status-msg');
-            statusMsg.className = 'muted-text';
-            statusMsg.textContent = isAr ? 
-                '⏳ جاري استخراج التوكن الدائم غير المنتهي وتفعيل اشتراك الـ Webhook...' : 
-                '⏳ Generating permanent token and activating webhooks...';
-
-            try {
-                const res = await fetch('/api/meta/exchange-token', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        user_token: userToken,
-                        target_page_id: pageId
-                    })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    statusMsg.className = 'success-text';
-                    statusMsg.textContent = `🎉 ${data.message || (isAr ? 'تم ربط الصفحة بنجاح!' : 'Page connected successfully!')}`;
-                    document.getElementById('pages-picker-container').style.display = 'none';
-                    await loadSettingsStatus();
-                    alert(isAr ? `✅ مبروك! تم اعتماد صفحة (${data.page_name || pageId}) وتفعيل إنستجرام (${data.instagram_username || data.instagram_id || 'متصل'}) بنجاح!` : `✅ Page connected and verified with permanent token!`);
-                } else {
-                    statusMsg.className = 'error-text';
-                    statusMsg.textContent = '❌ ' + (data.detail || 'Authorization failed.');
-                }
-            } catch (e) {
-                statusMsg.className = 'error-text';
-                statusMsg.textContent = '❌ ' + (isAr ? 'خطأ في الاتصال بالخادم.' : 'Connection error.');
-            }
-        }
-
-        async function exchangePermanentToken() {
-            const userToken = document.getElementById('input-exchange-user-token').value.trim();
-            const msg = document.getElementById('exchange-status-msg');
-            if (!userToken) {
-                msg.className = 'error-text';
-                msg.textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 
-                    '❌ يرجى إدخال توكن المستخدم أولاً.' : 
-                    '❌ Please enter a User Access Token first.';
-                return;
-            }
-
-            msg.className = 'muted-text';
-            msg.textContent = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ?
-                '⏳ جاري استبدال التوكن بـ Long-Lived Token واستخراج توكن الصفحة الدائم…' :
-                '⏳ Exchanging user token for Long-Lived Token and retrieving permanent Page Token...';
-
-            // Also show page selector if user wants to pick
-            fetchAndDisplayUserPages(userToken);
-
-            try {
-                const res = await fetch('/api/meta/exchange-token', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ user_token: userToken })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    msg.className = 'success-text';
-                    msg.textContent = `✅ ${data.message} Page: ${data.page_name || data.page_id} | IG: ${data.instagram_username || data.instagram_id || 'Connected'}`;
-                    await loadSettingsStatus();
-                } else {
-                    msg.className = 'error-text';
-                    msg.textContent = '❌ ' + (data.detail || 'Token exchange failed.');
-                }
-            } catch (e) {
-                msg.className = 'error-text';
-                msg.textContent = '❌ Connection error.';
-            }
-        }
 
         window.addEventListener('hudhud_lang_change', () => {
             loadSettingsStatus();

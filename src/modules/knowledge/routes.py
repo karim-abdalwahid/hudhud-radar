@@ -40,29 +40,80 @@ class CreateDocumentRequest(BaseModel):
     content: str
 
 
-@router.post("/api/knowledge/analyze-meta", tags=["Knowledge Base & RAG"])
-async def analyze_meta_posts(request: Request, limit: int = Query(10, ge=1, le=40)):
-    """
-    Admin: runs the approved structural analyzer (Entry 021 Phase 5):
-    fetches recent posts + their real comments, classifies every comment
-    (CTA-response vs real-question vs complaint/spam), and saves REAL
-    knowledge documents with mandatory citations. Zero guessing.
-    """
-    _session_user(request)
-    raise HTTPException(
-        status_code=409,
-        detail="Meta analysis awaits a per-account crawler; the old global feed is disabled to protect tenant data.",
-    )
-
-
 @router.post("/api/knowledge/sync-meta", tags=["Knowledge Base & RAG"])
 async def sync_knowledge_from_meta(request: Request):
-    """Scrapes historical Facebook/Instagram posts, reels, and comments and synthesizes business knowledge."""
-    _session_user(request)
-    raise HTTPException(
-        status_code=409,
-        detail="Meta knowledge sync awaits the per-account crawler; upload files or add documents directly.",
+    """Fetches tenant posts from Facebook, Instagram, and Threads, extracting knowledge into kb_documents."""
+    from datetime import datetime, timezone
+    from src.modules.meta.tenant_feed_service import tenant_feed_service
+
+    user_id = _require_session_user(request)
+    posts = await tenant_feed_service.get_tenant_posts(user_id=user_id, platform="all", limit=50)
+
+    if not posts:
+        return {
+            "status": "skipped",
+            "message": "لم يتم العثور على منشورات في الحسابات المتصلة، أو لم يتم ربط أي حسابات بعد. اربط حساباتك أولاً ثم أعد المحاولة.",
+            "synced_posts": 0,
+            "filename": "social_posts_knowledge.md",
+            "words_count": 0,
+        }
+
+    lines = [
+        "# Social Media Knowledge Base (محتوى منشورات الحسابات المتصلة)",
+        f"- **تاريخ المزامنة**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        f"- **إجمالي المنشورات**: {len(posts)} منشور عبر منصات التواصل",
+        "",
+        "## محتوى المنشورات والخدمات والعروض المستخرجة:",
+        "",
+    ]
+
+    total_words = 0
+    for idx, p in enumerate(posts, 1):
+        plat = (p.get("platform") or "social").upper()
+        text = (p.get("content_text") or "").strip()
+        pub_at = p.get("published_at") or ""
+        permalink = p.get("permalink") or ""
+        metrics = p.get("metrics") or {}
+        likes = metrics.get("likes", 0)
+        comments = metrics.get("comments", 0)
+
+        if not text:
+            continue
+
+        words = len(text.split())
+        total_words += words
+
+        lines.append(f"### {idx}. منشور على [{plat}] ({pub_at[:10] if pub_at else 'مؤخراً'})")
+        lines.append(f"> {text}")
+        if likes or comments:
+            lines.append(f"- التفاعل: {likes} إعجاب | {comments} تعليق")
+        if permalink:
+            lines.append(f"- الرابط: {permalink}")
+        lines.append("")
+
+    content_md = "\n".join(lines)
+    filename = "social_posts_knowledge.md"
+
+    await asyncio.to_thread(
+        db_knowledge_base.save_document,
+        filename,
+        content_md,
+        user_id,
     )
+
+    try:
+        from src.agent.knowledge_base import knowledge_base
+        knowledge_base.reload()
+    except Exception as e:
+        logger.debug(f"Knowledge base reload notice: {e}")
+
+    return {
+        "status": "success",
+        "message": f"تمت مزامنة {len(posts)} منشوراً واستخراج المعرفة منها وحفظها بنجاح!",
+        "synced_posts": len(posts),
+        "filename": filename,
+        "words_count": total_words,
+    }
 
 
 def _session_user(request: Request) -> Optional[str]:

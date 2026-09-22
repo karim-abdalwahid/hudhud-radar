@@ -205,10 +205,10 @@ def test_fastapi_knowledge_endpoints(client, monkeypatch):
     })
     assert put_resp.status_code == 200
 
-    # 5. The former global Meta sync is intentionally disabled until it can
-    # scope fetched posts to the current tenant.
+    # 5. Multi-tenant social knowledge sync routes to TenantFeedService (200 OK)
     sync_resp = client.post("/api/knowledge/sync-meta")
-    assert sync_resp.status_code == 409
+    assert sync_resp.status_code == 200
+    assert sync_resp.json()["status"] in ("success", "skipped")
 
     # 6. Upload file
     file_payload = {"file": ("uploaded_test.txt", b"Uploaded via REST multipart", "text/plain")}

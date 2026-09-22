@@ -35,13 +35,6 @@ class MetaConfigPayload(BaseModel):
     app_secret: Optional[str] = None
 
 
-class MetaExchangeTokenPayload(BaseModel):
-    user_token: str
-    target_page_id: Optional[str] = None
-
-
-class MetaUserPagesPayload(BaseModel):
-    user_token: str
 
 
 import time
@@ -175,24 +168,6 @@ async def configure_meta_credentials(payload: MetaConfigPayload, request: Reques
     }
 
 
-@router.post("/api/meta/exchange-token", tags=["Meta Integration"])
-async def exchange_permanent_meta_token(payload: MetaExchangeTokenPayload, request: Request):
-    """
-    Exchanges a user access token into a permanent Never-Expiring Page Access Token
-    using the dual-stage exchange architecture proven in Hudhud.
-    """
-    _require_session_user(request)
-    raise HTTPException(status_code=409, detail="Use /api/connections/facebook/authorize; the legacy global token exchange is disabled")
-
-
-@router.post("/api/meta/user-pages", tags=["Meta Integration"])
-async def get_user_meta_pages(payload: MetaUserPagesPayload, request: Request):
-    """
-    Lists all Facebook pages and linked Instagram accounts for a given user token,
-    allowing the user to visually pick their target page and Instagram account.
-    """
-    _require_session_user(request)
-    raise HTTPException(status_code=409, detail="Use /api/connections/facebook/authorize; legacy global token tooling is disabled")
 
 
 @router.post("/api/meta/subscribe-page", tags=["Meta Integration"])

@@ -2050,5 +2050,48 @@ In addition, the owner requested guidance on locating and removing `instagram_ma
 - Full pytest test suite regression executed.
 - Untracked `account/` folder left untouched.
 
+---
 
+## [Entry 057] 2026-09-22 — Social Knowledge Ingestion Modernized & Dead Code Purge Executed
+- **Timestamp**: 2026-09-22T10:55:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ IMPLEMENTED & TESTED (344 PASSED, 2 SKIPPED, 0 FAILURES)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-22_session.md`
 
+### 1. Context & Objectives
+The owner instructed a systematic audit of all disabled routes, `HTTP 409 Conflict` placeholders, and legacy notes across the codebase to:
+1. Develop and modernize what is needed for the SaaS product roadmap.
+2. Permanently delete and eliminate obsolete dead code with no future value.
+3. Preserve essential multi-tenant security guards.
+
+### 2. Changes Implemented
+1. **Modernized Social Knowledge Ingestion (`src/modules/knowledge/routes.py`)**:
+   - Replaced `HTTP 409` in `POST /api/knowledge/sync-meta` with multi-tenant social content extraction powered by `TenantFeedService`.
+   - Aggregates tenant posts across Facebook, Instagram, and Threads, formats content/captions/metrics into `social_posts_knowledge.md`, and persists to `kb_documents` in Supabase scoped to `user_id`.
+   - Unblocked the active `🔄 Sync & Ingest from Meta` button in `src/templates/knowledge.html`.
+2. **Dead Routes & Models Deleted (`src/modules/meta/routes.py` & `src/core/auth.py`)**:
+   - Deleted `POST /api/meta/exchange-token` and `POST /api/meta/user-pages` (both returned 409).
+   - Deleted obsolete payload models `MetaExchangeTokenPayload` and `MetaUserPagesPayload`.
+   - Removed endpoints from `ADMIN_EXACT_PATHS` in `src/core/auth.py`.
+   - Deleted dead single-tenant endpoint `POST /api/knowledge/analyze-meta`.
+3. **UI Modernization & Cleanup (`src/templates/settings.html`)**:
+   - Removed the broken "Never-Expiring Token Generator" card (which prompted manual user tokens and called the deleted 409 route).
+   - Rewired the Facebook connect button to `connectFacebookSaaS()`, invoking the official multi-tenant OAuth flow `/api/connections/facebook/authorize`.
+   - Removed dead client-side functions: `startFacebookSdkLogin`, `fetchAndDisplayUserPages`, `connectSpecificPage`, and `exchangePermanentToken`.
+4. **Scraper & Dead Code Retirement**:
+   - Overwrote 472 lines of dead disk-cache code in `src/meta_api/feed_sync.py` with a lightweight 45-line compatibility stub (`meta_feed_sync = MetaLiveFeedSync()`) that safely returns empty results.
+   - Deleted `src/knowledge/meta_analyzer.py` (legacy agency prototype with hardcoded prompt).
+   - Deleted `tests/test_meta_analyzer.py` and `scripts/run_analyzer_tests.bat`.
+5. **Security Guards Preserved**:
+   - Preserved `POST /api/billing/trial` (`HTTP 409`) trial duplication guard.
+   - Preserved `POST /api/inbox/conversations/{lead_id}/takeover` (`HTTP 409`) tenant ownership guard.
+   - Preserved `POST /api/meta/configure` (`HTTP 400`) platform secret protection.
+   - Preserved `HTTP 503` fail-closed configuration guards.
+
+### 3. Verification & Safety
+- Created `tests/test_social_knowledge_sync.py` (3 unit/integration tests).
+- Updated `tests/test_knowledge_base_rag.py` to assert 200 on sync-meta.
+- Ran `scripts/scan_annotation_traps.py` (Rule R14): CLEAN.
+- Ran `scripts/scan_identity.py` (Rule R16): CLEAN.
+- Full test regression: 344 passed, 2 skipped, 0 failures in 44.32s.
+- Untracked `account/` folder strictly untouched.
