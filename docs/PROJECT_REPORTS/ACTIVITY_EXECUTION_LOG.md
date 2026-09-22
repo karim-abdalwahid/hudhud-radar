@@ -80,3 +80,8 @@
 ### Release — 2026-09-22
 - **Commit/push:** `9501b6f fix: add customer account and harden billing flow` → `karim-abdalwahid/hudhud-radar:main`.
 - **Scope preserved:** No write occurred in the unrelated `Hudhud` repository; owner-supplied untracked `account/` artifacts remain excluded locally.
+
+## 2026-09-22 — Meta App Review audit and resubmission instructions
+- **Action:** Compared the owner-supplied rejection feedback/screenshots with current HudhudRuntime OAuth scopes, user-visible features, and tenant-safe disabled paths.
+- **Result:** Most rejections are evidence failures, not prohibited use cases. Unsupported/duplicate requests and conditional policy/scope work were separated from recordable customer workflows.
+- **Record:** `docs/APP_REVIEW/2026-09-22_META_RESUBMISSION_PLAN.md` contains the exact decision matrix and no-fabrication browser-agent prompt. No code, Meta setting, production data, or credential changed.

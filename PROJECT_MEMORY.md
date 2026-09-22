@@ -1930,3 +1930,14 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 ### Post-release addendum — 2026-09-22T06:42:35+03:00
 - The implementation, regression tests, archive, Project Brain status, activity record, and session log were committed and pushed only to the approved repository: `9501b6f fix: add customer account and harden billing flow` → `origin/main` at `karim-abdalwahid/hudhud-radar`.
 - The untracked owner-supplied `account/` directory was excluded from the commit and remains local and untouched. This is an append-only release record; it does not revise Entry 052.
+
+---
+
+## [Entry 053] 2026-09-22 — Meta App Review Rejection Audit and Recording Plan
+- **Actor:** Owner & Codex
+- **Status:** ✅ READ-ONLY AUDIT AND RESUBMISSION INSTRUCTIONS COMPLETE
+- **Session log:** `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-22_session.md`
+- **Plan:** `docs/APP_REVIEW/2026-09-22_META_RESUBMISSION_PLAN.md`
+- The reviewer did not generally disallow HudhudRadar's social-selling use case. Rejections state that the videos failed to demonstrate complete Meta consent and the visible end-to-end result. The explicit disallowed request is `instagram_manage_contents`.
+- The audit separates live supported paths from stale plans: do not resubmit utility messaging, Page/Instagram content import, legacy Instagram insights, Threads mentions, or the invisible Threads reply path. Human Agent and engagement scopes require documented implementation alignment before an honest submission.
+- No application code, permission request, Meta configuration, customer record, secret, or deployment changed. The plan contains an English-UI, real-test-asset, no-fabrication browser-agent prompt and the exact page for each valid feature.
