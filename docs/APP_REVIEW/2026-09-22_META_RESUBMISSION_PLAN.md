@@ -56,6 +56,33 @@ Already approved items (`pages_show_list`, `pages_manage_metadata`, `pages_read_
 4. Each action must visibly succeed in both places: Hudhud and the native Meta client/site. A dashboard card, API log, or a simulated alert alone is not proof.
 5. Narrate or caption the precise permission and why the owner benefits. Do not claim the AI sends a `Human Agent` message or that a generic Hudhud template is a Meta utility template.
 
+## Which account records the review
+
+Record the product flow with a **normal Hudhud user**, not the Hudhud admin.
+The normal user must own the test social assets and must have the needed test
+entitlement (Facebook, Instagram, or Threads). In pre-approval development,
+that same person's Meta identity may be an App Tester/Developer so it can grant
+the app access; this is separate from being a Hudhud administrator.
+
+The Hudhud admin may prepare the test user, test entitlement, and test assets
+off-camera. Then log out and record the actual customer journey with the normal
+user. Admin bypasses parts of the entitlement path and exposes admin-only
+screens, so it is weaker evidence of the SaaS customer experience.
+
+## Current user-readiness truth table
+
+| Flow | Normal user status | Recording condition / known gap |
+|---|---|---|
+| Account, onboarding, Inbox, Studio, Automations | Available as tenant-scoped user surfaces | Use the ordinary user who owns the test data and platform connection. |
+| Facebook / Instagram connection | Available | The ordinary user needs the matching entitlement; Meta app/tester configuration and the app credentials must be live. |
+| Threads connection, publishing, deletion, reply reading, insights | Available | The ordinary user needs the Threads entitlement and a configured Threads app. |
+| Analytics | Direct page/API access is user-scoped | Current sidebar JavaScript still treats `/analytics` as a developer route and hides its link for ordinary users. Open `/analytics` directly until that UI drift is fixed. |
+| Page/Instagram content import into KB | Not available | Tenant-safe legacy sync deliberately returns HTTP 409. Do not record/request those permissions. |
+| Meta utility templates | Not available | Internal notification templates are not Meta templates. |
+| Threads reply composition / mentions | Not available as visible user workflows | Hold the related permissions until UI/product work exists. |
+| Human Agent | UI exists but not submission-ready | Current manual-send path applies the Human Agent tag broadly and stores the message as agent-sent. Narrow and label it as a genuine human-only policy path before requesting it. |
+| Page/Instagram engagement automation | Feature code and Automations UI exist | Add/align the corresponding OAuth scopes and verify a real native comment action before recording. |
+
 ## Browser-agent master prompt
 
 Give the following prompt to the recording agent **after** you have supplied a logged-in browser profile for the test assets. The agent must stop and report a blocker if an expected real result does not appear; it must not fabricate proof.

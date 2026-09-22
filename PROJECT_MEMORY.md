@@ -1942,6 +1942,10 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - The audit separates live supported paths from stale plans: do not resubmit utility messaging, Page/Instagram content import, legacy Instagram insights, Threads mentions, or the invisible Threads reply path. Human Agent and engagement scopes require documented implementation alignment before an honest submission.
 - No application code, permission request, Meta configuration, customer record, secret, or deployment changed. The plan contains an English-UI, real-test-asset, no-fabrication browser-agent prompt and the exact page for each valid feature.
 
+### Follow-up clarification — 2026-09-22
+- Meta App Review evidence should be recorded as a normal tenant user whose Meta identity is temporarily an App Tester/Developer, not as Hudhud admin. Admin may provision test entitlement/assets off-camera only.
+- The updated recording plan documents one newly verified UI drift: `/analytics` is correctly tenant-scoped and directly reachable for users, but its sidebar link is still hidden by an outdated client-side developer-route list. No code change was made in this clarification.
+
 ### Post-release addendum — 2026-09-22
 - The read-only audit, agent recording plan, Project Brain status, session log, activity record, and archive were committed and pushed only to `karim-abdalwahid/hudhud-radar:main` as `3191b7d docs: add Meta app review resubmission plan`.
 - The owner-supplied untracked `account/` directory remained excluded and untouched. This addendum preserves the original audit entry unchanged.
