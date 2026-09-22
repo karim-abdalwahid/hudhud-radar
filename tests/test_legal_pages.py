@@ -19,7 +19,7 @@ def test_terms_en_public(anon_client: TestClient):
     assert "www.hudhd.com" in r.text                    # our real site
     assert "Gemini" in r.text                           # honest AI disclosure
     assert "24-hour standard messaging window" in r.text  # real enforced rule
-    assert "14-day trial" in r.text                     # matches landing promise
+    assert "currently three days" in r.text              # matches the live trial contract
     assert "Ebd'a" not in r.text and "ebdamarketing" not in r.text
 
 

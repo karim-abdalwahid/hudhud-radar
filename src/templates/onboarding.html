@@ -547,7 +547,7 @@
                     <div style="font-size:12.5px;color:#a16207;" data-i18n="onboard.no_sub_desc">You don't have an active subscription or trial. Start a free trial or subscribe to a plan to connect messaging channels.</div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn-submit" style="padding:9px 18px;font-size:13px;" onclick="window.location.href='/billing/success?trial=1'" data-i18n="onboard.start_trial">Start Free Trial (3 days)</button>
+                    <button class="btn-submit" id="btn-start-trial" style="padding:9px 18px;font-size:13px;" onclick="startTrial()" data-i18n="onboard.start_trial">Start Free Trial (3 days)</button>
                     <button class="btn-back" style="padding:9px 18px;font-size:13px;" onclick="window.location.href='/billing/checkout-page'" data-i18n="onboard.subscribe">Subscribe to a plan</button>
                 </div>
             </div>
@@ -692,6 +692,28 @@
 
         let pollTimer = null;
 
+        async function startTrial() {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const btn = document.getElementById('btn-start-trial');
+            if (!btn) return;
+            const original = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = isAr ? '⏳ جاري تحويلك للدفع الآمن...' : '⏳ Redirecting to secure checkout...';
+            try {
+                const res = await fetch('/api/billing/trial', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok && data.checkout_url) {
+                    window.location.href = data.checkout_url;
+                    return;
+                }
+                alert(data.detail || (isAr ? 'التجربة غير متاحة حالياً.' : 'Trial is unavailable right now.'));
+            } catch (e) {
+                alert(isAr ? 'تعذر الاتصال بالخادم.' : 'Could not reach the server.');
+            }
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+
         async function triggerConnect(platform) {
             // Subscription gate (owner spec): connect only when a plan/trial is active
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
@@ -819,12 +841,6 @@
 
         // Check platform state on load
         document.addEventListener('DOMContentLoaded', async () => {
-            // honor paid/trial return from checkout
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('trial') === '1') {
-                localStorage.setItem('hudhud_trial_started', '1');
-            }
-
             const urlStep = new URLSearchParams(window.location.search).get('step');
             if (urlStep) {
                 nextStep(parseInt(urlStep));

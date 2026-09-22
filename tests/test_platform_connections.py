@@ -6,6 +6,7 @@ OAuth state signing. FULLY isolated (fake tables — no live Supabase writes).
 import uuid
 
 import pytest
+from urllib.parse import parse_qs, urlparse
 from fastapi import HTTPException
 
 from src.core import supabase_client as sb_mod
@@ -186,6 +187,12 @@ def test_authorize_requires_entitlement(client_as_user, fake_tables):
     assert res.status_code == 403
 
 
+def test_threads_authorize_requires_entitlement(client_as_user, fake_tables):
+    """Threads must have the same server-side paid gate as the Meta doors."""
+    res = client_as_user.get("/api/threads/oauth/authorize")
+    assert res.status_code == 403
+
+
 def test_authorize_returns_url_when_entitled(client, fake_tables):
     """Admin session (conftest client) + granted entitlement → authorize URL."""
     me = client.get("/auth/me").json()
@@ -194,3 +201,24 @@ def test_authorize_returns_url_when_entitled(client, fake_tables):
     assert res.status_code == 200
     assert res.json()["authorize_url"].startswith("https://www.facebook.com/v26.0/dialog/oauth")
     assert "state=" in res.json()["authorize_url"]
+
+
+def test_instagram_authorize_includes_verifiable_csrf_state(client, fake_tables, monkeypatch):
+    """The callback rejects unsigned/missing state, so authorization must send it."""
+    from src.config import settings
+    monkeypatch.setattr(settings, "IG_APP_ID", "instagram-test-app")
+    res = client.get("/api/connections/instagram/authorize")
+    assert res.status_code == 200
+    query = parse_qs(urlparse(res.json()["authorize_url"]).query)
+    assert query["state"]
+    assert conn_routes._verify_state(query["state"][0], "instagram")
+
+
+@pytest.mark.parametrize("platform", ["facebook", "instagram"])
+def test_invalid_oauth_callback_returns_to_customer_account(anon_client, platform):
+    res = anon_client.get(
+        f"/api/connections/{platform}/callback?code=unused&state=invalid",
+        follow_redirects=False,
+    )
+    assert res.status_code == 303
+    assert res.headers["location"] == "/account?connect_error=invalid_state"

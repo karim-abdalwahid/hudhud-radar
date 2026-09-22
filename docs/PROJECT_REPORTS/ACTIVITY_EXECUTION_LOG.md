@@ -70,3 +70,9 @@
 - **Live database action:** تطبيق `20260917000100_guard_null_kb_query_embedding.sql` عبر `supabase db push --linked` بنجاح؛ semantic RPC لا يساهم بنتائج عند vector مفقود.
 - **Result:** الرفع لا يعتمد على disk؛ فشل DB صريح؛ البحث لا يعود لذاكرة مشتركة؛ content prompt يحمل معرفة session tenant فقط؛ batch embedding bounded وconnections exact-filtered.
 - **Evidence:** 43 اختبارًا مركزًا و**325 passed, 2 skipped** في suite الكامل؛ التفاصيل: archive 029 وسجل الجلسة 2026-09-16.
+
+## 2026-09-20 — Customer account, OAuth, and trial billing hardening
+- **Trigger:** Owner-authorized verification and repair of an external site audit and supplied account-page proposal.
+- **Completed:** Added `/account`, corrected account-safe rendering and Threads behavior, redirected OAuth to Account with Instagram CSRF state, made Analytics customer-visible but still owner-scoped, and repaired actual three-day trial checkout/webhook/entitlement behavior.
+- **Verification:** `339 passed, 2 skipped, 1 warning`; compile and diff checks passed. The supplied untracked `account/` folder was preserved untouched.
+- **Operational boundary:** No Polar secret was changed. Deployment needs a real Polar/Vercel configuration smoke test; cancellation semantics and Phase 9.4 metering/provider decisions remain pending.

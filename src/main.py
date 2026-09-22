@@ -240,6 +240,7 @@ from src.modules import billing_pages  # noqa: E402
 from src.modules import billing as billing_module  # noqa: E402
 from src.modules import legal as _legal
 from src.modules import connections as connections_module  # noqa: E402 — Phase 9.7
+from src.modules import account_page as account_page_module  # noqa: E402
 
 _auth_register_router(app)
 _pages_register(app)
@@ -265,6 +266,7 @@ billing_module.register(app)
 register_compliance_routes(app)
 _legal.register(app)
 connections_module.register(app)
+account_page_module.register(app)
 
 
 if __name__ == "__main__":

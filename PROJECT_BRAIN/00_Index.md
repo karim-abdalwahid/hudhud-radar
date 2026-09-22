@@ -39,6 +39,8 @@
 - [[ADMIN_TOOLS_PLAN]] — أدوات إدارة الموقع: أدوار المستخدمين (admin/developer/user) + حقن الأكواد المخصصة (Wave 9.9).
 - **الحالة التنفيذية الحالية:** Phase 9 الأساسية منفذة؛ 9.4/credits/provider integration جزئية، Meta Advanced Access خارجي، وWave 9.9/Phase 10 backlog. راجع [[PHASE_9_PLAN]].
 
+- **ملحق 2026-09-20:** صفحة Account ومسار OAuth والتجربة ثلاثية الأيام تحصّنت محليًا؛ تأكيد Polar/Vercel production smoke وقرار الإلغاء ما زالا مطلوبين. راجع [[PHASE_9_PLAN]] وarchive 030.
+
 ### 5. 📜 السجلات والذاكرة الدائمة والأرشيف
 - [[PROJECT_MEMORY]] — الرابط لسجل الذاكرة الدائم غير القابل للمسح.
 - [[000_ARCHIVE_CATALOG]] — فهرس وسجل الأرشيف التاريخي الشامل المرتب تسلسلياً.

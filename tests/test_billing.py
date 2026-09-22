@@ -157,6 +157,34 @@ def test_start_trial_grants_all_platforms_3_days(fake_billing):
     assert st["can_connect"] is True and st["status"] == "trialing"
 
 
+def test_trial_cannot_be_started_twice(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"t_once_{uuid.uuid4().hex[:6]}@hudhud.test")
+    assert svc.start_trial(u["id"]) is True
+    assert svc.has_used_trial(u["id"]) is True
+    assert svc.can_start_trial(u["id"]) is False
+    assert svc.start_trial(u["id"]) is False
+
+
+def test_paid_conversion_replaces_trial_expiry_with_paid_entitlements(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"t_convert_{uuid.uuid4().hex[:6]}@hudhud.test")
+    assert svc.start_trial(u["id"]) is True
+    svc.sync_from_platforms(u["id"], ["facebook", "instagram", "threads"],
+                            source="subscription", expires_at=None)
+    rows = [row for row in fake_billing["ent"].values() if row["user_id"] == u["id"]]
+    assert len(rows) == 3
+    assert {(row["source"], row["expires_at"]) for row in rows} == {("subscription", None)}
+
+
+def test_trial_checkout_rejects_user_with_recorded_trial(client: TestClient, fake_billing):
+    from src.modules.billing.services import entitlement_service
+    me = client.get("/auth/me").json()
+    assert entitlement_service.start_trial(me["user_id"]) is True
+    res = client.post("/api/billing/trial")
+    assert res.status_code == 409
+
+
 def test_trial_auto_expires(fake_billing):
     svc = EntitlementService()
     u = fake_billing["register_and_track"](f"t2_{uuid.uuid4().hex[:6]}@hudhud.test")

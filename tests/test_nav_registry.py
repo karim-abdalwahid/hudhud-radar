@@ -18,21 +18,23 @@ def _nav_of(client: TestClient, path: str) -> str:
 
 def test_admin_sees_all_nav_with_active_state(client: TestClient):
     nav = _nav_of(client, "/settings")
-    assert "/settings" in nav and "/identity" in nav and "/analytics" in nav
+    assert "/account" in nav and "/settings" in nav and "/identity" in nav and "/analytics" in nav
     assert 'nav-item active' in nav          # current page highlighted
-    # Wave 9.8: admin nav ships pre-separated - client titles (2) + a dev section
-    assert nav.count("nav-section-title") == 2
+    # Customer navigation has its own account and analytics sections; the
+    # developer console remains visually separated for admin-only tools.
+    assert nav.count("nav-section-title") == 4
     assert "client-nav-section" in nav and "dev-nav-section" in nav
     assert "dev-badge" in nav
-    assert nav.count('class="nav-item') == 12  # /users + /templates admin console entries
+    assert nav.count('class="nav-item') == 13  # account + /users + /templates
 
 
 def test_regular_user_hides_admin_nav(client_as_user: TestClient):
     nav = _nav_of(client_as_user, "/leads")
     assert "/leads" in nav
+    assert "/account" in nav
+    assert "/analytics" in nav
     assert "/settings" not in nav
     assert "/identity" not in nav
-    assert "/analytics" not in nav
     assert 'nav-item active' in nav
 
 

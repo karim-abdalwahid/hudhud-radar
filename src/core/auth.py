@@ -65,7 +65,6 @@ ADMIN_EXACT_PATHS = frozenset({
 ADMIN_PAGE_PATHS = frozenset({
     "/settings",
     "/identity",
-    "/analytics",
 })
 
 # Admin-only API path prefixes (any method)

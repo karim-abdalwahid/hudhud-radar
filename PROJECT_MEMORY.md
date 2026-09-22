@@ -1901,3 +1901,28 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 ### Post-release addendum — 2026-09-17T00:16:00+03:00
 - The implementation and its associated migration/tests/SOP/archive record were committed and pushed only to the approved repository: `fd80219 fix: harden tenant knowledge and content runtime` → `origin/main` at `karim-abdalwahid/hudhud-radar`.
 - No other repository was queried for write or changed. This addendum is appended after the push and does not replace any earlier record.
+
+---
+
+## [Entry 052] 2026-09-20 — Customer Account, OAuth, and Trial Billing Hardening
+- **Timestamp**: 2026-09-20T22:38:17+03:00
+- **Actor**: Owner & Codex
+- **Status**: ✅ IMPLEMENTED AND VERIFIED LOCALLY — DEPLOYMENT CHECK REMAINS EXTERNAL
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-19_session.md`
+- **Archived walkthrough**: `PROJECT_ARCHIVE/030_20260920_2238_account_oauth_billing_hardening.md`
+
+### Owner-authorized scope and independent audit verdict
+- The owner requested direct verification of an external site audit and three supplied account-page artifacts, and had already chosen a separate non-admin `/account` page for a pre-launch platform. The report was materially correct about the missing account surface, incorrect OAuth destination, and absent repeat-trial protection, but its statement that trials were already granted by webhook was not true in the inspected implementation.
+- The supplied untracked `account/` artifacts were not blindly applied or altered. Their useful product intent was implemented against the current module/security architecture, while an unsafe inline account-name handler and an incorrect Threads disconnect success path were corrected.
+
+### Completed implementation
+- Added a normal-user `/account` module with owner-scoped subscription, AI pause, connection, password, account, and logout controls. The renderer uses DOM APIs and event listeners rather than embedding account data in inline JavaScript. Entitled users may start the existing Threads OAuth connection from this surface.
+- OAuth callbacks for Facebook, Instagram, and Threads now return to `/account` with safe status handling; Instagram authorization now includes the signed CSRF state its callback requires. Threads OAuth is entitlement-gated and a failed disconnect is no longer shown as success.
+- Opened the already owner-scoped analytics page to normal users without granting access to admin settings. The sidebar reflects Account and Analytics correctly for each role.
+- Repaired the actual trial lifecycle: onboarding calls the billing trial API and follows the returned checkout URL; prior or active trials return conflict; verified trial events create three trial entitlements; paid activation refreshes trial entitlement source and expiry. Trial product configuration can no longer silently fall back to a paid product.
+- Aligned live customer-facing pages, templates, and Terms from an incorrect 14-day claim to the canonical three-day billing trial already used by the application.
+
+### Evidence, boundaries, and next decision
+- Verification passed: **339 passed, 2 skipped, 1 dependency-deprecation warning**, plus successful source compilation and whitespace validation. The skipped tests require `THREADS_APP_ID`, which is unavailable in this local runtime.
+- Supabase contains trial product mappings. The local runtime does not contain a Polar access token, so Codex did not claim a real checkout passed or change any secret. The owner must verify the deployment secret and Polar's three-day trial configuration before launch.
+- Phase 9.4 usage credits/provider selection remains unimplemented by design pending the documented product decision. Cancellation is also intentionally not guessed: decide end-of-period versus immediate revocation and customer-portal behavior before a cancellation endpoint is introduced.

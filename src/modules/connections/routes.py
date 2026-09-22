@@ -93,6 +93,8 @@ async def connections_overview(request: Request):
 @router.delete("/api/connections/{platform}", tags=["Connections"])
 async def disconnect_platform(platform: str, request: Request):
     s = _require_user(request)
+    if platform not in ("facebook", "instagram", "threads"):
+        raise HTTPException(status_code=404, detail="unknown platform")
     ok = connection_service.revoke(s["sub"], platform)
     if not ok:
         raise HTTPException(status_code=500, detail="disconnect failed")
@@ -123,7 +125,7 @@ async def facebook_authorize(request: Request):
 async def facebook_callback(request: Request, code: str = Query(...), state: str = Query(...)):
     user_id = _verify_state(state, "facebook")
     if not user_id:
-        return RedirectResponse("/settings?connect_error=invalid_state", status_code=303)
+        return RedirectResponse("/account?connect_error=invalid_state", status_code=303)
     import httpx
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -135,7 +137,7 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
                         "redirect_uri": _redirect_uri("facebook"), "code": code})
             if tok.status_code != 200:
                 logger.error(f"FB code exchange failed: {tok.text[:200]}")
-                return RedirectResponse("/settings?connect_error=facebook", status_code=303)
+                return RedirectResponse("/account?connect_error=facebook", status_code=303)
             short = tok.json().get("access_token")
             # → long-lived user token
             lng = await client.get(
@@ -155,7 +157,7 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
                                              "access_token": user_token})
             plist = (pages.json() if pages.status_code == 200 else {}).get("data", [])
             if not plist:
-                return RedirectResponse("/settings?connect_error=no_pages", status_code=303)
+                return RedirectResponse("/account?connect_error=no_pages", status_code=303)
         page = plist[0]
         ig = page.get("instagram_business_account") or {}
         saved = connection_service.store(
@@ -168,11 +170,11 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
                       "linked_ig_username": ig.get("username"),
                       "pages_count": len(plist)})
         if not saved:
-            return RedirectResponse("/settings?connect_error=store", status_code=303)
-        return RedirectResponse("/settings?connected=facebook", status_code=303)
+            return RedirectResponse("/account?connect_error=store", status_code=303)
+        return RedirectResponse("/account?connected=facebook", status_code=303)
     except Exception as e:
         logger.error(f"facebook callback error: {e}")
-        return RedirectResponse("/settings?connect_error=facebook", status_code=303)
+        return RedirectResponse("/account?connect_error=facebook", status_code=303)
 
 
 # --------------------------------------------------------------------------
@@ -191,6 +193,7 @@ async def instagram_authorize(request: Request):
         "redirect_uri": _redirect_uri("instagram"),
         "response_type": "code",
         "scope": IG_SCOPES,
+        "state": _sign_state(s["sub"], "instagram"),
     })
     return {"authorize_url": f"https://www.instagram.com/oauth/authorize?{params}"}
 
@@ -199,7 +202,7 @@ async def instagram_authorize(request: Request):
 async def instagram_callback(request: Request, code: str = Query(...), state: str = Query(...)):
     user_id = _verify_state(state, "instagram")
     if not user_id:
-        return RedirectResponse("/settings?connect_error=invalid_state", status_code=303)
+        return RedirectResponse("/account?connect_error=invalid_state", status_code=303)
     import httpx
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -209,7 +212,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
                 "redirect_uri": _redirect_uri("instagram"), "code": code})
             if tok.status_code != 200:
                 logger.error(f"IG code exchange failed: {tok.text[:200]}")
-                return RedirectResponse("/settings?connect_error=instagram", status_code=303)
+                return RedirectResponse("/account?connect_error=instagram", status_code=303)
             j = tok.json()
             short, ig_uid = j.get("access_token"), str(j.get("user_id", ""))
             lng = await client.get("https://graph.instagram.com/access_token", params={
@@ -227,7 +230,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
             metadata={"platform_user_id": str(ig_uid),
                       "token_expires_in_days": 60})
         if not saved:
-            return RedirectResponse("/settings?connect_error=store", status_code=303)
+            return RedirectResponse("/account?connect_error=store", status_code=303)
         # 60-day token expiry recorded for refresh scheduling
         from datetime import datetime, timedelta, timezone
         from src.core.supabase_client import supabase_db
@@ -239,7 +242,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
                                              + timedelta(days=60)).isoformat()})
         except Exception:
             pass
-        return RedirectResponse("/settings?connected=instagram", status_code=303)
+        return RedirectResponse("/account?connected=instagram", status_code=303)
     except Exception as e:
         logger.error(f"instagram callback error: {e}")
-        return RedirectResponse("/settings?connect_error=instagram", status_code=303)
+        return RedirectResponse("/account?connect_error=instagram", status_code=303)

@@ -91,9 +91,9 @@ any conversation at any time using the Human Takeover control.</p>
 
 <h2>7. Billing, trials, and refunds</h2>
 <p>Current plans and prices are shown on the website. Where a free trial is
-offered (for example, a 14-day trial), it applies to the plan stated at
-sign-up and converts only if you confirm a paid subscription. Fees are billed
-in advance and are non-refundable except where required by law or stated
+offered (currently three days), the checkout page states its payment,
+renewal, and cancellation terms before you complete it. Fees are billed in
+advance and are non-refundable except where required by law or stated
 otherwise at purchase. We may change prices with reasonable advance notice.</p>
 
 <h2>8. Acceptable use</h2>
@@ -204,10 +204,10 @@ Gemini من Google) اعتماداً على بيانات حساباتك المت
 إيقاف الردود الآلية لأي محادثة متى شئت عبر خاصية «تولّي المحادثة شخصياً».</p>
 
 <h2>7. الفوترة والتجربة والاسترداد</h2>
-<p>الخطط والأسعار الحالية معروضة على الموقع. عند توفّر تجربة مجانية (مثل تجربة
-14 يوماً) فهي تخص الخطة المعلنة عند التسجيل ولا تتحول لاشتراك مدفوع إلا بعد
-تأكيدك. الرسوم تُحصّل مقدماً وغير قابلة للاسترداد إلا إذا طلب القانون ذلك أو
-نُصّ على خلافه عند الشراء. قد نغيّر الأسعار بإشعار مسبق معقول.</p>
+<p>الخطط والأسعار الحالية معروضة على الموقع. عند توفّر تجربة مجانية (مدتها
+الحالية 3 أيام)، تعرض صفحة الدفع شروط وسيلة الدفع والتجديد والإلغاء قبل إتمامها.
+الرسوم تُحصّل مقدماً وغير قابلة للاسترداد إلا إذا طلب القانون ذلك أو نُصّ على
+خلافه عند الشراء. قد نغيّر الأسعار بإشعار مسبق معقول.</p>
 
 <h2>8. الاستخدام المقبول</h2>
 <p>توافق على ألا تستخدم الخدمة للرسائل المزعجة أو الجماعية غير المرغوبة، أو

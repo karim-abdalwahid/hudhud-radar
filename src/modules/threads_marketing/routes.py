@@ -54,8 +54,11 @@ async def threads_connection_status(request: Request):
 
 @router.get("/api/threads/oauth/authorize", tags=["Threads"])
 async def threads_oauth_authorize(request: Request):
-    """Builds the Threads OAuth authorization URL (admin clicks it to connect)."""
-    result = threads_oauth_manager.build_authorize_url(_require_session_user_id(request))
+    """Build the signed-in, entitled customer's Threads OAuth URL."""
+    user_id = _require_session_user_id(request)
+    from src.modules.connections.service import connection_service
+    connection_service.assert_entitled(user_id, "threads")
+    result = threads_oauth_manager.build_authorize_url(user_id)
     if result.get("status") == "error":
         raise HTTPException(status_code=400, detail=result["detail"])
     return result
@@ -67,17 +70,17 @@ async def threads_oauth_callback(request: Request, code: Optional[str] = None, s
     OAuth redirect target. Validates the CSRF state, exchanges the code for a
     60-day token, persists it (per-user when a session rides along — the
     normal path; legacy global for the admin flow), then redirects to
-    /settings with a result flag.
+    /account with a result flag.
     """
     user_id = _session_user_id(request)
     if not user_id:
         return RedirectResponse(url="/login?threads=expired_session", status_code=303)
     if not code or not threads_oauth_manager.validate_state(state, user_id):
-        return RedirectResponse(url="/settings?threads=error", status_code=303)
+        return RedirectResponse(url="/account?threads=error", status_code=303)
     result = await threads_oauth_manager.exchange_code(code, user_id=user_id)
     if result.get("status") != "success":
-        return RedirectResponse(url="/settings?threads=error", status_code=303)
-    return RedirectResponse(url=f"/settings?threads=connected&username={result.get('username', '')}", status_code=303)
+        return RedirectResponse(url="/account?threads=error", status_code=303)
+    return RedirectResponse(url="/account?threads=connected", status_code=303)
 
 
 @router.post("/api/threads/oauth/refresh", tags=["Threads"])
@@ -93,8 +96,9 @@ async def threads_oauth_refresh(request: Request):
 async def threads_disconnect(request: Request):
     """Removes stored Threads credentials."""
     from src.modules.connections.service import connection_service
-    return {"status": "success" if connection_service.revoke(
-        _session_user_id(request), "threads") else "error"}
+    if not connection_service.revoke(_require_session_user_id(request), "threads"):
+        raise HTTPException(status_code=500, detail="disconnect failed")
+    return {"status": "success", "platform": "threads", "connected": False}
 
 
 @router.post("/api/threads/publish", tags=["Threads"])

@@ -63,6 +63,7 @@ const HUDHUD_TRANSLATIONS = {
 
         // Global Nav & Sidebar
         "nav.conversations": "Conversations & AI Agent",
+        "nav.account": "My Account",
         "nav.inbox": "Live Inbox",
         "nav.onboarding": "Agent Setup",
         "nav.workspaces": "Workspaces",
@@ -155,7 +156,7 @@ const HUDHUD_TRANSLATIONS = {
         "landing.pricing.scale_price": "$199",
         "landing.pricing.scale_period": "/month",
         "landing.pricing.scale_desc": "For high-volume brands & marketing agencies.",
-        "landing.pricing.cta": "Start 14-Day Free Trial",
+        "landing.pricing.cta": "Start 3-Day Free Trial",
 
         // Landing: FAQ
         "landing.faq.pill": "Questions & Answers",
@@ -682,6 +683,7 @@ const HUDHUD_TRANSLATIONS = {
 
         // Global Nav & Sidebar
         "nav.conversations": "المحادثات والوكيل الذكي",
+        "nav.account": "حسابي",
         "nav.inbox": "صندوق الوارد المباشر",
         "nav.onboarding": "إعداد الوكيل الذكي",
         "nav.workspaces": "مساحات العمل",
@@ -845,7 +847,7 @@ const HUDHUD_TRANSLATIONS = {
         "landing.pricing.scale_price": "$199",
         "landing.pricing.scale_period": "/شهرياً",
         "landing.pricing.scale_desc": "للعلامات التجارية الكبرى ووكالات التسويق.",
-        "landing.pricing.cta": "ابدأ تجربة مجانية لمدة 14 يوماً",
+        "landing.pricing.cta": "ابدأ تجربة مجانية لمدة 3 أيام",
 
         // Landing: FAQ
         "landing.faq.pill": "الأسئلة الشائعة",

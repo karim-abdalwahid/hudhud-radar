@@ -178,3 +178,19 @@
 2. smoke test حي لمستأجرين منفصلين.
 3. قرار وتنفيذ 9.4 (Gemini-only v1 أم provider لكل عميل، persona/settings، usage ledger وcredit enforcement).
 4. Wave 9.9 ثم Phase 10 فقط بحسب أولوية المالك والعملاء الفعليين.
+
+---
+
+## ملحق حالة الحساب والفوترة — 2026-09-20
+
+> هذا ملحق حالة تنفيذي؛ لا يعيد كتابة التاريخ أو يغيّر قرارات الخطة السابقة.
+> الدليل: `PROJECT_MEMORY.md` Entry 052 وarchive 030.
+
+| البند | الحالة الصادقة | الدليل/المتبقي |
+|---|---|---|
+| صفحة Account للعميل | ✅ منفذة | `/account` منفصلة عن `/settings`، وتعرض الاشتراك وAI pause والاتصالات وكلمة المرور والحساب والخروج. |
+| Analytics للعميل | ✅ متاح بحدود المالك | أزيلت منه بوابة صفحة admin؛ endpoints ما زالت تستنتج `user_id` من الجلسة. |
+| OAuth return + CSRF | ✅ منفذ | FB/IG/Threads تعود إلى `/account`؛ Instagram state موقّع؛ Threads entitlement-gated. |
+| Trial lifecycle v1 | 🟡 منطق التطبيق مكتمل | trial API/checkouts/webhook/entitlements محمية وتستخدم 3 أيام؛ يلزم smoke حقيقي بعد تأكيد Polar secret/products في بيئة النشر. |
+| Cancellation / customer portal | ⏳ قرار منتج مطلوب | لا يُنفذ قبل اختيار end-of-period أو immediate revoke وسلوك trial/portal. |
+| Usage events / credits / provider runtime | ⏳ Phase 9.4 | يبقى قرار Entry 050 حاكمًا؛ لا توجد metering أو provider selection per customer حتى الآن. |

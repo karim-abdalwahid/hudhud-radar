@@ -217,9 +217,48 @@ def test_parse_event_products_array_resolution(client, polar_env, monkeypatch):
     assert set(parsed["platforms"]) == {"instagram", "threads"}
 
 
-def test_parse_event_ignores_trial_products(client, polar_env):
+def test_parse_event_identifies_trial_products_without_granting_paid_platforms(client, polar_env, monkeypatch):
     g = PolarGateway()
+    monkeypatch.setattr(g, "_product_ids", lambda: {
+        "trial-facebook": "1719ac1c-36f9-4956-ab06-2ab29f44ffc4",
+    })
     payload = _event_payload("evt-trial", "checkout.created", "x@test.com", [])
     payload["data"]["product_id"] = "1719ac1c-36f9-4956-ab06-2ab29f44ffc4"  # trial-facebook
     parsed = g.parse_event({}, payload)
-    assert parsed["platforms"] == []  # trial products don't grant directly
+    assert parsed["platforms"] == []  # trial products don't grant paid platforms directly
+    assert parsed["is_trial"] is True
+
+
+def test_trial_webhook_starts_single_local_trial(client, polar_env, fake_billing):
+    u = fake_billing["register"](f"trial_{uuid.uuid4().hex[:6]}@hudhud.test")
+    payload = _event_payload("evt-trial-start", "subscription.active", u["email"],
+                             ["facebook", "instagram", "threads"])
+    payload["data"]["metadata"]["trial"] = "true"
+    payload["data"]["status"] = "trialing"
+    body = json.dumps(payload).encode()
+    response = client.post("/api/payments/webhook/polar", content=body,
+                           headers=_make_sig(settings.POLAR_WEBHOOK_SECRET, body))
+    assert response.status_code == 200
+    from src.modules.billing.services import entitlement_service
+    status = entitlement_service.subscription_status(u["id"])
+    assert status["status"] == "trialing"
+    assert set(status["platforms"]) == {"facebook", "instagram", "threads"}
+    assert entitlement_service.can_start_trial(u["id"]) is False
+
+
+def test_trial_product_converted_to_active_is_not_started_as_a_second_trial(client, polar_env, fake_billing):
+    g = PolarGateway()
+    payload = _event_payload("evt-trial-converted", "subscription.active", "x@test.com", [])
+    payload["data"]["metadata"]["trial"] = "true"
+    payload["data"]["status"] = "active"
+    parsed = g.parse_event({}, payload)
+    assert parsed["is_trial"] is True
+    assert parsed["subscription_status"] == "active"
+
+
+def test_trial_checkout_never_falls_back_to_paid_products(monkeypatch):
+    gateway = PolarGateway()
+    monkeypatch.setattr(gateway, "_token", lambda: "polar-test-token")
+    monkeypatch.setattr(gateway, "_product_ids", lambda: {"facebook": "paid-facebook"})
+    with pytest.raises(RuntimeError, match="التجربة المجانية غير مهيأة"):
+        gateway.start_trial({"id": "u1", "email": "u1@example.test"}, "https://example.test/success")

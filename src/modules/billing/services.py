@@ -82,12 +82,24 @@ class EntitlementService:
                             source: str = "subscription",
                             expires_at: Optional[str] = None) -> int:
         """Sets platform:* entitlements EXACTLY to the given list —
-        grants missing, revokes not-included (payment truth)."""
+        grants/refreshes wanted rows and revokes rows not included (payment
+        truth).  Refreshing matters when a trial converts: the existing
+        entitlement must lose its trial expiry and become a paid entitlement.
+        """
         wanted = {f"platform:{p}" for p in platforms}
-        current = {e for e in self.user_entitlements(user_id) if e.startswith("platform:")}
-        granted = sum(1 for e in wanted - current if self.grant(user_id, e, source, expires_at))
+        try:
+            rows = supabase_db.select("user_entitlements", {"user_id": user_id}) or []
+        except Exception as e:
+            logger.error(f"entitlement sync failed for {user_id}: {e}")
+            return 0
+        current = {r.get("entitlement") for r in rows if str(r.get("entitlement") or "").startswith("platform:")}
+        changed = 0
+        for entitlement in wanted:
+            row = next((r for r in rows if r.get("entitlement") == entitlement), None)
+            if not row or row.get("source") != source or row.get("expires_at") != expires_at:
+                changed += int(self.grant(user_id, entitlement, source, expires_at))
         revoked = sum(1 for e in current - wanted if self.revoke(user_id, e))
-        return granted + revoked
+        return changed + revoked
 
     # ---- Subscription state ------------------------------------------------
     def get_subscription(self, user_id: str) -> Optional[Dict[str, Any]]:
@@ -101,12 +113,51 @@ class EntitlementService:
             return supabase_db.update("user_subscriptions", sub["id"], fields)
         return supabase_db.insert("user_subscriptions", {"user_id": user_id, **fields})
 
-    def start_trial(self, user_id: str) -> bool:
-        """3-day all-platforms trial (card captured at checkout — enforced upstream)."""
+    def has_used_trial(self, user_id: str) -> bool:
+        """Whether this user has ever received a Hudhud trial.
+
+        ``trial_ends_at`` is deliberately retained after expiry/cancellation, so
+        it is an auditable, durable one-trial marker rather than a status that
+        can be reset by a later subscription update.
+        """
+        try:
+            sub = self.get_subscription(user_id) or {}
+            return bool(sub.get("trial_ends_at"))
+        except Exception as e:
+            # A failed ownership/payment lookup must not issue a free period.
+            logger.error(f"trial eligibility lookup failed for {user_id}: {e}")
+            return True
+
+    def can_start_trial(self, user_id: str) -> bool:
+        """Returns true only for a user without a current or recorded trial."""
+        try:
+            sub = self.get_subscription(user_id) or {}
+            return (not self.has_used_trial(user_id)
+                    and sub.get("status") not in ("trialing", "active"))
+        except Exception as e:
+            logger.error(f"trial eligibility lookup failed for {user_id}: {e}")
+            return False
+
+    def start_trial(self, user_id: str, payment_provider: Optional[str] = None,
+                    provider_subscription_id: Optional[str] = None) -> bool:
+        """Starts exactly one 3-day all-platforms trial after a verified webhook.
+
+        Checkout creation alone does not grant access.  The gateway event must
+        pass signature verification first, then this method persists the trial
+        marker and its scoped entitlements atomically at the service boundary.
+        """
+        if not self.can_start_trial(user_id):
+            logger.warning(f"Trial denied for {user_id}: already active or previously used")
+            return False
         from datetime import timedelta
         now = datetime.now(timezone.utc)
         trial_end = (now + timedelta(days=TRIAL_DAYS)).isoformat()
-        self.upsert_subscription(user_id, status="trialing", trial_ends_at=trial_end)
+        fields: Dict[str, Any] = {"status": "trialing", "trial_ends_at": trial_end}
+        if payment_provider:
+            fields["payment_provider"] = payment_provider
+        if provider_subscription_id:
+            fields["provider_subscription_id"] = provider_subscription_id
+        self.upsert_subscription(user_id, **fields)
         for e in TRIAL_ENTITLEMENTS:
             self.grant(user_id, e, source="trial", expires_at=trial_end)
         logger.info(f"Trial started for {user_id} (ends {trial_end})")

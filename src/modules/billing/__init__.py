@@ -163,20 +163,41 @@ def register(app: FastAPI) -> None:
         from src.modules.billing.services import entitlement_service
         kind = event.get("kind")
         if kind == "subscription_activated" and target_user:
+            is_trial = bool(event.get("is_trial"))
             platforms = event.get("platforms") or []
-            if platforms:
-                entitlement_service.sync_from_platforms(target_user["id"], platforms,
-                                                        source="subscription")
-            entitlement_service.upsert_subscription(
-                target_user["id"], status="active",
-                payment_provider=provider,
-                provider_subscription_id=event.get("subscription_ref"))
+            upstream_status = str(event.get("subscription_status") or "").lower()
+            if is_trial and upstream_status not in ("active", "past_due"):
+                applied = entitlement_service.start_trial(
+                    target_user["id"], payment_provider=provider,
+                    provider_subscription_id=event.get("subscription_ref"),
+                )
+                if not applied:
+                    logger.warning("Trial webhook ignored for user %s: trial was already used", target_user["id"])
+            else:
+                applied = True
+                # Trial products represent all three channels.  At conversion
+                # Polar may still identify the original trial product rather
+                # than repeat our checkout metadata, so retain all trial
+                # capabilities while changing their local source to paid.
+                if is_trial and not platforms:
+                    from src.modules.billing.services import TRIAL_ENTITLEMENTS
+                    platforms = [item.split(":", 1)[1] for item in TRIAL_ENTITLEMENTS]
+                if platforms:
+                    entitlement_service.sync_from_platforms(target_user["id"], platforms,
+                                                            source="subscription")
+                entitlement_service.upsert_subscription(
+                    target_user["id"], status="active",
+                    payment_provider=provider,
+                    provider_subscription_id=event.get("subscription_ref"))
             try:
-                from src.modules.notifications.service import notification_service
-                notification_service.create(target_user["id"],
-                    "✅ تم تفعيل اشتراكك",
-                    f"المنصات المفعلة: {', '.join(platforms) if platforms else 'أصبحت نشطة'}",
-                    "success", {"job": "payment"})
+                if applied:
+                    from src.modules.notifications.service import notification_service
+                    trial_started = is_trial and upstream_status not in ("active", "past_due")
+                    title = "✅ بدأت تجربتك المجانية" if trial_started else "✅ تم تفعيل اشتراكك"
+                    detail = ("كل المنصات متاحة لمدة 3 أيام"
+                              if trial_started else f"المنصات المفعلة: {', '.join(platforms) if platforms else 'أصبحت نشطة'}")
+                    notification_service.create(target_user["id"], title, detail,
+                                                "success", {"job": "payment", "trial": trial_started})
             except Exception:
                 pass
         elif kind == "subscription_canceled" and target_user:
@@ -290,6 +311,12 @@ def register(app: FastAPI) -> None:
     async def start_trial_checkout(request: Request):
         """3-day all-platforms trial — requires card capture via the gateway."""
         session = _me(request)
+        from src.modules.billing.services import entitlement_service
+        if not entitlement_service.can_start_trial(session["sub"]):
+            raise HTTPException(
+                status_code=409,
+                detail="لقد استخدمت التجربة المجانية أو لديك اشتراك نشط بالفعل",
+            )
         user = {"id": session["sub"], "email": session["email"]}
         from src.payments.registry import active_gateway
         gateway = active_gateway()
