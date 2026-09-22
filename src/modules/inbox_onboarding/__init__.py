@@ -102,7 +102,7 @@ async def get_inbox_conversations(request: Request):
             if sender == "lead" and m.get("sent_at"):
                 last_inbound_at = m.get("sent_at")
             message_items.append({
-                "sender": "agent" if sender == "agent" else "customer",
+                "sender": "human" if ((m.get("metadata") or {}).get("sent_by") == "human" or sender in ("admin", "human")) else ("agent" if sender == "agent" else "customer"),
                 "text": m.get("content") or "",
                 "time": m.get("sent_at") or "",
                 "mid": m.get("platform_message_id") or "",
@@ -205,7 +205,7 @@ async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_m
         user_id=owner_user_id,
         platform=platform,
         platform_message_id=send_result.get("message_id"),
-        sender_type=SenderType.AGENT,
+        sender_type=SenderType.ADMIN if (extra_meta or {}).get("sent_by") == "human" else SenderType.AGENT,
         content=text,
         sent_at=datetime.now(tz.utc),
         metadata=extra_meta or {},

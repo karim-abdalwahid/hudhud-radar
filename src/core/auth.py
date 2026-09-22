@@ -57,7 +57,6 @@ PUBLIC_PATH_PREFIXES = (
 ADMIN_EXACT_PATHS = frozenset({
     "/api/meta/exchange-token",
     "/api/meta/user-pages",
-    "/api/meta/sync-posts",
     "/api/content/scheduler/trigger",
 })
 

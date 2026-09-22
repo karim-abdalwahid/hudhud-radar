@@ -277,6 +277,7 @@
                                     <button type="button" class="btn-action active-filter" onclick="setLiveFilterPlatform('all')" id="flt-plat-all" style="background:var(--accent-blue);color:#fff;" data-i18n="st.filter_all">All Platforms</button>
                                     <button type="button" class="btn-action" onclick="setLiveFilterPlatform('instagram')" id="flt-plat-ig" data-i18n="st.filter_ig">📸 Instagram</button>
                                     <button type="button" class="btn-action" onclick="setLiveFilterPlatform('facebook')" id="flt-plat-fb" data-i18n="st.filter_fb">📘 Facebook</button>
+                                    <button type="button" class="btn-action" onclick="setLiveFilterPlatform('threads')" id="flt-plat-threads">🧵 Threads</button>
                                 </div>
                             </div>
                         </div>
@@ -653,6 +654,7 @@
                 const postsCount = _allLiveMetaPosts.filter(p => p.post_type === 'post').length;
                 const fbCount = _allLiveMetaPosts.filter(p => p.platform === 'facebook').length;
                 const igCount = _allLiveMetaPosts.filter(p => p.platform === 'instagram').length;
+                const thCount = _allLiveMetaPosts.filter(p => p.platform === 'threads').length;
 
                 // Update filter buttons labels
                 const fltTypeAll = document.getElementById('flt-type-all');
@@ -661,6 +663,7 @@
                 const fltPlatAll = document.getElementById('flt-plat-all');
                 const fltPlatFb = document.getElementById('flt-plat-fb');
                 const fltPlatIg = document.getElementById('flt-plat-ig');
+                const fltPlatTh = document.getElementById('flt-plat-threads');
 
                 if (fltTypeAll) fltTypeAll.textContent = `${t('st.filter_all')} (${_allLiveMetaPosts.length})`;
                 if (fltTypeReels) fltTypeReels.textContent = `${t('st.filter_reels')} (${reelsCount})`;
@@ -669,6 +672,7 @@
                 if (fltPlatAll) fltPlatAll.textContent = `${t('st.filter_all')} (${_allLiveMetaPosts.length})`;
                 if (fltPlatFb)  fltPlatFb.textContent  = `${t('st.filter_fb')} (${fbCount})`;
                 if (fltPlatIg)  fltPlatIg.textContent  = `${t('st.filter_ig')} (${igCount})`;
+                if (fltPlatTh)  fltPlatTh.textContent  = `🧵 Threads (${thCount})`;
 
                 _currentPage = 1;
                 renderLiveMetaView();
@@ -715,14 +719,14 @@
 
         function setLiveFilterPlatform(platform) {
             _liveFilterPlatform = platform;
-            ['flt-plat-all', 'flt-plat-fb', 'flt-plat-ig'].forEach(id => {
+            ['flt-plat-all', 'flt-plat-fb', 'flt-plat-ig', 'flt-plat-threads'].forEach(id => {
                 const btn = document.getElementById(id);
                 if (btn) {
                     btn.style.background = '';
                     btn.style.color = '';
                 }
             });
-            const activeId = platform === 'all' ? 'flt-plat-all' : (platform === 'facebook' ? 'flt-plat-fb' : 'flt-plat-ig');
+            const activeId = platform === 'all' ? 'flt-plat-all' : (platform === 'facebook' ? 'flt-plat-fb' : (platform === 'instagram' ? 'flt-plat-ig' : 'flt-plat-threads'));
             const activeBtn = document.getElementById(activeId);
             if (activeBtn) {
                 activeBtn.style.background = 'var(--accent-blue)';
@@ -854,6 +858,8 @@
                     platformBadge = isReel
                         ? '<span class="badge badge-ig" style="white-space:nowrap;flex-shrink:0;font-size:11px;padding:3px 8px;line-height:1.2;background:#fdf2f8;color:#be185d;border:1px solid #fbcfe8;">🎬 Instagram Reel</span>'
                         : '<span class="badge badge-ig" style="white-space:nowrap;flex-shrink:0;font-size:11px;padding:3px 8px;line-height:1.2;background:#fdf2f8;color:#be185d;border:1px solid #fbcfe8;">📸 Instagram Post</span>';
+                } else if (post.platform === 'threads') {
+                    platformBadge = '<span class="badge badge-threads" style="white-space:nowrap;flex-shrink:0;font-size:11px;padding:3px 8px;line-height:1.2;background:#f8fafc;color:#0f172a;border:1px solid #cbd5e1;">🧵 Threads Post</span>';
                 } else {
                     platformBadge = isReel
                         ? '<span class="badge badge-fb" style="white-space:nowrap;flex-shrink:0;font-size:11px;padding:3px 8px;line-height:1.2;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">🎬 Facebook Reel</span>'
@@ -998,10 +1004,45 @@
                 const d = await r.json();
                 if (d.status !== 'success') { box.innerHTML = '<div style="font-size:12px;color:#dc2626;">' + (d.detail || 'Failed') + '</div>'; return; }
                 const replies = d.replies || [];
-                box.innerHTML = replies.length
+                const repliesList = replies.length
                     ? replies.map(x => `<div style="font-size:12.5px; padding:6px 10px; border-bottom:1px solid var(--border-default);"><strong>@${x.username || 'user'}</strong>: ${x.text || ''}</div>`).join('')
-                    : '<div style="font-size:12px; color:var(--text-muted);">No replies yet.</div>';
+                    : '<div style="font-size:12px; color:var(--text-muted); padding:6px 0;">No replies yet.</div>';
+                
+                const composerHtml = `
+                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border-default);">
+                        <div style="display:flex; gap:6px;">
+                            <input type="text" id="reply-input-${threadId}" placeholder="Write a public reply on Threads..." style="flex:1; font-size:12px; padding:6px 10px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-surface); color:var(--text-default);" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendThreadReply('${threadId}');}" />
+                            <button class="btn-primary" style="font-size:11.5px; padding:6px 12px; flex-shrink:0;" onclick="sendThreadReply('${threadId}')">Reply ↵</button>
+                        </div>
+                        <div id="reply-status-${threadId}" style="font-size:11px; margin-top:4px;"></div>
+                    </div>`;
+                box.innerHTML = repliesList + composerHtml;
             } catch (e) { box.innerHTML = '<div style="font-size:12px;color:#dc2626;">' + e + '</div>'; }
+        }
+
+        async function sendThreadReply(threadId) {
+            const input = document.getElementById('reply-input-' + threadId);
+            const statusBox = document.getElementById('reply-status-' + threadId);
+            const text = (input ? input.value : '').trim();
+            if (!text) return;
+            if (statusBox) statusBox.innerHTML = '<span style="color:var(--text-muted);">Sending reply via Threads API…</span>';
+            try {
+                const r = await fetch(`/api/threads/${threadId}/reply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const d = await r.json();
+                if (r.ok && d.status === 'success') {
+                    if (input) input.value = '';
+                    if (statusBox) statusBox.innerHTML = '<span style="color:#059669; font-weight:600;">✓ Reply successfully published to Meta Threads!</span>';
+                    setTimeout(() => viewThreadReplies(threadId), 1800);
+                } else {
+                    if (statusBox) statusBox.innerHTML = `<span style="color:#dc2626;">Failed: ${d.detail || 'Error'}</span>`;
+                }
+            } catch (e) {
+                if (statusBox) statusBox.innerHTML = `<span style="color:#dc2626;">Error: ${e}</span>`;
+            }
         }
 
         async function deleteMyThread(threadId) {

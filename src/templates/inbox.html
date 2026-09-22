@@ -563,6 +563,7 @@
                         ${m.text}
                     </div>
                     ${m.sender === 'agent' ? `<span class="ai-badge-pill">${isAr ? '🤖 رد الوكيل الذكي' : '🤖 AI Agent'}</span>` : ''}
+                    ${m.sender === 'human' ? `<span class="human-badge-pill" style="font-size:10px; color:#10b981; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.25); border-radius:4px; padding:1px 6px; margin-top:2px; display:inline-block;">${isAr ? '👤 موظف بشري' : '👤 Human Agent'}</span>` : ''}
                     <div style="font-size: 10px; color: var(--text-muted); margin-top: 3px; align-self: ${m.sender === 'customer' ? 'flex-start' : 'flex-end'};">
                         ${m.time}
                     </div>
@@ -632,7 +633,7 @@
                     conv.isHumanTakeover = true;
                     const now = new Date();
                     const timeStr = `${now.getHours()}:${now.getMinutes() < 10 ? '0' : ''}${now.getMinutes()}`;
-                    conv.messages.push({ sender: 'outgoing', text, time: timeStr });
+                    conv.messages.push({ sender: 'human', text, time: timeStr });
                 } else {
                     alert(res.detail || 'تعذر إرسال الرسالة');
                 }

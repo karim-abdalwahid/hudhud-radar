@@ -26,10 +26,10 @@ router = APIRouter()
 FB_SCOPES = ("pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,"
              "pages_manage_posts,pages_read_user_content,read_insights,instagram_basic,"
              "instagram_manage_messages,instagram_manage_comments,instagram_content_publish,"
-             "pages_utility_messaging")
+             "pages_utility_messaging,pages_manage_engagement,instagram_manage_engagement")
 IG_SCOPES = ("instagram_business_basic,instagram_business_manage_insights,"
              "instagram_business_content_publish,instagram_business_manage_comments,"
-             "instagram_business_manage_messages")
+             "instagram_business_manage_messages,instagram_manage_engagement")
 
 
 # --------------------------------------------------------------------------

@@ -6,7 +6,7 @@ let lastMetaData = null;
 const hudhudRoleManager = {
     // Admin-only surfaces (server 403s non-admins). Client View hides ALL of
     // them; Dev Console shows them and hides client workspace sections.
-    DEV_ROUTES: ['/settings', '/identity', '/analytics', '/users', '/templates'],
+    DEV_ROUTES: ['/settings', '/identity', '/users', '/templates'],
     _isAdmin: false,
 
     isDevRoute() {

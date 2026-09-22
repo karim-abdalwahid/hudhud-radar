@@ -83,24 +83,46 @@ async def get_live_meta_posts(
     request: Request,
     platform: Optional[str] = Query("all"),
     post_type: Optional[str] = Query("all"),
-    limit: Optional[int] = Query(None, ge=1, le=5000)
+    limit: Optional[int] = Query(50, ge=1, le=500),
 ):
-    """The old feed cache is global and cannot safely serve SaaS customers."""
-    _require_session_user(request)
-    raise HTTPException(
-        status_code=409,
-        detail="Per-account Meta feed sync is not available yet; use Content Studio for posts you create here.",
+    """Fetches real published posts across connected platforms for the authenticated user."""
+    from datetime import datetime, timezone
+    from src.modules.meta.tenant_feed_service import tenant_feed_service
+
+    user_id = _require_session_user(request)
+    posts = await tenant_feed_service.get_tenant_posts(
+        user_id=user_id,
+        platform=platform or "all",
+        limit=limit or 50,
     )
+    if post_type and post_type != "all":
+        posts = [p for p in posts if p.get("post_type") == post_type]
+    return {
+        "status": "success",
+        "count": len(posts),
+        "posts": posts,
+        "cache_updated_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @router.post("/api/meta/sync-posts", tags=["Meta Integration"])
 async def sync_live_meta_posts(request: Request):
-    """Refuse the old global cache sync instead of mixing customer accounts."""
-    _require_session_user(request)
-    raise HTTPException(
-        status_code=409,
-        detail="Per-account Meta feed sync is not available yet; the legacy global sync is disabled for tenant safety.",
+    """Refreshes live posts across connected platforms for the authenticated user."""
+    from datetime import datetime, timezone
+    from src.modules.meta.tenant_feed_service import tenant_feed_service
+
+    user_id = _require_session_user(request)
+    posts = await tenant_feed_service.get_tenant_posts(
+        user_id=user_id,
+        platform="all",
+        limit=50,
     )
+    return {
+        "status": "success",
+        "synced": len(posts),
+        "posts": posts,
+        "cache_updated_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @router.post("/api/meta/configure", tags=["Meta Integration"])

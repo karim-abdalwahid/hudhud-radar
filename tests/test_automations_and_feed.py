@@ -92,9 +92,11 @@ def test_automations_crud_and_simulation(client, monkeypatch):
 
 
 def test_global_meta_feed_is_disabled_for_tenant_safety(client):
-    """The old shared feed cache must not be exposed to any workspace."""
+    """The old shared feed cache must not be exposed; per-tenant feed returns safe isolated posts."""
     res = client.get("/api/meta/posts?platform=all&post_type=all&limit=100")
-    assert res.status_code == 409
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"
+    assert res.json()["posts"] == []
 
 
 def test_logo_unification_and_automations_page(client):
