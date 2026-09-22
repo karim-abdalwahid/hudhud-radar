@@ -1941,3 +1941,7 @@ Owner directive: "??? ???? ?????? ?? ????? ??????" ? PostHog (the last unimpleme
 - The reviewer did not generally disallow HudhudRadar's social-selling use case. Rejections state that the videos failed to demonstrate complete Meta consent and the visible end-to-end result. The explicit disallowed request is `instagram_manage_contents`.
 - The audit separates live supported paths from stale plans: do not resubmit utility messaging, Page/Instagram content import, legacy Instagram insights, Threads mentions, or the invisible Threads reply path. Human Agent and engagement scopes require documented implementation alignment before an honest submission.
 - No application code, permission request, Meta configuration, customer record, secret, or deployment changed. The plan contains an English-UI, real-test-asset, no-fabrication browser-agent prompt and the exact page for each valid feature.
+
+### Post-release addendum — 2026-09-22
+- The read-only audit, agent recording plan, Project Brain status, session log, activity record, and archive were committed and pushed only to `karim-abdalwahid/hudhud-radar:main` as `3191b7d docs: add Meta app review resubmission plan`.
+- The owner-supplied untracked `account/` directory remained excluded and untouched. This addendum preserves the original audit entry unchanged.

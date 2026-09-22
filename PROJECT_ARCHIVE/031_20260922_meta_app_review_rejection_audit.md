@@ -1,6 +1,6 @@
 # Meta App Review Rejection Audit and Resubmission Plan
 
-**Recorded:** 2026-09-22  
+**Recorded:** 2026-09-22
 **Type:** Read-only product, permission, and evidence audit.
 
 ## Decision
