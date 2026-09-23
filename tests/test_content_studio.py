@@ -212,8 +212,16 @@ async def test_scheduler_executes_due_posts(content_service):
 # -------------------------------------------------------------
 # 5. REST API Integration Tests
 # -------------------------------------------------------------
-def test_api_generate_content(test_client):
-    """Test POST /api/content/generate endpoint."""
+def test_api_generate_content(test_client, monkeypatch):
+    """Test POST /api/content/generate endpoint.
+
+    This test's admin fixture lives in auth's in-memory UserStore, which is a
+    separate store from supabase_db's in-memory "users" table (the one
+    ai_credits lives on) — pre-existing test-infra split, unrelated to this
+    test's purpose. Bypass the credit gate here; it has its own dedicated
+    coverage in tests/test_usage_credits.py.
+    """
+    monkeypatch.setattr("src.modules.billing.usage.usage_service.has_credits", lambda *a, **k: True)
     res = test_client.post("/api/content/generate", json={
         "topic": "كيف تنشئ إعلانات ناجحة",
         "post_type": "post",

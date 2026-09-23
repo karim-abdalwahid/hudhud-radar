@@ -160,6 +160,15 @@ class EntitlementService:
         self.upsert_subscription(user_id, **fields)
         for e in TRIAL_ENTITLEMENTS:
             self.grant(user_id, e, source="trial", expires_at=trial_end)
+        # A trial is worthless without anything to reply with. Top up (never
+        # lower) so a user who already burned their signup balance still gets
+        # a working trial. Local import: usage.py must not import this module
+        # at load time (services.py is the more foundational of the two).
+        try:
+            from src.modules.billing.usage import usage_service
+            usage_service.grant_trial_credits(user_id)
+        except Exception as e:
+            logger.error(f"trial credit top-up failed for {user_id}: {e}")
         logger.info(f"Trial started for {user_id} (ends {trial_end})")
         return True
 

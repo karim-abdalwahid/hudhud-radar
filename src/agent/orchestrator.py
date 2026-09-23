@@ -153,6 +153,26 @@ class AgentOrchestrator:
         except Exception as e:
             logger.warning(f"AI pause check skipped (non-blocking): {e}")
 
+        # 4c. Credit gate (money brain): fails CLOSED, unlike the AI-pause
+        # check above — usage_service.has_credits() never raises (it catches
+        # its own lookup errors and returns False), so a billing-check outage
+        # can never silently grant unlimited free AI usage the way an outer
+        # "except: proceed anyway" wrapper would. Out-of-credit tenants keep
+        # receiving messages for manual reply, exactly like AI-pause: only
+        # generation stops, nothing is dropped.
+        from src.modules.billing.usage import usage_service, KIND_AI_REPLY
+        if not usage_service.has_credits(owner_user_id):
+            logger.info(f"Out of AI credits for owner {owner_user_id} — inbound stored, no auto-reply.")
+            usage_service.notify_if_exhausted(owner_user_id)
+            return {
+                "lead_id": lead_id,
+                "is_new_lead": is_new,
+                "queue_id": queue_id,
+                "reply_sent": None,
+                "is_converted": False,
+                "credits_exhausted": True,
+            }
+
         # 5. Check for contact details extracted directly from message text
         contact_info = self.engine.extract_contact_info(text)
         updates = {}
@@ -166,7 +186,17 @@ class AgentOrchestrator:
 
         # 6. Generate AI Response
         history = self.lead_svc.get_messages_for_lead(lead_id, user_id=owner_user_id)
-        reply_text, is_converted = await self.engine.generate_response(lead_record, text, history)
+        reply_text, is_converted, used_ai = await self.engine.generate_response(lead_record, text, history)
+
+        # 6b. Bill the credit — only for a reply an actual Gemini call
+        # produced. The canned conversion acknowledgement and the offline
+        # heuristic fallback are free, by policy (see conversation_engine's
+        # generate_response docstring).
+        if used_ai:
+            usage_service.record_usage(
+                owner_user_id, KIND_AI_REPLY,
+                meta={"lead_id": lead_id, "platform": platform.value},
+            )
 
         # 7. Send Outbound Response adhering to 24-hr window & Rate Limits.
         # Use the real event timestamp when available (accurate 24h-window basis).

@@ -27,10 +27,11 @@ async def test_conversation_uses_only_the_lead_owner_context():
             return "TENANT A SALES SCRIPT"
 
     engine = ConversationEngine(kb=TenantKB())
-    reply, converted = await engine.generate_response(
+    reply, converted, used_ai = await engine.generate_response(
         {"user_id": "tenant-a", "full_name": "Customer"}, "what services do you offer?", []
     )
     assert converted is False
+    assert used_ai is False  # heuristic fallback path — still must stay tenant-scoped
     assert "TENANT A SALES SCRIPT" in reply
     assert calls == [("sales", "tenant-a")]
 

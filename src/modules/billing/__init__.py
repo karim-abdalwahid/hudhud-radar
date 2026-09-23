@@ -73,6 +73,14 @@ def register(app: FastAPI) -> None:
         return {"status": "success",
                 **entitlement_service.subscription_status(session["sub"])}
 
+    @app.get("/api/billing/usage", tags=["Billing"])
+    async def my_usage(request: Request):
+        """My AI-credit balance and a 30-day consumption breakdown — powers
+        the usage card on /account."""
+        session = _me(request)
+        from src.modules.billing.usage import usage_service
+        return {"status": "success", **usage_service.summary(session["sub"])}
+
     @app.get("/api/admin/billing/catalog", tags=["Billing"])
     async def admin_catalog(request: Request):
         _require_admin(request)
@@ -189,6 +197,15 @@ def register(app: FastAPI) -> None:
                     target_user["id"], status="active",
                     payment_provider=provider,
                     provider_subscription_id=event.get("subscription_ref"))
+                # Paid activation funds the wallet. ensure_minimum_credits is
+                # idempotent, so a redelivered webhook (a NEW event_id is
+                # still deduped above by event_deduplicator; this is a second,
+                # cheaper line of defense) cannot stack unlimited free credit.
+                try:
+                    from src.modules.billing.usage import usage_service
+                    usage_service.grant_platform_credits(target_user["id"], len(platforms) or 1)
+                except Exception as e:
+                    logger.error(f"platform credit grant failed for {target_user['id']}: {e}")
             try:
                 if applied:
                     from src.modules.notifications.service import notification_service

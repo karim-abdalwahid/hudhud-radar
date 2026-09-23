@@ -139,20 +139,23 @@ async def test_conversation_engine_sales_closing():
     lead_info = {"full_name": "أحمد محمود"}
 
     # 1. Test pricing question
-    reply, converted = await engine.generate_response(lead_info, "بكام باقة التسويق وإدارة الحسابات؟")
+    reply, converted, used_ai = await engine.generate_response(lead_info, "بكام باقة التسويق وإدارة الحسابات؟")
     assert not converted
+    assert used_ai is False  # heuristic fallback (no GEMINI_API_KEY in test env) — free, not billable
     # S-Purge: neutral helpful reply, no invented packages, asks for contact
     assert "تواصل" in reply or "رقم" in reply
 
     # 2. Test CTA keyword 'ابدأ'
-    reply_cta, converted_cta = await engine.generate_response(lead_info, "ابدأ")
+    reply_cta, converted_cta, used_ai_cta = await engine.generate_response(lead_info, "ابدأ")
     assert not converted_cta
+    assert used_ai_cta is False
     assert "أهلاً" in reply_cta or "تفاعلك" in reply_cta
     assert "رقم" in reply_cta
 
     # 3. Test conversion when customer provides phone
-    reply_conv, is_conv = await engine.generate_response(lead_info, "تمام رقمي هو 01012345678")
+    reply_conv, is_conv, used_ai_conv = await engine.generate_response(lead_info, "تمام رقمي هو 01012345678")
     assert is_conv is True
+    assert used_ai_conv is False  # canned conversion acknowledgement — never billable
     assert "شكراً جزيلاً لمشاركتك" in reply_conv
 
 

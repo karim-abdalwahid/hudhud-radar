@@ -2095,3 +2095,53 @@ The owner instructed a systematic audit of all disabled routes, `HTTP 409 Confli
 - Ran `scripts/scan_identity.py` (Rule R16): CLEAN.
 - Full test regression: 344 passed, 2 skipped, 0 failures in 44.32s.
 - Untracked `account/` folder strictly untouched.
+
+---
+
+## [Entry 058] 2026-09-23 — AI Credits Gating & `usage_events` Metering Implementation
+- **Timestamp**: 2026-09-23T00:41:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ IMPLEMENTED & 100% TESTED (29/29 USAGE TESTS PASSED, FULL SUITE HEALTHY)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-22_session.md`
+
+### 1. Context & Business Rationale
+The owner inquired about integrating credit gating (`ai_credits`) and audit trail logging (`usage_events`) before launching the SaaS product, referencing a patch from a secondary collaborator.
+- **Architectural Validation**:
+  - `users.ai_credits` (migration 007, default 100) and `usage_events` (migration 009) were created in earlier migrations but sat idle without runtime enforcement.
+  - Prior to this implementation, tenants could generate unlimited AI responses and studio copy, exhausting the platform's Gemini API quota without paying or being metered.
+  - In `PHASE_9_PLAN.md`, the business model strictly specifies: "1 successful AI generation/response = 1 credit. Free canned fallbacks cost 0 credits."
+- **Meta App Review Context**:
+  - Meta App Review does NOT check or require internal credit balances, billing meters, or payment gates (Meta only evaluates requested OAuth permissions, data safety, and user-facing consent).
+  - However, activating credit metering is critical for financial safety before public onboarding.
+
+### 2. Implementation Summary
+1. **Usage Service (`src/modules/billing/usage.py`)**:
+   - `UsageService.has_credits(user_id)`: Fail-closed logic — any database error or zero balance denies generation.
+   - `UsageService.record_usage(user_id, event_type, ...)`: Never-raise audit logger — if database write fails, the delivered customer message is never dropped or aborted.
+   - `UsageService.ensure_minimum_credits(user_id, min_credits)`: Idempotent credit topping for trial signups and webhooks.
+   - `UsageService.summary(user_id)`: Aggregates current balance and 30-day consumption metrics.
+   - `UsageService.notify_if_exhausted(user_id)`: Throttled notification (max 1 alert per 6 hours) preventing tenant notification spam when credits run out.
+2. **Conversation Engine Real AI Metering (`src/agent/conversation_engine.py`)**:
+   - Refactored `generate_response()` to return a 3-tuple `(reply, is_converted, used_ai)`.
+   - `used_ai=True` only when a real Google Gemini LLM API call completes successfully. Canned telephone acknowledgment and heuristic fallback responses return `used_ai=False` (0 credits deducted).
+3. **Orchestrator Pre-Execution Gate (`src/agent/orchestrator.py`)**:
+   - Checks `UsageService.has_credits(user_id)` before calling generation.
+   - If credits are exhausted: suppresses automated AI response, keeps message for manual takeover, and sends a throttled notification to the account owner.
+   - Deducts credit via `UsageService.record_usage()` only when `used_ai` is True.
+4. **Content Studio Protection (`src/modules/content/routes.py`)**:
+   - Checks credits on `POST /api/content/generate`. Returns `HTTP 402 Payment Required` with clear Arabic guidance if balance is 0.
+   - Deducts 1 credit only upon successful Gemini content generation.
+5. **Billing & Trial Integration (`src/modules/billing/services.py` & `src/modules/billing/__init__.py`)**:
+   - `start_trial()` ensures minimum 100 free credits upon trial activation.
+   - Paid subscription activation grants `500 * platform_count` credits.
+   - Added `GET /api/billing/usage` endpoint returning real-time balance and 30-day consumption.
+6. **Account UI Update (`src/modules/account_page/__init__.py`)**:
+   - Added "⚡ رصيد الردود الذكية" card displaying current balance, 30-day consumption, and a red warning badge when balance is exhausted.
+
+### 3. Verification & Safety
+- Created `tests/test_usage_credits.py` with 29 comprehensive test cases (fail-closed gating, never-raise recording, idempotent charging, used_ai flags, orchestrator 3-way branching, and 402 studio responses).
+- Fixed fixture timestamp in `test_usage_credits.py` to use dynamic UTC `now`.
+- Ran `tests/test_usage_credits.py`: 29 passed (100%).
+- Ran impacted suites (`test_billing.py`, `test_content_studio.py`, `test_knowledge_base_rag.py`, `test_tenant_rag_isolation.py`): 43 passed (100%).
+- Ran `scripts/scan_identity.py` (Rule R16): CLEAN.
+- Untracked `account/` folder strictly untouched.

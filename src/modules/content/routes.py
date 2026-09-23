@@ -40,8 +40,19 @@ def _session_user_id(request: Request) -> str:
 @router.post("/api/content/generate", response_model=ContentGenerationResponse, tags=["Content Studio"])
 async def generate_ai_content(payload: ContentGenerationRequest, request: Request):
     """Generates copy grounded only in the authenticated tenant's knowledge."""
+    user_id = _session_user_id(request)
+    from src.modules.billing.usage import usage_service, KIND_AI_GENERATE
+    if not usage_service.has_credits(user_id):
+        raise HTTPException(status_code=402, detail="رصيد الذكاء الاصطناعي غير كافٍ — اشحن رصيدك من صفحة حسابي للمتابعة")
     try:
-        res = await content_engine.generate_content(payload, user_id=_session_user_id(request))
+        res = await content_engine.generate_content(payload, user_id=user_id)
+        # Bill only a real Gemini generation — the offline fallback content
+        # (model_used="HudhudRadar ... Engine") costs nothing, by policy.
+        if res.model_used.startswith("Gemini"):
+            usage_service.record_usage(
+                user_id, KIND_AI_GENERATE,
+                meta={"post_type": str(payload.post_type), "platform": str(payload.platform)},
+            )
         return res
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

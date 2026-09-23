@@ -86,6 +86,9 @@ def fake_billing(client, monkeypatch):
         if table == "platform_addons_catalog" and rid in cat:
             cat[rid].update(data)
             return cat[rid]
+        if table == "users" and rid in users:
+            users[rid].update(data)
+            return users[rid]
         return data
 
     def delete(table, rid):
