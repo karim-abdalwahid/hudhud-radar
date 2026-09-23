@@ -200,7 +200,7 @@ class PolarGateway(PaymentProvider):
                 platforms, trial_product = _resolve(data.get("subscription") or {})
             is_trial = is_trial or trial_product
         kind = "other"
-        if event_type in ("subscription.active", "subscription.created", "order.paid"):
+        if event_type in ("subscription.active", "subscription.created", "order.paid", "subscription.cycled"):
             kind = "subscription_activated"
         elif event_type in ("subscription.canceled", "subscription.revoked"):
             kind = "subscription_canceled"
@@ -215,8 +215,24 @@ class PolarGateway(PaymentProvider):
             "is_trial": is_trial,
             "subscription_status": data.get("status") or subscription.get("status") or "",
             "subscription_ref": data.get("subscription_id") or data.get("id"),
+            "current_period_end": data.get("current_period_end") or subscription.get("current_period_end"),
             "raw": payload,
         }
+
+
+    def get_subscription(self, subscription_id: str):
+        """Queries Polar API for real-time subscription details (reconciliation fallback)."""
+        if not self._token() or not subscription_id:
+            return None
+        try:
+            with httpx.Client(timeout=15, follow_redirects=True) as c:
+                r = c.get(f"{self.api}/v1/subscriptions/{subscription_id}", headers=self._headers())
+                if r.status_code == 200:
+                    return r.json()
+                logger.warning(f"Polar get_subscription returned {r.status_code}: {r.text[:200]}")
+        except Exception as e:
+            logger.error(f"Polar get_subscription error for {subscription_id}: {e}")
+        return None
 
 
 polar_gateway = PolarGateway()

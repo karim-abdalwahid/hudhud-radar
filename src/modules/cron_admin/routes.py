@@ -108,4 +108,23 @@ async def cron_threads_token_refresh(request: Request):
         _notify_admin("🔄 تحديث توكن Threads",
                       f"تم تحديث {len(result['refreshed'])} توكن(ات) قبل انتهائها",
                       "success", {"job": "threads_token_refresh", **result})
+    # Run daily billing reconciliation alongside token maintenance
+    try:
+        from src.modules.billing.services import entitlement_service
+        result["billing_reconciliation"] = entitlement_service.reconcile_active_subscriptions()
+    except Exception as e:
+        logger.warning(f"daily billing reconciliation inline error: {e}")
     return result
+
+
+@router.get("/api/cron/billing-reconciliation", tags=["Cron"])
+async def cron_billing_reconciliation(request: Request):
+    """Daily safety net: reconciles active subscriptions against payment gateway
+    to ensure renewals grant monthly credits even if webhooks failed."""
+    _verify_cron_secret(request)
+    try:
+        from src.modules.billing.services import entitlement_service
+        return entitlement_service.reconcile_active_subscriptions()
+    except Exception as e:
+        logger.error(f"billing reconciliation cron failed: {e}")
+        return {"status": "error", "error": str(e)[:200]}

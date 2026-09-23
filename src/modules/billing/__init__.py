@@ -190,13 +190,20 @@ def register(app: FastAPI) -> None:
                 if is_trial and not platforms:
                     from src.modules.billing.services import TRIAL_ENTITLEMENTS
                     platforms = [item.split(":", 1)[1] for item in TRIAL_ENTITLEMENTS]
+                # For renewals where event metadata lacks platforms, retain current connected platforms
+                if not platforms:
+                    platforms = entitlement_service.connected_platforms(target_user["id"])
                 if platforms:
                     entitlement_service.sync_from_platforms(target_user["id"], platforms,
                                                             source="subscription")
-                entitlement_service.upsert_subscription(
-                    target_user["id"], status="active",
-                    payment_provider=provider,
-                    provider_subscription_id=event.get("subscription_ref"))
+                sub_data = {
+                    "status": "active",
+                    "payment_provider": provider,
+                    "provider_subscription_id": event.get("subscription_ref"),
+                }
+                if event.get("current_period_end"):
+                    sub_data["current_period_end"] = event.get("current_period_end")
+                entitlement_service.upsert_subscription(target_user["id"], **sub_data)
                 # Paid activation funds the wallet. ensure_minimum_credits is
                 # idempotent, so a redelivered webhook (a NEW event_id is
                 # still deduped above by event_deduplicator; this is a second,

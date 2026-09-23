@@ -189,6 +189,57 @@ class EntitlementService:
             "can_connect": status in ("trialing", "active"),
         }
 
+    def reconcile_active_subscriptions(self) -> Dict[str, Any]:
+        """Daily safety net: checks all active Polar subscriptions against upstream API.
+
+        If a renewal occurred on Polar but the webhook was dropped or missed:
+        - Detects that current_period_end has advanced.
+        - Updates local current_period_end.
+        - Grants renewed monthly platform credits automatically.
+        Never raises: failures land in returned outcomes and logs.
+        """
+        now_iso = datetime.now(timezone.utc).isoformat()
+        outcomes: List[Dict[str, Any]] = []
+        try:
+            from src.payments.polar import polar_gateway
+            from src.modules.billing.usage import usage_service
+            rows = supabase_db.select("user_subscriptions", {"status": "active"}) or []
+            polar_subs = [r for r in rows if r.get("payment_provider") == "polar" and r.get("provider_subscription_id")]
+            for sub in polar_subs:
+                user_id = sub.get("user_id")
+                sub_ref = sub.get("provider_subscription_id")
+                period_end = sub.get("current_period_end")
+                if not (user_id and sub_ref):
+                    continue
+                # If period has expired or is unrecorded, query Polar truth
+                if not period_end or period_end <= now_iso:
+                    remote = polar_gateway.get_subscription(sub_ref)
+                    if not remote:
+                        outcomes.append({"user_id": user_id, "status": "gateway_unreachable"})
+                        continue
+                    remote_status = str(remote.get("status") or "").lower()
+                    remote_period_end = remote.get("current_period_end")
+                    if remote_status == "active":
+                        if remote_period_end and remote_period_end > (period_end or ""):
+                            # Advanced to new billing cycle! Reconcile credits & date
+                            self.upsert_subscription(user_id, current_period_end=remote_period_end)
+                            platforms = self.connected_platforms(user_id)
+                            usage_service.grant_platform_credits(user_id, len(platforms) or 1)
+                            logger.info(f"Reconciled renewal for user {user_id}: new period ending {remote_period_end}")
+                            outcomes.append({"user_id": user_id, "status": "reconciled_renewed", "period_end": remote_period_end})
+                        else:
+                            outcomes.append({"user_id": user_id, "status": "still_current"})
+                    elif remote_status in ("canceled", "revoked", "past_due"):
+                        self.upsert_subscription(user_id, status=remote_status)
+                        if remote_status in ("canceled", "revoked"):
+                            self.sync_from_platforms(user_id, [], source="subscription")
+                        logger.warning(f"Reconciled subscription termination for {user_id}: status={remote_status}")
+                        outcomes.append({"user_id": user_id, "status": f"synced_{remote_status}"})
+            return {"status": "success", "checked": len(polar_subs), "outcomes": outcomes}
+        except Exception as e:
+            logger.error(f"Subscription reconciliation failed: {e}")
+            return {"status": "partial_error", "error": str(e)[:200], "outcomes": outcomes}
+
 
 def _tz_utc():
     from datetime import timezone
