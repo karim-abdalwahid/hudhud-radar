@@ -311,17 +311,28 @@ function escapeHtml(str) {
 // --------------------------------------------------------------------
 let _notifPolling = null;
 
+function getOrCreateTopbarActions(topbar) {
+    let actions = topbar.querySelector('.topbar-actions');
+    if (!actions) {
+        actions = document.createElement('div');
+        actions.className = 'topbar-actions';
+        topbar.appendChild(actions);
+    }
+    return actions;
+}
+
 function injectNotificationsBell() {
     // Only dashboard pages (topbar exists there); skip landing/auth
     const topbar = document.querySelector('.app-topbar');
     if (!topbar || document.getElementById('hudhud-bell')) return;
+    const actions = getOrCreateTopbarActions(topbar);
 
     const wrap = document.createElement('div');
     wrap.id = 'hudhud-bell';
-    wrap.style.cssText = 'position:relative;margin-inline-start:auto;display:flex;align-items:center;gap:10px;';
+    wrap.style.cssText = 'position:relative;display:flex;align-items:center;';
     wrap.innerHTML = `
-        <button id="hudhud-bell-btn" style="position:relative;background:none;border:1px solid var(--border-default);
-            border-radius:12px;padding:8px 11px;cursor:pointer;font-size:16px;" title="Notifications">🔔
+        <button id="hudhud-bell-btn" style="position:relative;background:var(--bg-card);border:1px solid var(--border-default);
+            border-radius:10px;padding:7px 11px;cursor:pointer;font-size:15px;color:var(--text-primary);" title="Notifications">🔔
             <span id="hudhud-bell-badge" style="display:none;position:absolute;top:-6px;inset-inline-end:-6px;
                 background:#dc2626;color:#fff;border-radius:99px;font-size:10.5px;font-weight:800;
                 padding:1px 6px;min-width:18px;text-align:center;">0</span>
@@ -330,7 +341,7 @@ function injectNotificationsBell() {
             inset-inline-end:0;width:340px;max-height:420px;overflow-y:auto;background:var(--bg-card);
             border:1px solid var(--border-default);border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,0.14);z-index:90;"></div>
     `;
-    topbar.appendChild(wrap);
+    actions.appendChild(wrap);
 
     document.getElementById('hudhud-bell-btn').onclick = toggleBellDropdown;
     document.addEventListener('click', (e) => {
@@ -416,9 +427,11 @@ const hudhudTheme = {
     injectSwitcher() {
         const topbar = document.querySelector('.app-topbar');
         if (!topbar || document.getElementById('hudhud-theme-select')) return;
+        const actions = getOrCreateTopbarActions(topbar);
         const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
         const wrap = document.createElement('div');
-        wrap.style.cssText = 'display:flex;align-items:center;margin-inline-start:auto;gap:8px;';
+        wrap.id = 'hudhud-theme-wrap';
+        wrap.style.cssText = 'display:flex;align-items:center;';
         wrap.innerHTML = `
             <select id="hudhud-theme-select" style="background:var(--bg-card);color:var(--text-primary);
                 border:1px solid var(--border-default);border-radius:10px;padding:7px 10px;font-family:inherit;
@@ -427,9 +440,8 @@ const hudhudTheme = {
                 <option value="dark">${isAr ? '🌙 داكن' : '🌙 Dark'}</option>
                 <option value="device">${isAr ? '🖥️ حسب الجهاز' : '🖥️ Device'}</option>
             </select>`;
-        // Bell is appended after — keep bell last (right side)
         const bell = document.getElementById('hudhud-bell');
-        if (bell) topbar.insertBefore(wrap, bell); else topbar.appendChild(wrap);
+        if (bell) actions.insertBefore(wrap, bell); else actions.appendChild(wrap);
         wrap.querySelector('select').onchange = (e) => this.set(e.target.value);
         this.apply();
         // follow OS live in device mode
@@ -448,10 +460,10 @@ const hudhudTheme = {
 function injectLanguageGlobe() {
     const topbar = document.querySelector('.app-topbar');
     if (!topbar || document.getElementById('hudhud-lang-globe')) return;
-    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+    const actions = getOrCreateTopbarActions(topbar);
     const wrap = document.createElement('div');
     wrap.id = 'hudhud-lang-globe';
-    wrap.style.cssText = 'position:relative;display:flex;align-items:center;gap:8px;';
+    wrap.style.cssText = 'position:relative;display:flex;align-items:center;';
     wrap.innerHTML = `
         <button id="hudhud-lang-btn" style="background:var(--bg-card);color:var(--text-primary);
             border:1px solid var(--border-default);border-radius:10px;padding:7px 12px;cursor:pointer;
@@ -466,10 +478,11 @@ function injectLanguageGlobe() {
                 background:none;border:none;padding:10px 14px;cursor:pointer;font-size:13.5px;font-weight:600;
                 color:var(--text-primary);border-top:1px solid var(--border-default);">🇪🇬 العربية</button>
         </div>`;
-    // insert before the theme select
-    const themeSel = document.getElementById('hudhud-theme-select');
-    const anchor = themeSel ? themeSel.parentElement : null;
-    if (anchor) topbar.insertBefore(wrap, anchor); else topbar.appendChild(wrap);
+    // insert before the theme wrap or bell
+    const themeWrap = document.getElementById('hudhud-theme-wrap');
+    const bell = document.getElementById('hudhud-bell');
+    const anchor = themeWrap || bell;
+    if (anchor) actions.insertBefore(wrap, anchor); else actions.appendChild(wrap);
     document.getElementById('hudhud-lang-btn').onclick = (e) => {
         e.stopPropagation();
         const menu = document.getElementById('hudhud-lang-menu');

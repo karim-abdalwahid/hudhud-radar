@@ -28,8 +28,11 @@ _ACCOUNT_HTML = r"""<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/saas.css">
 <style>
-.acct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
-.acct-card{background:var(--bg-card);border:1px solid var(--border-default);border-radius:14px;padding:18px}
+.acct-wrap{max-width:1040px;margin:0 auto;width:100%}
+.acct-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+@media(max-width:860px){.acct-grid{grid-template-columns:1fr}}
+.acct-card{background:var(--bg-card);border:1px solid var(--border-default);border-radius:16px;padding:24px;box-shadow:var(--shadow-sm);transition:border-color .2s ease,box-shadow .2s ease}
+.acct-card:hover{border-color:var(--accent-blue);box-shadow:var(--shadow-md)}
 .acct-card h3{font-size:15px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
 .acct-desc{font-size:12.5px;color:var(--text-muted);line-height:1.6;margin-bottom:14px}
 .acct-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--border-default);flex-wrap:wrap}
@@ -47,15 +50,15 @@ _ACCOUNT_HTML = r"""<!DOCTYPE html>
     <div class="sidebar-footer"><div id="meta-status-container" class="status-pill"><div id="meta-dot" class="status-dot"></div><span id="meta-status-badge" data-i18n="status.checking">Checking status...</span></div></div>
   </aside>
   <main class="app-main">
-    <header class="app-topbar"><div class="topbar-breadcrumb"><span class="crumb-root">Hudhud</span><span class="crumb-sep">/</span><span class="crumb-current" id="crumb-account">My Account</span></div><div class="topbar-actions"><button type="button" class="lang-switcher-btn" id="language-toggle"><span data-i18n="lang.switch_btn">🌐 العربية</span></button></div></header>
-    <div class="app-content"><div id="acct-banner"></div><div class="acct-grid">
+    <header class="app-topbar"><div class="topbar-breadcrumb"><span class="crumb-root">Hudhud</span><span class="crumb-sep">/</span><span class="crumb-current" id="crumb-account">My Account</span></div><div class="topbar-actions"></div></header>
+    <div class="app-content"><div class="acct-wrap"><div id="acct-banner"></div><div class="acct-grid">
       <section class="acct-card"><h3>💳 <span id="h-sub"></span></h3><div class="acct-desc" id="d-sub"></div><div id="sub-body" class="acct-empty">…</div></section>
       <section class="acct-card"><h3>⚡ <span id="h-usage"></span></h3><div class="acct-desc" id="d-usage"></div><div id="usage-body" class="acct-empty">…</div></section>
       <section class="acct-card"><h3>🤖 <span id="h-ai"></span></h3><div class="acct-desc" id="d-ai"></div><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="pill pill-mut" id="ai-badge">…</span><button type="button" class="btn-sm" id="btn-ai">…</button></div><div class="acct-status" id="ai-status"></div></section>
-      <section class="acct-card" style="grid-column:1/-1"><h3>🔗 <span id="h-conn"></span></h3><div class="acct-desc" id="d-conn"></div><div id="conn-body" class="acct-empty">…</div><div class="acct-status" id="conn-status"></div></section>
-      <section class="acct-card"><h3>🔐 <span id="h-pw"></span></h3><div class="acct-desc" id="d-pw"></div><div style="max-width:420px"><div class="acct-field"><label id="l-pw-cur"></label><input type="password" id="pw-current" autocomplete="current-password"></div><div class="acct-field"><label id="l-pw-new"></label><input type="password" id="pw-new" autocomplete="new-password"></div><div class="acct-field"><label id="l-pw-cf"></label><input type="password" id="pw-confirm" autocomplete="new-password"></div><button type="button" class="btn-sm" id="btn-pw">…</button><div class="acct-status" id="pw-status"></div></div></section>
       <section class="acct-card"><h3>👤 <span id="h-id"></span></h3><div class="acct-desc" id="d-id"></div><div class="acct-row"><div><div class="acct-name" id="acct-email">…</div><div class="acct-sub" id="s-email"></div></div></div><div class="acct-row"><div><div class="acct-name" id="l-signout"></div><div class="acct-sub" id="s-signout"></div></div><button type="button" class="btn-sm" id="btn-signout">…</button></div></section>
-    </div></div>
+      <section class="acct-card" style="grid-column:1/-1"><h3>🔗 <span id="h-conn"></span></h3><div class="acct-desc" id="d-conn"></div><div id="conn-body" class="acct-empty">…</div><div class="acct-status" id="conn-status"></div></section>
+      <section class="acct-card" style="grid-column:1/-1"><h3>🔐 <span id="h-pw"></span></h3><div class="acct-desc" id="d-pw"></div><div style="max-width:420px"><div class="acct-field"><label id="l-pw-cur"></label><input type="password" id="pw-current" autocomplete="current-password"></div><div class="acct-field"><label id="l-pw-new"></label><input type="password" id="pw-new" autocomplete="new-password"></div><div class="acct-field"><label id="l-pw-cf"></label><input type="password" id="pw-confirm" autocomplete="new-password"></div><button type="button" class="btn-sm" id="btn-pw">…</button><div class="acct-status" id="pw-status"></div></div></section>
+    </div></div></div>
   </main>
 </div>
 <script src="/static/i18n.js"></script>
@@ -97,7 +100,7 @@ async function changePassword(){const current=$id('pw-current').value,next=$id('
 async function loadIdentity(){try{const me=await jsonRequest('/auth/me');$id('acct-email').textContent=me.email||L('لا توجد بيانات','No account data')}catch(_e){$id('acct-email').textContent=L('تعذر تحميل الحساب','Could not load account')}}
 async function signOut(){try{await fetch('/auth/logout',{method:'POST'})}finally{window.location.href='/login'}}
 async function loadAll(){paintLabels();paintBanner();await Promise.all([loadSubscription(),loadUsage(),loadAi(),loadConnections(),loadIdentity()])}
-document.addEventListener('DOMContentLoaded',()=>{const lang=$id('language-toggle');lang.addEventListener('click',()=>window.hudhudI18n&&window.hudhudI18n.toggle());$id('btn-ai').addEventListener('click',toggleAi);$id('btn-pw').addEventListener('click',changePassword);$id('btn-signout').addEventListener('click',signOut);loadAll()});window.addEventListener('hudhud_lang_change',loadAll);
+document.addEventListener('DOMContentLoaded',()=>{const lang=$id('language-toggle');if(lang)lang.addEventListener('click',()=>window.hudhudI18n&&window.hudhudI18n.toggle());$id('btn-ai').addEventListener('click',toggleAi);$id('btn-pw').addEventListener('click',changePassword);$id('btn-signout').addEventListener('click',signOut);loadAll()});window.addEventListener('hudhud_lang_change',loadAll);
 </script>
 </body>
 </html>"""

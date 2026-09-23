@@ -18,19 +18,19 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
         {
             "id": "wf_ig_reel_sales",
             "name": "Instagram Reel Viral Comment-to-DM Sales Closer",
-            "description": "Monitors Reel comments for keywords [Ø³ÙˆØ´ÙŠØ§Ù„, ÙƒÙˆØ±Ø³, ØªÙØ§ØµÙŠÙ„], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
+            "description": "Monitors Reel comments for keywords [سوشيال, كورس, تفاصيل], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
             "platform": "instagram",
             "trigger_type": "comment_to_dm",
             "status": "paused",
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Reels & Posts",
-            "keywords": ["Ø³ÙˆØ´ÙŠØ§Ù„", "ÙƒÙˆØ±Ø³", "ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…"],
+            "keywords": ["سوشيال", "كورس", "تفاصيل", "سعر", "مهتم"],
             "like_comment": True,
             "reply_comment": True,
-            "reply_comment_text": "ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ Ø¹Ù„Ù‰ Ø§Ù„Ø¯Ø§ÙŠØ±ÙƒØª ÙÙˆØ±Ø§Ù‹ ðŸš€",
+            "reply_comment_text": "تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك على الدايركت فوراً 🚀",
             "send_dm": True,
-            "dm_text": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø¥Ù„ÙŠÙƒ ØªÙØ§ØµÙŠÙ„ Ø§Ù„ÙƒÙˆØ±Ø³ ÙˆØ§Ù„Ø¹Ø±Ø¶ Ø§Ù„Ø®Ø§Øµ Ù„Ù„ÙŠÙˆÙ…:",
+            "dm_text": "أهلاً بحضرتك! إليك تفاصيل الكورس والعرض الخاص لليوم:",
             "dm_link": "",
             "dm_image": "",
             "executions_count": 0,
@@ -42,9 +42,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "ig_comment_trigger",
                     "label": "Instagram Reel Comment",
                     "platform": "instagram",
-                    "icon": "ðŸ“¸",
+                    "icon": "📸",
                     "config": {
-                        "keywords": ["Ø³ÙˆØ´ÙŠØ§Ù„", "ÙƒÙˆØ±Ø³", "ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…"],
+                        "keywords": ["سوشيال", "كورس", "تفاصيل", "سعر", "مهتم"],
                         "match_type": "any"
                     },
                     "position": {"x": 100, "y": 220}
@@ -55,7 +55,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "keyword_filter",
                     "label": "Intent & Keyword Filter",
                     "platform": "general",
-                    "icon": "ðŸ”",
+                    "icon": "🔍",
                     "config": {
                         "filter_mode": "contains_commercial_intent",
                         "exclude_spam": True
@@ -68,7 +68,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "ai_reply_action",
                     "label": "Gemini Sales Pitch Synthesizer",
                     "platform": "general",
-                    "icon": "ðŸ¤–",
+                    "icon": "🤖",
                     "config": {
                         "tone": "egyptian_professional",
                         "include_offer": False,
@@ -82,7 +82,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "meta_dm_action",
                     "label": "Send Instagram Direct Message",
                     "platform": "instagram",
-                    "icon": "ðŸ’¬",
+                    "icon": "💬",
                     "config": {
                         "cta_button": "Book Free 15-min Call",
                         "calendar_link": ""
@@ -95,7 +95,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "crm_lead_action",
                     "label": "Capture & Qualify in CRM",
                     "platform": "general",
-                    "icon": "ðŸŽ¯",
+                    "icon": "🎯",
                     "config": {
                         "stage": "qualified",
                         "deal_value": 250,
@@ -123,12 +123,12 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Facebook Posts & Reels",
-            "keywords": ["ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…", "Ø®Ø¯Ù…Ø§Øª", "Ø¹Ø±Ø¶"],
+            "keywords": ["تفاصيل", "سعر", "مهتم", "خدمات", "عرض"],
             "like_comment": True,
             "reply_comment": True,
-            "reply_comment_text": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ùƒ! ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ ÙÙˆØ±Ø§Ù‹ ðŸš€",
+            "reply_comment_text": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀",
             "send_dm": True,
-            "dm_text": "Ù…Ø±Ø­Ø¨Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø§Ø³ØªÙØ³Ø§Ø±Ùƒ Ø¨Ø®ØµÙˆØµ Ø§Ù„Ø®Ø¯Ù…Ø© Ù…Ø­Ù„ Ø§Ù‡ØªÙ…Ø§Ù…Ù†Ø§ØŒ ØªÙØ¶Ù„ Ø¨Ø§Ù„Ø§Ø·Ù„Ø§Ø¹ Ø¹Ù„Ù‰ Ø§Ù„ØªÙØ§ØµÙŠÙ„:",
+            "dm_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
             "dm_link": "",
             "dm_image": "",
             "executions_count": 0,
@@ -140,7 +140,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_comment_trigger",
                     "label": "Facebook Post / Reel Comment",
                     "platform": "facebook",
-                    "icon": "ðŸ“˜",
+                    "icon": "📘",
                     "config": {
                         "pages": ["1108892288983475"],
                         "trigger_on": "all_comments"
@@ -153,9 +153,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_public_reply",
                     "label": "Reply to Public Comment",
                     "platform": "facebook",
-                    "icon": "ðŸ“¢",
+                    "icon": "📢",
                     "config": {
-                        "reply_template": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ùƒ! ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ ÙÙˆØ±Ø§Ù‹ ðŸš€"
+                        "reply_template": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀"
                     },
                     "position": {"x": 450, "y": 120}
                 },
@@ -165,9 +165,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_send_message",
                     "label": "Send Messenger Private Message",
                     "platform": "facebook",
-                    "icon": "ðŸ’¬",
+                    "icon": "💬",
                     "config": {
-                        "message_text": "Ù…Ø±Ø­Ø¨Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø§Ø³ØªÙØ³Ø§Ø±Ùƒ Ø¨Ø®ØµÙˆØµ Ø§Ù„Ø®Ø¯Ù…Ø© Ù…Ø­Ù„ Ø§Ù‡ØªÙ…Ø§Ù…Ù†Ø§ØŒ ØªÙØ¶Ù„ Ø¨Ø§Ù„Ø§Ø·Ù„Ø§Ø¹ Ø¹Ù„Ù‰ Ø§Ù„ØªÙØ§ØµÙŠÙ„:",
+                        "message_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
                         "attach_booking_link": True
                     },
                     "position": {"x": 450, "y": 300}
@@ -196,7 +196,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "lead_qualified_trigger",
                     "label": "Lead Form / Phone Confirmed",
                     "platform": "both",
-                    "icon": "â­",
+                    "icon": "⭐",
                     "config": {"min_deal_value": 100},
                     "position": {"x": 120, "y": 200}
                 },
@@ -206,7 +206,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "n8n_http_action",
                     "label": "HTTP Request Node (n8n API format)",
                     "platform": "general",
-                    "icon": "ðŸŒ",
+                    "icon": "🌐",
                     "config": {
                         "method": "POST",
                         "url": "https://n8n.webhook.internal/webhook/hudhud-leads",
@@ -223,8 +223,6 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
             "updated_at": "2026-09-04T14:00:00Z"
         }
     ]
-
-
 # ----------------------------------------------------------------------
 # Wave 9.8: automations_workflows table (source of truth) — pure helpers
 # (db injected for testability; class methods delegate to these).
@@ -431,7 +429,7 @@ class AutomationsService:
 
         # Auto-generate visual nodes if not provided
         if not nodes:
-            platform_icon = "ðŸ“¸" if payload.platform == "instagram" else ("ðŸ“˜" if payload.platform == "facebook" else "âš¡")
+            platform_icon = "📸" if payload.platform == "instagram" else ("📘" if payload.platform == "facebook" else "⚡")
             nodes = [
                 NodeData(
                     id=f"node_trig_{wf_id[:6]}",
@@ -454,7 +452,7 @@ class AutomationsService:
                     type="keyword_filter",
                     label="Keywords & Intent Filter",
                     platform="general",
-                    icon="ðŸ”",
+                    icon="🔍",
                     config={"keywords": payload.keywords},
                     position=NodePosition(x=420, y=200)
                 )
@@ -476,7 +474,7 @@ class AutomationsService:
                     type="comment_reply_action",
                     label="Public Comment Reply & Like",
                     platform=payload.platform,
-                    icon="ðŸ“¢",
+                    icon="📢",
                     config={
                         "like_comment": payload.like_comment,
                         "reply_text": payload.reply_comment_text
@@ -498,7 +496,7 @@ class AutomationsService:
                     type="meta_dm_action",
                     label=f"Send {payload.platform.capitalize()} Direct Message",
                     platform=payload.platform,
-                    icon="ðŸ’¬",
+                    icon="💬",
                     config={
                         "dm_text": payload.dm_text,
                         "dm_link": payload.dm_link,

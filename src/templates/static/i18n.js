@@ -391,6 +391,23 @@ const HUDHUD_TRANSLATIONS = {
         "an.download_btn": "💾 Download Markdown",
         "an.generating_report": "Generating live executive report from real-time data...",
         "an.copied_alert": "Report copied to clipboard!",
+        "an.threads_title": "Threads Insights",
+        "an.threads_desc": "Views, likes and replies across your connected Threads account — read live from the Threads API.",
+        "an.threads_refresh": "🔄 Refresh",
+        "an.threads_views": "Views",
+        "an.threads_likes": "Likes",
+        "an.threads_replies": "Replies",
+        "set.ai_pause_title": "AI Master Switch",
+        "set.ai_pause_desc": "Pause AI across all conversations and comments for manual control.",
+        "st.platform_threads": "Threads",
+        "sc.badge": "AI Sales Agent 24/7",
+        "sc.feat1.title": "Instant Reply < 5s",
+        "sc.feat1.desc": "Turns warm inquiries into sales at the peak of buyer interest",
+        "sc.feat2.title": "Official Meta Integration",
+        "sc.feat2.desc": "100% verified & compliant for Instagram and Facebook",
+        "sc.feat3.title": "Auto-Qualify Leads",
+        "sc.feat3.desc": "Captures verified phones & contact data straight to CRM",
+
 
         // Settings & API
         "set.title": "Platform Settings & Cloud Integration",
@@ -1082,6 +1099,23 @@ const HUDHUD_TRANSLATIONS = {
         "an.download_btn": "💾 تحميل كملف Markdown",
         "an.generating_report": "جاري إعداد وصياغة التقرير التنفيذي من البيانات الحية...",
         "an.copied_alert": "تم نسخ محتوى التقرير بنجاح إلى الحافظة.",
+        "an.threads_title": "إحصائيات ثريدز (Threads Insights)",
+        "an.threads_desc": "المشاهدات والإعجابات والردود عبر حساب ثريدز المتصل — تُقرأ مباشرة من Threads API.",
+        "an.threads_refresh": "🔄 تحديث",
+        "an.threads_views": "المشاهدات",
+        "an.threads_likes": "الإعجابات",
+        "an.threads_replies": "الردود",
+        "set.ai_pause_title": "مفتاح الردود الآلية",
+        "set.ai_pause_desc": "إيقاف الذكاء الاصطناعي عبر كافة المحادثات والتعليقات للتحكم اليدوي.",
+        "st.platform_threads": "ثريدز",
+        "sc.badge": "وكيل مبيعات ذكي 24/7",
+        "sc.feat1.title": "رد فوري < 5 ثوانٍ",
+        "sc.feat1.desc": "يحول المهتمين إلى عملاء في لحظة الحماس",
+        "sc.feat2.title": "تكامل رسمي من Meta",
+        "sc.feat2.desc": "موثق ومعتمد 100% لإنستغرام وفيسبوك",
+        "sc.feat3.title": "تأهيل العملاء تلقائياً",
+        "sc.feat3.desc": "يستخرج أرقام الهواتف والبيانات إلى CRM",
+
 
         // Settings & API
         "set.title": "إعدادات المنصات والربط السحابي",
@@ -1330,7 +1364,7 @@ class I18nEngine {
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             const translation = this.t(key);
-            if (translation) {
+            if (translation && translation !== key) {
                 el.textContent = translation;
             }
         });
@@ -1338,7 +1372,7 @@ class I18nEngine {
         document.querySelectorAll('[data-i18n-html]').forEach(el => {
             const key = el.getAttribute('data-i18n-html');
             const translation = this.t(key);
-            if (translation) {
+            if (translation && translation !== key) {
                 el.innerHTML = translation;
             }
         });
@@ -1346,7 +1380,7 @@ class I18nEngine {
         document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
             const key = el.getAttribute('data-i18n-placeholder');
             const translation = this.t(key);
-            if (translation) {
+            if (translation && translation !== key) {
                 el.placeholder = translation;
             }
         });
@@ -1354,7 +1388,7 @@ class I18nEngine {
         document.querySelectorAll('[data-i18n-title]').forEach(el => {
             const key = el.getAttribute('data-i18n-title');
             const translation = this.t(key);
-            if (translation) {
+            if (translation && translation !== key) {
                 el.title = translation;
             }
         });

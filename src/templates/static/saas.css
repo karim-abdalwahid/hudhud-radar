@@ -475,7 +475,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 28px;
+    padding: 0 24px;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -486,6 +486,7 @@ body {
     align-items: center;
     gap: 8px;
     font-size: 13.5px;
+    flex-shrink: 0;
 }
 
 .crumb-root {
@@ -502,10 +503,11 @@ body {
 }
 
 .topbar-actions {
+    margin-inline-start: auto;
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 10px;
+    flex-wrap: nowrap;
 }
 
 /* Language Switcher Button */
