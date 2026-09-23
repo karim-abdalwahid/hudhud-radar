@@ -2,8 +2,6 @@
 Threads platform adapter — wraps the existing Threads OAuth/publisher code
 behind the PlatformAdapter contract. Delegation only: no behavior changes.
 """
-from typing import Optional
-
 from src.config import settings
 from src.platforms.base import PlatformAdapter, PlatformCapabilities, PlatformStatus
 

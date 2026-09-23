@@ -156,7 +156,6 @@ async def receive_threads_webhook(request: Request, background_tasks: Background
     if payload.get("object") != "threads":
         return {"status": "ignored", "reason": "unknown object"}
 
-    from src.meta_api.extended_api import threads_leads_sync
     from src.core.event_dedup import event_deduplicator
     from src.modules.connections.service import connection_service
 
