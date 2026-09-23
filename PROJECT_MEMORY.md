@@ -2145,3 +2145,91 @@ The owner inquired about integrating credit gating (`ai_credits`) and audit trai
 - Ran impacted suites (`test_billing.py`, `test_content_studio.py`, `test_knowledge_base_rag.py`, `test_tenant_rag_isolation.py`): 43 passed (100%).
 - Ran `scripts/scan_identity.py` (Rule R16): CLEAN.
 - Untracked `account/` folder strictly untouched.
+
+---
+
+## [Entry 059] 2026-09-23 — Legal Pages Redesign, Single Globe Switcher & Bilingual Unification
+- **Timestamp**: 2026-09-23T04:08:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ IMPLEMENTED & 100% TESTED (8/8 LEGAL TESTS PASSED, ZERO REGRESSIONS)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-22_session.md`
+
+### 1. Context & User Directive
+The owner requested aesthetic and UX improvements across all legal and compliance pages (`/data-deletion`, `/terms`, `/privacy`):
+1. Remove all redundant/repeated translation buttons (previously inline text links and floating pills co-existed).
+2. Unify language selection into a single, clean Globe icon button (🌐) with dropdown (English 🇺🇸 / العربية 🇪🇬).
+3. Fix language toggle on `/data-deletion`: it was previously hardcoded in Arabic only and ignored English queries/cookies.
+4. Eliminate bare, isolated, detached page styling: implement a cohesive top navbar with brand logo (`Hudhud.`), a "Back to Home / العودة للرئيسية" link, and interactive legal tabs interconnecting the three pages (`Terms of Service`, `Privacy Policy`, `Data Deletion`).
+5. Add a matching brand footer with official support contact (`support@hudhd.com`), quick links, and copyright.
+6. Strictly preserve all existing backend routes and contracts without touching unrelated code.
+
+### 2. Changes Implemented
+1. **Unified Design System & Renderer (`src/modules/legal/__init__.py`)**:
+   - Built `render_legal_document(page_key, lang, confirmation_id)` supplying a unified HTML shell with Google Fonts (`Plus Jakarta Sans` / `Tajawal` / `Inter`), glassmorphism sticky navbar, Back to Home link, legal navigation tabs, and brand footer.
+   - Integrated the single Globe switcher button (`🌐`) in the navbar with an accessible dropdown menu. Selection sets the `hudhud_lang` cookie for persistent preference across sessions.
+   - Cleaned out obsolete inline language text links and fixed floating widgets.
+   - Added full bilingual English and Arabic bodies for `/terms`, `/privacy`, and `/data-deletion`.
+   - Added support for Meta deletion callback confirmation badges (`?id=<code>`) with clear status messaging in both languages.
+2. **Compliance Module Unification (`src/meta_api/compliance_pages.py`)**:
+   - Replaced dead, duplicated inline HTML strings (`_PRIVACY_HTML` and `_DELETION_HTML`) with calls to `render_legal_document("data-deletion", lang=lang, confirmation_id=conf_id)`.
+   - Handled both `/data-deletion` and `/api/data-deletion` GET requests with bilingual rendering.
+   - Preserved all Meta signed_request callback POST endpoints (`/api/data-deletion`, `/api/deauthorize`, `/api/threads/uninstall`) 100% intact.
+3. **Automated Testing Suite (`tests/test_legal_pages.py`)**:
+   - Added comprehensive assertions for:
+     - Terms (EN & AR toggle, Egyptian law, Cairo Economic Courts).
+     - Privacy (EN & AR toggle, Supabase/Vercel/PBKDF2 honest disclosures).
+     - Data Deletion (EN & AR toggle, confirmation code lookup).
+     - Navbar brand presence, "Back to Home" button, and single globe button in DOM.
+     - Verification of zero redundant buttons or floating widgets.
+
+### 3. Verification & Safety
+- Ran `tests/test_legal_pages.py`: 8 passed in 1.80s (100%).
+- Ran `tests/test_security_hardening.py`: 21 passed in 9.75s (100%).
+- Ran `tests/test_auth_security.py`: 17 passed in 4.46s (100%).
+- Ran `tests/test_module_registry.py`: 4 passed in 1.21s (100%).
+- Ran `scripts/scan_annotation_traps.py` (Rule R14): CLEAN.
+- Ran `scripts/scan_identity.py` (Rule R16): CLEAN.
+- Untracked `account/` folder strictly untouched.
+
+## [Entry 060] 2026-09-23 — Site-Wide UI/UX Inspection & Auth Page Redesign (Eliminating Wide-Screen Void)
+- **Timestamp**: 2026-09-23T04:32:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ IMPLEMENTED & 100% TESTED (376 TESTS PASSED, ZERO REGRESSIONS)
+- **Session log**: docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-22_session.md
+
+### 1. Context & User Directive
+The owner requested:
+1. Complete site-wide UI/UX inspection for overlapping buttons, text collision, and misaligned layouts across Arabic (RTL) and English (LTR).
+2. Redesign of the Auth / Login page (src/templates/auth.html), which suffered from an uncoordinated appearance with a massive empty void on wide screens (user provided screenshot showing form pushed to the edge and empty expanse on the right).
+3. Strict constraints:
+   - Preserve all live demo chat animations, typing indicators, pulse dots, and stats pills (#demoStream).
+   - Do NOT affect or modify any backend code or business logic unrelated to the request.
+   - Maintain all existing test contracts (flex-direction: row-reverse, RTL mirror, consent checkboxes).
+
+### 2. Changes Implemented
+1. **Auth Page (src/templates/auth.html)**:
+   - Centered showcase content horizontally and vertically (align-items: center; justify-content: center;).
+   - Set .showcase-inner to max-width: 600px; margin: 0 auto; eliminating the wide-screen empty void.
+   - Set .form-side to min(480px, 42vw) with max-width: 390px for the form shell and added soft depth shadows.
+   - Added an aesthetic category badge: `<div class="sc-badge"><span class="sc-badge-dot"></span><span>AI Autonomous Social Sales Agent</span></div>`.
+   - Preserved 100% of the live chat simulation and added a 3-feature value grid (.sc-features) below the demo card to fill the vertical space with high-converting trust signals:
+     - ⚡ `< 5s Instant Reply` / `رد فوري < 5 ثوانٍ`
+     - 🔒 `Official Meta Partner` / `تكامل رسمي من Meta`
+     - 🎯 `Smart Lead Qualification` / `تأهيل العملاء تلقائياً`
+   - Upgraded language toggle to an elegant glassmorphic globe button (`🌐 العربية` / `🌐 English`) with `backdrop-filter: blur(10px)`.
+   - Added bilingual translation keys to T.ar and T.en.
+2. **Landing Page (src/templates/landing.html)**:
+   - Added intermediate responsive breakpoint (`@media (max-width: 1040px)`) to prevent navbar buttons and navigation links from colliding on tablet / narrow desktop screens.
+3. **Onboarding Wizard (src/templates/onboarding.html)**:
+   - Enhanced mobile responsiveness (`@media (max-width: 680px)`): hid long step text labels while keeping numbered step circles and connecting lines clean, and added full-width flex wrapping to action buttons to prevent collision.
+4. **Global Stylesheet (src/templates/static/saas.css)**:
+   - Added `flex-wrap: wrap;` to `.topbar-actions` and `.btn-group` across dashboard workspaces.
+
+### 3. Verification & Safety
+- Ran full test suite: 376 passed, 2 skipped, 0 failures in 57.47s.
+- tests/test_directions_language.py: 6/6 passed.
+- tests/test_consent_gate.py: 6/6 passed.
+- tests/test_legal_pages.py: 8/8 passed.
+- scripts/scan_annotation_traps.py: CLEAN.
+- scripts/scan_identity.py: CLEAN.
+- account/ folder strictly untouched.

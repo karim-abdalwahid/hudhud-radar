@@ -505,6 +505,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 /* Language Switcher Button */
@@ -792,6 +793,7 @@ textarea {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 /* Split Workspace */

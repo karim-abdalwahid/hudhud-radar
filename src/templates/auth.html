@@ -40,33 +40,34 @@
 
         /* ============ Showcase panel (sendrad-style) ============ */
         .showcase {
-            flex: 1 1 55%;
+            flex: 1 1 58%;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 48px 64px;
+            align-items: center;
+            padding: 48px 40px;
             position: relative;
             background:
-                radial-gradient(ellipse 800px 500px at 20% 10%, rgba(37,99,235,0.08), transparent),
-                radial-gradient(ellipse 600px 600px at 90% 90%, rgba(59,130,246,0.06), transparent),
+                radial-gradient(ellipse 900px 600px at 30% 15%, rgba(37,99,235,0.08), transparent),
+                radial-gradient(ellipse 700px 700px at 85% 85%, rgba(59,130,246,0.06), transparent),
                 var(--bg-page);
             overflow: hidden;
         }
         .showcase::before {
             content: '';
             position: absolute;
-            top: -30%; inset-inline-start: -15%;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(37,99,235,0.10), transparent 65%);
+            top: -25%; inset-inline-start: -10%;
+            width: 550px; height: 550px;
+            background: radial-gradient(circle, rgba(37,99,235,0.09), transparent 65%);
             border-radius: 50%;
             animation: floatOrb 14s ease-in-out infinite;
         }
         .showcase::after {
             content: '';
             position: absolute;
-            bottom: -25%; inset-inline-end: -10%;
-            width: 420px; height: 420px;
-            background: radial-gradient(circle, rgba(59,130,246,0.09), transparent 65%);
+            bottom: -20%; inset-inline-end: -8%;
+            width: 480px; height: 480px;
+            background: radial-gradient(circle, rgba(59,130,246,0.08), transparent 65%);
             border-radius: 50%;
             animation: floatOrb 18s ease-in-out infinite reverse;
         }
@@ -75,16 +76,45 @@
             50% { transform: translate(30px, -40px) scale(1.08); }
         }
 
-        .showcase-inner { max-width: 560px; position: relative; z-index: 1; }
+        .showcase-inner {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
         .sc-brand {
             font-size: 26px; font-weight: 800; letter-spacing: -0.5px;
-            margin-bottom: 40px; display: inline-flex; align-items: center; gap: 2px;
+            margin-bottom: 24px; display: inline-flex; align-items: center; gap: 2px;
             text-decoration: none; color: var(--text-primary);
         }
         .sc-brand .dot { color: var(--primary); }
+
+        .sc-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(37, 99, 235, 0.08);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            color: var(--primary);
+            padding: 5px 14px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 18px;
+            animation: riseIn .5s ease-out both;
+        }
+        .sc-badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
+        }
+
         .sc-headline {
             font-size: 34px; font-weight: 800; line-height: 1.35;
-            margin-bottom: 16px; letter-spacing: -0.5px;
+            margin-bottom: 14px; letter-spacing: -0.5px;
             animation: riseIn .6s ease-out both;
         }
         .sc-headline .grad {
@@ -92,7 +122,7 @@
             -webkit-background-clip: text; background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .sc-sub { font-size: 15.5px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 36px; animation: riseIn .7s .1s ease-out both; }
+        .sc-sub { font-size: 15px; color: var(--text-secondary); line-height: 1.75; margin-bottom: 28px; animation: riseIn .7s .1s ease-out both; }
         @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Live demo chat card */
@@ -104,6 +134,45 @@
             box-shadow: 0 1px 3px rgba(15,23,42,0.04), 0 20px 44px rgba(15,23,42,0.07);
             animation: riseIn .8s .2s ease-out both;
             position: relative;
+        }
+
+        /* Showcase 3-feature value grid */
+        .sc-features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+            animation: riseIn .8s .3s ease-out both;
+        }
+        .sc-feat-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-default);
+            border-radius: 14px;
+            padding: 14px 12px;
+            transition: all .2s ease;
+        }
+        .sc-feat-card:hover {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+        }
+        .sc-feat-icon {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+        .sc-feat-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+            line-height: 1.3;
+        }
+        .sc-feat-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.45;
         }
         .demo-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
         .demo-avatar {
@@ -156,18 +225,21 @@
 
         /* ============ Right form panel ============ */
         .form-side {
-            flex: 0 0 460px;
+            flex: 0 0 min(480px, 42vw);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 40px 36px;
+            padding: 48px 36px;
             background: var(--bg-card);
             border-inline-start: 1px solid var(--border-default);
             animation: slideIn .55s ease-out both;
+            box-shadow: -4px 0 24px rgba(15, 23, 42, 0.02);
+            position: relative;
+            z-index: 2;
         }
         @keyframes slideIn { from { opacity: 0; transform: translateX(var(--slide-from, 40px)); } to { opacity: 1; transform: translateX(0); } }
-        html[dir="rtl"] .form-side { --slide-from: -40px; }
-        .form-shell { width: 100%; max-width: 380px; }
+        html[dir="rtl"] .form-side { --slide-from: -40px; box-shadow: 4px 0 24px rgba(15, 23, 42, 0.02); }
+        .form-shell { width: 100%; max-width: 390px; }
 
         .m-brand { display: none; font-size: 22px; font-weight: 800; text-decoration: none; color: var(--text-primary); margin-bottom: 26px; justify-content: center; }
         .m-brand .dot { color: var(--primary); }
@@ -274,19 +346,26 @@
         .consent-required { display: block; font-style: normal; font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
         .consent-error { color: #dc2626 !important; font-weight: 600; }
 
-        .lang-toggle { position: fixed; top: 18px; inset-inline-end: 18px; z-index: 60; }
+        .lang-toggle { position: fixed; top: 20px; inset-inline-end: 24px; z-index: 60; }
         .lang-toggle button {
-            font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px;
-            border: 1px solid var(--border-default); border-radius: 99px; background: var(--bg-card);
-            color: var(--text-secondary); cursor: pointer; box-shadow: 0 1px 4px rgba(15,23,42,0.06);
+            font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 16px;
+            border: 1px solid var(--border-default); border-radius: 99px; background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            color: var(--text-secondary); cursor: pointer; box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all .18s ease;
         }
-        .lang-toggle button:hover { border-color: var(--primary); color: var(--primary); }
+        .lang-toggle button:hover { border-color: var(--primary); color: var(--primary); background: #ffffff; box-shadow: 0 4px 14px rgba(37,99,235,0.15); transform: translateY(-1px); }
 
         /* Responsive */
+        @media (max-width: 1100px) {
+            .sc-features { grid-template-columns: 1fr; gap: 8px; }
+        }
+
         @media (max-width: 900px) {
             body { flex-direction: column; }
             .showcase { display: none; }
-            .form-side { border: none; flex: 1; }
+            .form-side { border: none; flex: 1; padding: 36px 20px; }
             .m-brand { display: flex; }
         }
 
@@ -296,12 +375,16 @@
     </style>
 </head>
 <body>
-    <div class="lang-toggle"><button id="langBtn" onclick="toggleLang()">English</button></div>
+    <div class="lang-toggle"><button id="langBtn" onclick="toggleLang()"><span>🌐</span> English</button></div>
 
     <!-- ================= SHOWCASE ================= -->
     <aside class="showcase" aria-hidden="true">
         <div class="showcase-inner">
             <a href="/" class="sc-brand"><span data-i18n="brand.name">Hudhud</span><span class="dot">.</span></a>
+            <div class="sc-badge">
+                <span class="sc-badge-dot"></span>
+                <span data-i18n="sc.badge">AI Autonomous Social Sales Agent</span>
+            </div>
             <h1 class="sc-headline" data-i18n="sc.headline">وكيلك الذكي يرد على عملائك<br><span class="grad">في أقل من 5 ثوانٍ</span></h1>
             <p class="sc-sub" data-i18n="sc.sub">يحوّل تعليقات الريلز والرسائل إلى محادثات بيع حقيقية، يأسّر العملاء المؤهلين، ويوافقهم على المواعيد — بينما أنت بتعمل حاجة تانية.</p>
 
@@ -319,6 +402,25 @@
                     <div class="stat-pill"><div class="v">3.2s</div><div class="l" data-i18n="sc.demo.stat1">زمن الرد</div></div>
                     <div class="stat-pill"><div class="v">94%</div><div class="l" data-i18n="sc.demo.stat2">نية شراء</div></div>
                     <div class="stat-pill"><div class="v">24/7</div><div class="l" data-i18n="sc.demo.stat3">تغطية</div></div>
+                </div>
+            </div>
+
+            <!-- Value Highlights Grid (Fills void beautifully) -->
+            <div class="sc-features">
+                <div class="sc-feat-card">
+                    <div class="sc-feat-icon">⚡</div>
+                    <div class="sc-feat-title" data-i18n="sc.feat1.title">رد فوري &lt; 5 ثوانٍ</div>
+                    <div class="sc-feat-desc" data-i18n="sc.feat1.desc">يحول المهتمين إلى عملاء في لحظة الحماس</div>
+                </div>
+                <div class="sc-feat-card">
+                    <div class="sc-feat-icon">🔒</div>
+                    <div class="sc-feat-title" data-i18n="sc.feat2.title">تكامل رسمي من Meta</div>
+                    <div class="sc-feat-desc" data-i18n="sc.feat2.desc">موثق ومعتمد 100% لإنستغرام وفيسبوك</div>
+                </div>
+                <div class="sc-feat-card">
+                    <div class="sc-feat-icon">🎯</div>
+                    <div class="sc-feat-title" data-i18n="sc.feat3.title">تأهيل العملاء تلقائياً</div>
+                    <div class="sc-feat-desc" data-i18n="sc.feat3.desc">يستخرج أرقام الهواتف والبيانات إلى CRM</div>
                 </div>
             </div>
         </div>
@@ -449,7 +551,14 @@
             "err_network": "تعذر الاتصال بالخادم",
             "err_login": "فشل تسجيل الدخول — تحقق من البيانات",
             "err_register": "تعذر إنشاء الحساب",
-            "google_soon": "تسجيل الدخول بجوجل قيد التفعيل — سيُتاح بعد ربط Google OAuth في لوحة الأدمن"
+            "google_soon": "تسجيل الدخول بجوجل قيد التفعيل — سيُتاح بعد ربط Google OAuth في لوحة الأدمن",
+            "sc.badge": "وكيل مبيعات ذكي 24/7",
+            "sc.feat1.title": "رد فوري < 5 ثوانٍ",
+            "sc.feat1.desc": "يحول المهتمين إلى عملاء في لحظة الحماس",
+            "sc.feat2.title": "تكامل رسمي من Meta",
+            "sc.feat2.desc": "موثق ومعتمد 100% لإنستغرام وفيسبوك",
+            "sc.feat3.title": "تأهيل العملاء تلقائياً",
+            "sc.feat3.desc": "يستخرج أرقام الهواتف والبيانات إلى CRM"
         },
         en: {
             "brand.name": "hudhud",
@@ -479,7 +588,14 @@
             "consent_and": "and", "consent_privacy": "Privacy Policy",
             "consent_required": "Required to create an account.",
             "consent_required_google": "Required to continue with Google.",
-            "consent_error": "Please agree to the Terms of Service and Privacy Policy first"
+            "consent_error": "Please agree to the Terms of Service and Privacy Policy first",
+            "sc.badge": "24/7 Autonomous AI Sales Agent",
+            "sc.feat1.title": "< 5s Instant Reply",
+            "sc.feat1.desc": "Converts warm prospects at peak interest",
+            "sc.feat2.title": "Official Meta Partner",
+            "sc.feat2.desc": "100% compliant with Instagram & Facebook",
+            "sc.feat3.title": "Smart Lead Qualification",
+            "sc.feat3.desc": "Captures phone, email, and intent to CRM"
         }
     };
     // Demo chat scripts per language (animated sequence)
@@ -518,7 +634,7 @@
         document.documentElement.lang = lang;
         document.documentElement.dir = isAr ? "rtl" : "ltr";
         document.body.style.fontFamily = isAr ? "'Tajawal', 'Plus Jakarta Sans', sans-serif" : "'Plus Jakarta Sans', 'Tajawal', sans-serif";
-        document.getElementById("langBtn").textContent = isAr ? "English" : "العربية";
+        document.getElementById("langBtn").innerHTML = isAr ? "<span>🌐</span> English" : "<span>🌐</span> العربية";
         localStorage.setItem("hudhud_lang", lang);
         renderCountries();
         playDemo();
