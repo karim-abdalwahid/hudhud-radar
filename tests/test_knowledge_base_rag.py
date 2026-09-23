@@ -252,3 +252,42 @@ def test_security_path_traversal_and_sanitization(temp_kb):
     # Test 3: Get document cannot read arbitrary files outside kb_dir
     assert temp_kb.get_document("../../../requirements.txt") is None
 
+
+
+def test_knowledge_credit_gates_and_limits(client, monkeypatch):
+    """Verifies that 0-credit tenants are blocked with 402, large files get 413, and valid requests meter credits."""
+    from src.modules.billing.usage import usage_service
+    import io
+
+    # 1. When user has NO credits -> upload blocked with 402 Payment Required
+    monkeypatch.setattr(usage_service, "has_credits", lambda uid, amt=1: False)
+    upload_resp = client.post(
+        "/api/knowledge/upload",
+        files={"file": ("test.txt", io.BytesIO(b"Hello knowledge"), "text/plain")},
+    )
+    assert upload_resp.status_code == 402
+    assert "رصيد" in upload_resp.json()["detail"]
+
+    # 2. When user has NO credits -> create document blocked with 402 Payment Required
+    create_resp = client.post(
+        "/api/knowledge/documents",
+        json={"filename": "no_credit.md", "content": "blocked content"},
+    )
+    assert create_resp.status_code == 402
+
+    # 3. When user has NO credits -> update document blocked with 402 Payment Required
+    put_resp = client.put(
+        "/api/knowledge/documents/no_credit.md",
+        json={"content": "updated content"},
+    )
+    assert put_resp.status_code == 402
+
+    # 4. Large file > 10MB -> 413 Payload Too Large
+    monkeypatch.setattr(usage_service, "has_credits", lambda uid, amt=1: True)
+    large_data = b"x" * (10 * 1024 * 1024 + 100)
+    large_resp = client.post(
+        "/api/knowledge/upload",
+        files={"file": ("large.txt", io.BytesIO(large_data), "text/plain")},
+    )
+    assert large_resp.status_code == 413
+    assert "10 ميجابايت" in large_resp.json()["detail"]

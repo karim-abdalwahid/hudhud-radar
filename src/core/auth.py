@@ -251,6 +251,7 @@ class UserStore:
             "password_hash": hash_password(password),
             "role": role,
             "is_active": True,
+            "ai_credits": 100,  # migration 007 signup default
         }
         if terms_accepted_at:
             record["terms_accepted_at"] = terms_accepted_at

@@ -155,10 +155,17 @@ async def get_knowledge_document(filename: str, request: Request):
 async def update_knowledge_document(filename: str, payload: SaveDocumentRequest, request: Request):
     """Updates a document in the caller's database-backed knowledge base."""
     user_id = _require_session_user(request)
+    from src.modules.billing.usage import usage_service, KIND_KB_EMBED
+    if not usage_service.has_credits(user_id):
+        raise HTTPException(
+            status_code=402,
+            detail="رصيد الذكاء الاصطناعي غير كافٍ — اشحن رصيدك لتتمكن من تحديث المستندات وإعادة معالجتها"
+        )
     try:
         res = await asyncio.to_thread(
             db_knowledge_base.save_document, filename, payload.content, user_id=user_id
         )
+        usage_service.record_usage(user_id, KIND_KB_EMBED, amount=1, meta={"filename": filename})
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return res
@@ -168,10 +175,17 @@ async def update_knowledge_document(filename: str, payload: SaveDocumentRequest,
 async def create_knowledge_document(payload: CreateDocumentRequest, request: Request):
     """Creates a new knowledge document owned by the session user."""
     user_id = _require_session_user(request)
+    from src.modules.billing.usage import usage_service, KIND_KB_EMBED
+    if not usage_service.has_credits(user_id):
+        raise HTTPException(
+            status_code=402,
+            detail="رصيد الذكاء الاصطناعي غير كافٍ — اشحن رصيدك لتتمكن من إضافة مستندات جديدة بقاعدة المعرفة"
+        )
     try:
         res = await asyncio.to_thread(
             db_knowledge_base.save_document, payload.filename, payload.content, user_id=user_id
         )
+        usage_service.record_usage(user_id, KIND_KB_EMBED, amount=1, meta={"filename": payload.filename})
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return res
@@ -205,11 +219,19 @@ async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
 
     # Resolve the uploading user before reading or processing a tenant file.
     user_id = _require_session_user(request)
+    from src.modules.billing.usage import usage_service, KIND_KB_EMBED, KIND_KB_VISION
+    if not usage_service.has_credits(user_id):
+        raise HTTPException(
+            status_code=402,
+            detail="رصيد الذكاء الاصطناعي غير كافٍ — اشحن رصيدك لتتمكن من رفع ومعالجة ملفات جديدة بقاعدة المعرفة"
+        )
 
     try:
         file_bytes = await file.read()
         if len(file_bytes) == 0:
             raise HTTPException(status_code=400, detail="الملف المرفوع فارغ.")
+        if len(file_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="حجم الملف يتجاوز الحد الأقصى المسموح به (10 ميجابايت).")
 
         if ext in [".md", ".txt"]:
             text_content = file_bytes.decode("utf-8", errors="replace")
@@ -248,6 +270,15 @@ async def upload_knowledge_file(request: Request, file: UploadFile = File(...)):
                 raise ValueError("قاعدة المعرفة لم تؤكد حفظ المستند")
             result["db_saved"] = True
             result["db_chunks"] = db_result.get("chunks")
+            if ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                usage_service.record_usage(
+                    user_id, KIND_KB_VISION, amount=2,
+                    meta={"filename": safe_base, "mime": mime}
+                )
+            usage_service.record_usage(
+                user_id, KIND_KB_EMBED, amount=1,
+                meta={"filename": filename, "chunks": db_result.get("chunks") or 1}
+            )
         except Exception as db_err:
             logger.error(f"KB DB persist failed for {safe_base}: {db_err}")
             raise HTTPException(

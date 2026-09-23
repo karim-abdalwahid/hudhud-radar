@@ -1,0 +1,904 @@
+diff --git a/src/core/auth.py b/src/core/auth.py
+index 5af3a1a..5c6b47c 100644
+--- a/src/core/auth.py
++++ b/src/core/auth.py
+@@ -62,10 +62,13 @@ ADMIN_EXACT_PATHS = frozenset({
+ })
+ 
+ # Admin-only dashboard pages (server-side enforcement of Developer Console)
++# /analytics is intentionally NOT here: every analytics and report endpoint
++# is already scoped to the session user, so the page shows the customer their
++# own numbers. /settings stays admin-only (platform operator tooling); the
++# customer-facing equivalent is /account.
+ ADMIN_PAGE_PATHS = frozenset({
+     "/settings",
+     "/identity",
+-    "/analytics",
+ })
+ 
+ # Admin-only API path prefixes (any method)
+diff --git a/src/core/modules.py b/src/core/modules.py
+index a27d133..86bbc2e 100644
+--- a/src/core/modules.py
++++ b/src/core/modules.py
+@@ -173,6 +173,7 @@ class SidebarSection:
+ 
+ 
+ SIDEBAR_SECTIONS = {
++    "nav.account": SidebarSection("nav.account", "Account"),
+     "nav.conversations": SidebarSection("nav.conversations", "Conversations & AI Agent"),
+     "nav.workspaces": SidebarSection("nav.workspaces", "Workspaces"),
+     "nav.analytics_system": SidebarSection("nav.analytics_system", "Analytics & System"),
+diff --git a/src/main.py b/src/main.py
+index 69a80c3..8fd95c5 100644
+--- a/src/main.py
++++ b/src/main.py
+@@ -240,6 +240,7 @@ from src.modules import billing_pages  # noqa: E402
+ from src.modules import billing as billing_module  # noqa: E402
+ from src.modules import legal as _legal
+ from src.modules import connections as connections_module  # noqa: E402 — Phase 9.7
++from src.modules import account_page as account_page_module  # noqa: E402 — customer account page
+ 
+ _auth_register_router(app)
+ _pages_register(app)
+@@ -265,6 +266,7 @@ billing_module.register(app)
+ register_compliance_routes(app)
+ _legal.register(app)
+ connections_module.register(app)
++account_page_module.register(app)
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/src/modules/account_page/__init__.py b/src/modules/account_page/__init__.py
+new file mode 100644
+index 0000000..816123e
+--- /dev/null
++++ b/src/modules/account_page/__init__.py
+@@ -0,0 +1,481 @@
++"""
++Account module — the customer-facing account page (/account).
++
++Why this module exists
++----------------------
++Everything a paying (non-admin) customer needs to operate their OWN account
++used to live inside /settings, which is an ADMIN-ONLY page (Meta Graph
++diagnostics, never-expiring token generator, AI provider registry, webhook
++subscriptions).  The result was that a customer could not:
++
++  * pause their own AI agent          (API existed: /api/ai/pause)
++  * change their own password         (API existed: /auth/change-password)
++  * disconnect a connected channel    (API existed: DELETE /api/connections/{p})
++  * connect / disconnect Threads      (API existed: /api/threads/*)
++  * see their own subscription state  (API existed: /api/billing/subscription)
++
++Every one of those APIs is already tenant-scoped to the session user, so this
++module adds NO new privileges — it only exposes what the customer already owns
++through a page they are allowed to open.  /settings stays admin-only and keeps
++the platform-operator tooling.
++
++Access: ACCESS_USER.  The page renders for any authenticated session; every
++action it performs is scoped server-side by the session cookie.
++"""
++from fastapi import FastAPI, Request
++from fastapi.responses import HTMLResponse
++
++from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
++from src.core.modules import module_registry, NavEntry, PageSpec, ACCESS_USER
++
++
++def register(app: FastAPI) -> None:
++    @app.get("/account", include_in_schema=False)
++    async def account_page(request: Request):
++        # The global auth middleware already rejects sessionless requests for
++        # non-public paths; reading the session here is only for the greeting.
++        session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
++        email = (session or {}).get("email", "")
++        html = _ACCOUNT_HTML.replace("__ACCOUNT_EMAIL__", email)
++        from src.modules.pages import render_module_page
++        return render_module_page(html, request)
++
++
++_ACCOUNT_HTML = r"""<!DOCTYPE html>
++<html lang="en" dir="ltr">
++<head>
++<meta charset="UTF-8">
++<meta name="viewport" content="width=device-width, initial-scale=1.0">
++<title>Hudhud — My Account</title>
++<link rel="icon" href="/static/favicon.ico" sizes="any">
++<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
++<link rel="stylesheet" href="/static/saas.css">
++<style>
++/* Page-only styles — shared chrome comes from saas.css (same as every page). */
++.acct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;}
++.acct-card{background:var(--bg-card);border:1px solid var(--border-default);border-radius:14px;padding:18px;}
++.acct-card h3{font-size:15px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px;}
++.acct-desc{font-size:12.5px;color:var(--text-muted);line-height:1.6;margin-bottom:14px;}
++.acct-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
++          padding:11px 0;border-bottom:1px solid var(--border-default);flex-wrap:wrap;}
++.acct-row:last-child{border-bottom:none;}
++.acct-name{font-size:13.5px;font-weight:600;}
++.acct-sub{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
++.pill{font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:99px;display:inline-block;}
++.pill-on{background:#ecfdf5;color:#059669;} .pill-off{background:#fef2f2;color:#dc2626;}
++.pill-warn{background:#fffbeb;color:#b45309;} .pill-mut{background:var(--bg-subtle);color:var(--text-muted);}
++.btn-sm{padding:7px 14px;font-size:12.5px;font-weight:700;border-radius:8px;cursor:pointer;
++        border:1px solid var(--border-default);background:var(--bg-card);color:var(--text-primary);}
++.btn-sm:hover{border-color:var(--text-muted);}
++.btn-danger{border-color:#dc2626;color:#dc2626;}
++.btn-danger:hover{background:#fef2f2;}
++.btn-sm:disabled{opacity:.5;cursor:not-allowed;}
++.acct-field{margin-bottom:11px;}
++.acct-field label{display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;}
++.acct-field input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border-default);
++                  background:var(--bg-subtle);color:var(--text-primary);font-family:inherit;font-size:13px;}
++.acct-status{font-size:12.5px;min-height:18px;margin-top:8px;}
++.acct-empty{font-size:12.5px;color:var(--text-muted);padding:14px 0;text-align:center;}
++</style>
++</head>
++<body>
++<div class="app-layout">
++    <aside class="app-sidebar">
++        <div class="sidebar-header">
++            <a href="/dashboard" class="brand-logo-link">
++                <span class="brand-logo-text">Hudhud</span><span class="brand-dot">.</span>
++            </a>
++            <div class="brand-sub" data-i18n="brand.tagline">Autonomous AI Social Sales Agent</div>
++        </div>
++        <nav class="sidebar-nav"></nav>
++        <div class="sidebar-footer">
++            <div id="meta-status-container" class="status-pill">
++                <div id="meta-dot" class="status-dot"></div>
++                <span id="meta-status-badge" data-i18n="status.checking">Checking status...</span>
++            </div>
++        </div>
++    </aside>
++    <main class="app-main">
++        <header class="app-topbar">
++            <div class="topbar-breadcrumb">
++                <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
++                <span class="crumb-sep">/</span>
++                <span class="crumb-current" id="crumb-account">My Account</span>
++            </div>
++            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
++                <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
++                    <span data-i18n="lang.switch_btn">🌐 العربية</span>
++                </button>
++            </div>
++        </header>
++        <div class="app-content">
++            <div id="acct-banner"></div>
++            <div class="acct-grid">
++
++                <!-- Subscription ------------------------------------------->
++                <div class="acct-card" id="card-sub">
++                    <h3>💳 <span id="h-sub"></span></h3>
++                    <div class="acct-desc" id="d-sub"></div>
++                    <div id="sub-body" class="acct-empty">…</div>
++                </div>
++
++                <!-- AI master switch ---------------------------------------->
++                <div class="acct-card">
++                    <h3>🤖 <span id="h-ai"></span></h3>
++                    <div class="acct-desc" id="d-ai"></div>
++                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
++                        <span class="pill pill-mut" id="ai-badge">…</span>
++                        <button type="button" class="btn-sm" id="btn-ai" onclick="toggleAi()">…</button>
++                    </div>
++                    <div class="acct-status" id="ai-status"></div>
++                </div>
++
++                <!-- Connected channels -------------------------------------->
++                <div class="acct-card" style="grid-column:1/-1;">
++                    <h3>🔗 <span id="h-conn"></span></h3>
++                    <div class="acct-desc" id="d-conn"></div>
++                    <div id="conn-body" class="acct-empty">…</div>
++                    <div class="acct-status" id="conn-status"></div>
++                </div>
++
++                <!-- Password ------------------------------------------------>
++                <div class="acct-card">
++                    <h3>🔐 <span id="h-pw"></span></h3>
++                    <div class="acct-desc" id="d-pw"></div>
++                    <div style="max-width:420px;">
++                        <div class="acct-field">
++                            <label id="l-pw-cur"></label>
++                            <input type="password" id="pw-current" autocomplete="current-password">
++                        </div>
++                        <div class="acct-field">
++                            <label id="l-pw-new"></label>
++                            <input type="password" id="pw-new" autocomplete="new-password">
++                        </div>
++                        <div class="acct-field">
++                            <label id="l-pw-cf"></label>
++                            <input type="password" id="pw-confirm" autocomplete="new-password">
++                        </div>
++                        <button type="button" class="btn-sm" id="btn-pw" onclick="changePassword()">…</button>
++                        <div class="acct-status" id="pw-status"></div>
++                    </div>
++                </div>
++
++                <!-- Identity ------------------------------------------------>
++                <div class="acct-card">
++                    <h3>👤 <span id="h-id"></span></h3>
++                    <div class="acct-desc" id="d-id"></div>
++                    <div class="acct-row">
++                        <div><div class="acct-name" id="acct-email">__ACCOUNT_EMAIL__</div>
++                             <div class="acct-sub" id="s-email"></div></div>
++                    </div>
++                    <div class="acct-row">
++                        <div><div class="acct-name" id="l-signout"></div>
++                             <div class="acct-sub" id="s-signout"></div></div>
++                        <button type="button" class="btn-sm" onclick="signOut()" id="btn-signout">…</button>
++                    </div>
++                </div>
++
++            </div>
++        </div>
++    </main>
++</div>
++<script src="/static/i18n.js"></script>
++<script src="/static/saas.js"></script>
++<script>
++// Bilingual labels live here rather than in i18n.js so this page adds no
++// missing-key risk: hudhudI18n.t() returns the raw key when one is absent,
++// which would print "acct.title" on screen.
++function isAr() { return !!(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar'); }
++function L(ar, en) { return isAr() ? ar : en; }
++function setText(id, ar, en) { const el = document.getElementById(id); if (el) el.textContent = L(ar, en); }
++function esc(s) {
++    return String(s == null ? '' : s).replace(/[&<>"']/g,
++        c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
++}
++
++const PLATFORM_LABEL = {
++    facebook:  { ar: 'فيسبوك',    en: 'Facebook',  icon: '📘' },
++    instagram: { ar: 'إنستجرام',  en: 'Instagram', icon: '📸' },
++    threads:   { ar: 'ثريدز',     en: 'Threads',   icon: '🧵' }
++};
++
++function paintStaticLabels() {
++    document.title = L('هدهد — حسابي', 'Hudhud — My Account');
++    setText('crumb-account', 'حسابي', 'My Account');
++    setText('h-sub', 'الاشتراك والخطة', 'Subscription & plan');
++    setText('d-sub', 'حالة اشتراكك والمنصات المتاحة في خطتك الحالية.',
++                     'Your subscription status and the platforms included in your current plan.');
++    setText('h-ai', 'مفتاح الردود الآلية', 'AI master switch');
++    setText('d-ai', 'أوقف الذكاء الاصطناعي عبر كل محادثاتك وتعليقاتك لتدير حساباتك بنفسك. الرسائل الجديدة تظل تظهر في صندوق الوارد للرد اليدوي، وإيقاف المحادثة الواحدة (Human Takeover) يعمل بشكل مستقل.',
++                    'Pause the AI across all your conversations and comment automations to manage your accounts yourself. New messages still arrive in your inbox for manual replies, and per-conversation Human Takeover stays independent.');
++    setText('h-conn', 'الحسابات المربوطة', 'Connected channels');
++    setText('d-conn', 'القنوات المتصلة بحسابك. فصل أي قناة يوقف ردود الوكيل عليها فوراً ولا يحذف بياناتك أو محادثاتك السابقة.',
++                      'Channels linked to your account. Disconnecting one stops the agent replying there immediately; it does not delete your data or past conversations.');
++    setText('h-pw', 'تغيير كلمة المرور', 'Change password');
++    setText('d-pw', 'التغيير فوري ويتطلب كلمة المرور الحالية.',
++                    'The change is instant and requires your current password.');
++    setText('l-pw-cur', 'كلمة المرور الحالية', 'Current password');
++    setText('l-pw-new', 'كلمة المرور الجديدة (8 أحرف على الأقل)', 'New password (8+ characters)');
++    setText('l-pw-cf', 'تأكيد كلمة المرور الجديدة', 'Confirm new password');
++    setText('btn-pw', '💾 حفظ كلمة المرور', '💾 Save password');
++    setText('h-id', 'بيانات الحساب', 'Account details');
++    setText('d-id', 'الحساب المستخدم لتسجيل الدخول لهذه المنصة.',
++                    'The account you use to sign in to this platform.');
++    setText('s-email', 'البريد الإلكتروني', 'Email address');
++    setText('l-signout', 'تسجيل الخروج', 'Sign out');
++    setText('s-signout', 'إنهاء الجلسة على هذا الجهاز', 'End the session on this device');
++    setText('btn-signout', 'خروج', 'Sign out');
++}
++
++// ---- connect-result banner (OAuth callbacks land back here) --------------
++function paintBanner() {
++    const q = new URLSearchParams(location.search);
++    const ok = q.get('connected');
++    const err = q.get('connect_error');
++    const th = q.get('threads');
++    const box = document.getElementById('acct-banner');
++    if (!box) return;
++    let html = '';
++    const name = p => (PLATFORM_LABEL[p] ? L(PLATFORM_LABEL[p].ar, PLATFORM_LABEL[p].en) : esc(p || ''));
++    if (ok || th === 'connected') {
++        const p = ok || 'threads';
++        html = `<div class="acct-card" style="border-color:#059669;margin-bottom:14px;">
++                    <div style="color:#059669;font-weight:700;font-size:13.5px;">✅ ${
++                        L('تم ربط ' + name(p) + ' بنجاح.', name(p) + ' connected successfully.')}</div>
++                </div>`;
++    } else if (err || th === 'error') {
++        const reasons = {
++            invalid_state: L('انتهت صلاحية طلب الربط. حاول مرة أخرى.', 'The connect request expired. Please try again.'),
++            no_pages:      L('لا توجد صفحات مُدارة على هذا الحساب.', 'No managed Pages were found on that account.'),
++            store:         L('تعذر حفظ الاتصال. حاول مرة أخرى.', 'We could not save the connection. Please try again.')
++        };
++        const msg = reasons[err] || L('فشل الربط. حاول مرة أخرى أو تواصل معنا.',
++                                      'Connection failed. Please try again or contact us.');
++        html = `<div class="acct-card" style="border-color:#dc2626;margin-bottom:14px;">
++                    <div style="color:#dc2626;font-weight:700;font-size:13.5px;">❌ ${esc(msg)}</div>
++                </div>`;
++    }
++    box.innerHTML = html;
++    if (html) history.replaceState({}, '', '/account');
++}
++
++// ---- subscription --------------------------------------------------------
++async function loadSubscription() {
++    const box = document.getElementById('sub-body');
++    try {
++        const d = await (await fetch('/api/billing/subscription')).json();
++        const status = d.status || 'none';
++        const cls = (status === 'active') ? 'pill-on' : (status === 'trialing' ? 'pill-warn' : 'pill-off');
++        const label = {
++            active:   L('اشتراك نشط', 'Active'),
++            trialing: L('تجربة مجانية', 'Free trial'),
++            canceled: L('منتهي', 'Canceled'),
++            none:     L('لا يوجد اشتراك', 'No subscription')
++        }[status] || esc(status);
++        const plats = (d.platforms || []).map(p =>
++            (PLATFORM_LABEL[p] ? PLATFORM_LABEL[p].icon + ' ' + L(PLATFORM_LABEL[p].ar, PLATFORM_LABEL[p].en) : esc(p))
++        ).join(' · ');
++        const ends = d.trial_ends_at
++            ? `<div class="acct-sub">${L('تنتهي التجربة في', 'Trial ends')}: ${esc(String(d.trial_ends_at).slice(0, 16).replace('T', ' '))}</div>`
++            : '';
++        box.className = '';
++        box.innerHTML = `
++            <div class="acct-row">
++                <div><div class="acct-name">${L('الحالة', 'Status')}</div>${ends}</div>
++                <span class="pill ${cls}">${label}</span>
++            </div>
++            <div class="acct-row">
++                <div><div class="acct-name">${L('المنصات في خطتك', 'Platforms in your plan')}</div>
++                     <div class="acct-sub">${plats || L('لا توجد منصات مفعّلة', 'No platforms enabled yet')}</div></div>
++                <a class="btn-sm" href="/billing/checkout-page" style="text-decoration:none;">${
++                    status === 'active' ? L('تعديل الخطة', 'Change plan') : L('اشترك الآن', 'Subscribe')}</a>
++            </div>`;
++    } catch (e) {
++        box.textContent = L('تعذر تحميل بيانات الاشتراك.', 'Could not load subscription details.');
++    }
++}
++
++// ---- AI master switch ----------------------------------------------------
++function renderAi(d) {
++    const paused = !!d.effective_paused;
++    const badge = document.getElementById('ai-badge');
++    const btn = document.getElementById('btn-ai');
++    badge.textContent = paused ? L('⏸️ موقوف', '⏸️ Paused') : L('✅ نشط', '✅ Active');
++    badge.className = 'pill ' + (paused ? 'pill-off' : 'pill-on');
++    btn.textContent = paused ? L('▶️ تشغيل الردود الآلية', '▶️ Resume AI replies')
++                             : L('⏸️ إيقاف الردود الآلية', '⏸️ Pause AI replies');
++    btn.className = 'btn-sm' + (paused ? '' : ' btn-danger');
++    const note = document.getElementById('ai-status');
++    note.textContent = (d.global_paused && !d.user_paused)
++        ? L('موقوف على مستوى المنصة بواسطة الإدارة.', 'Paused platform-wide by the operator.')
++        : '';
++    note.style.color = 'var(--text-muted)';
++}
++
++async function loadAi() {
++    try { renderAi(await (await fetch('/api/ai/pause')).json()); }
++    catch (e) { document.getElementById('ai-badge').textContent = L('غير متاح', 'Unavailable'); }
++}
++
++async function toggleAi() {
++    const btn = document.getElementById('btn-ai');
++    btn.disabled = true;
++    try {
++        const cur = await (await fetch('/api/ai/pause')).json();
++        const r = await fetch('/api/ai/pause', {
++            method: 'POST', headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ paused: !cur.effective_paused })
++        });
++        const d = await r.json();
++        if (r.ok) renderAi(d); else throw new Error(d.detail || 'failed');
++    } catch (e) {
++        const s = document.getElementById('ai-status');
++        s.textContent = L('تعذر تغيير الحالة.', 'Could not change the state.');
++        s.style.color = '#dc2626';
++    } finally { btn.disabled = false; }
++}
++
++// ---- connected channels --------------------------------------------------
++async function loadConnections() {
++    const box = document.getElementById('conn-body');
++    let data = {};
++    try { data = await (await fetch('/api/connections')).json(); }
++    catch (e) { box.textContent = L('تعذر تحميل الحسابات.', 'Could not load your channels.'); return; }
++
++    // Threads lives in its own OAuth manager; surface it in the same list.
++    let threads = null;
++    try { threads = await (await fetch('/api/threads/status')).json(); } catch (e) { /* optional */ }
++
++    const rows = [];
++    for (const c of (data.connections || [])) {
++        const meta = PLATFORM_LABEL[c.platform] || { ar: c.platform, en: c.platform, icon: '🔗' };
++        rows.push(`
++            <div class="acct-row">
++                <div>
++                    <div class="acct-name">${meta.icon} ${L(meta.ar, meta.en)}</div>
++                    <div class="acct-sub">${esc(c.account_name || c.account_id || '')}</div>
++                </div>
++                <div style="display:flex;gap:8px;align-items:center;">
++                    <span class="pill pill-on">${L('متصل', 'Connected')}</span>
++                    <button type="button" class="btn-sm btn-danger"
++                            onclick="disconnect('${esc(c.platform)}', '${esc(c.account_name || c.platform)}')">${
++                        L('فصل', 'Disconnect')}</button>
++                </div>
++            </div>`);
++    }
++    if (threads && threads.connected) {
++        const meta = PLATFORM_LABEL.threads;
++        rows.push(`
++            <div class="acct-row">
++                <div>
++                    <div class="acct-name">${meta.icon} ${L(meta.ar, meta.en)}</div>
++                    <div class="acct-sub">${esc(threads.username ? '@' + threads.username : '')}</div>
++                </div>
++                <div style="display:flex;gap:8px;align-items:center;">
++                    <span class="pill pill-on">${L('متصل', 'Connected')}</span>
++                    <button type="button" class="btn-sm btn-danger"
++                            onclick="disconnectThreads()">${L('فصل', 'Disconnect')}</button>
++                </div>
++            </div>`);
++    }
++
++    if (!rows.length) {
++        box.className = 'acct-empty';
++        box.innerHTML = `${L('لا توجد قنوات مربوطة بعد.', 'No channels connected yet.')}
++            <div style="margin-top:10px;"><a class="btn-sm" href="/onboarding" style="text-decoration:none;">${
++                L('اربط قناتك الأولى', 'Connect your first channel')}</a></div>`;
++        return;
++    }
++    box.className = '';
++    box.innerHTML = rows.join('') + `
++        <div style="margin-top:12px;"><a class="btn-sm" href="/onboarding" style="text-decoration:none;">+ ${
++            L('ربط قناة أخرى', 'Connect another channel')}</a></div>`;
++}
++
++async function disconnect(platform, label) {
++    const warn = L(`سيتوقف الوكيل عن الرد على "${label}" فوراً. بياناتك ومحادثاتك السابقة تبقى كما هي. متابعة؟`,
++                   `The agent will stop replying on "${label}" immediately. Your data and past conversations stay intact. Continue?`);
++    if (!confirm(warn)) return;
++    const s = document.getElementById('conn-status');
++    try {
++        const r = await fetch('/api/connections/' + encodeURIComponent(platform), { method: 'DELETE' });
++        const d = await r.json();
++        if (!r.ok) throw new Error(d.detail || 'failed');
++        s.textContent = L('تم فصل القناة.', 'Channel disconnected.');
++        s.style.color = '#059669';
++    } catch (e) {
++        s.textContent = L('تعذر فصل القناة. حاول مرة أخرى.', 'Could not disconnect. Please try again.');
++        s.style.color = '#dc2626';
++    }
++    loadConnections();
++}
++
++async function disconnectThreads() {
++    if (!confirm(L('هل تريد فصل حساب ثريدز؟', 'Disconnect your Threads account?'))) return;
++    const s = document.getElementById('conn-status');
++    try {
++        await fetch('/api/threads/disconnect', { method: 'POST' });
++        s.textContent = L('تم فصل ثريدز.', 'Threads disconnected.');
++        s.style.color = '#059669';
++    } catch (e) {
++        s.textContent = L('تعذر الفصل.', 'Could not disconnect.');
++        s.style.color = '#dc2626';
++    }
++    loadConnections();
++}
++
++// ---- password ------------------------------------------------------------
++async function changePassword() {
++    const s = document.getElementById('pw-status');
++    const cur = document.getElementById('pw-current').value;
++    const nw = document.getElementById('pw-new').value;
++    const cf = document.getElementById('pw-confirm').value;
++    const fail = m => { s.textContent = '❌ ' + m; s.style.color = '#dc2626'; };
++    if (!cur || !nw) return fail(L('املأ كل الحقول.', 'Fill in all fields.'));
++    if (nw.length < 8) return fail(L('كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف.',
++                                     'The new password must be at least 8 characters.'));
++    if (nw !== cf) return fail(L('كلمتا المرور غير متطابقتين.', 'The passwords do not match.'));
++    try {
++        const r = await fetch('/auth/change-password', {
++            method: 'POST', headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ current_password: cur, new_password: nw })
++        });
++        const d = await r.json();
++        if (!r.ok) return fail(d.detail || L('فشل التغيير.', 'The change failed.'));
++        s.textContent = '✅ ' + L('تم تغيير كلمة المرور.', 'Password changed.');
++        s.style.color = '#059669';
++        ['pw-current', 'pw-new', 'pw-confirm'].forEach(i => { document.getElementById(i).value = ''; });
++    } catch (e) {
++        fail(L('تعذر الاتصال بالخادم.', 'Could not reach the server.'));
++    }
++}
++
++async function signOut() {
++    try { await fetch('/auth/logout', { method: 'POST' }); } catch (e) {}
++    window.location.href = '/login';
++}
++
++// ---- boot ----------------------------------------------------------------
++function paintAll() {
++    paintStaticLabels();
++    paintBanner();
++    loadSubscription();
++    loadAi();
++    loadConnections();
++}
++document.addEventListener('DOMContentLoaded', paintAll);
++window.addEventListener('hudhud_lang_change', paintAll);
++</script>
++</body>
++</html>"""
++
++
++module_registry.register_module(
++    name="account_page",
++    description="Customer account page /account: subscription, AI master switch, "
++                "connected channels (connect/disconnect), password, sign out",
++    register_router=register,
++    pages=[PageSpec(path="/account", template="account", access=ACCESS_USER)],
++    nav=[NavEntry(href="/account", label_key="nav.account", icon="👤",
++                  section="nav.account", order=1)],
++)
+diff --git a/src/modules/billing/__init__.py b/src/modules/billing/__init__.py
+index fd64a67..f5c8fab 100644
+--- a/src/modules/billing/__init__.py
++++ b/src/modules/billing/__init__.py
+@@ -288,8 +288,19 @@ def register(app: FastAPI) -> None:
+ 
+     @app.post("/api/billing/trial", tags=["Billing"])
+     async def start_trial_checkout(request: Request):
+-        """3-day all-platforms trial — requires card capture via the gateway."""
++        """3-day all-platforms trial — requires card capture via the gateway.
++
++        One trial per account, enforced here rather than relying on the
++        gateway: this endpoint creates a fresh trial checkout on every call,
++        so without a server-side record an account could restart the free
++        period indefinitely.
++        """
+         session = _me(request)
++        if entitlement_service.has_used_trial(session["sub"]):
++            raise HTTPException(
++                status_code=409,
++                detail="التجربة المجانية مستخدمة بالفعل لهذا الحساب — اختر خطة للمتابعة",
++            )
+         user = {"id": session["sub"], "email": session["email"]}
+         from src.payments.registry import active_gateway
+         gateway = active_gateway()
+diff --git a/src/modules/billing/services.py b/src/modules/billing/services.py
+index 4f22929..d270b3f 100644
+--- a/src/modules/billing/services.py
++++ b/src/modules/billing/services.py
+@@ -101,8 +101,26 @@ class EntitlementService:
+             return supabase_db.update("user_subscriptions", sub["id"], fields)
+         return supabase_db.insert("user_subscriptions", {"user_id": user_id, **fields})
+ 
++    def has_used_trial(self, user_id: str) -> bool:
++        """True once this account has ever started a trial.
++
++        ``trial_ends_at`` is never cleared, so its presence is a permanent
++        record that the free period was consumed — including after the trial
++        expires and the subscription flips to ``canceled``.
++        """
++        sub = self.get_subscription(user_id) or {}
++        return bool(sub.get("trial_ends_at")) or sub.get("status") in ("trialing", "active")
++
+     def start_trial(self, user_id: str) -> bool:
+-        """3-day all-platforms trial (card captured at checkout — enforced upstream)."""
++        """3-day all-platforms trial (card captured at checkout — enforced upstream).
++
++        One trial per account: without this guard the endpoint could be called
++        repeatedly to push ``trial_ends_at`` forward and keep every entitlement
++        free indefinitely.
++        """
++        if self.has_used_trial(user_id):
++            logger.info(f"Trial refused (already used) for {user_id}")
++            return False
+         from datetime import timedelta
+         now = datetime.now(timezone.utc)
+         trial_end = (now + timedelta(days=TRIAL_DAYS)).isoformat()
+diff --git a/src/modules/connections/routes.py b/src/modules/connections/routes.py
+index 7294874..26771a2 100644
+--- a/src/modules/connections/routes.py
++++ b/src/modules/connections/routes.py
+@@ -123,7 +123,7 @@ async def facebook_authorize(request: Request):
+ async def facebook_callback(request: Request, code: str = Query(...), state: str = Query(...)):
+     user_id = _verify_state(state, "facebook")
+     if not user_id:
+-        return RedirectResponse("/settings?connect_error=invalid_state", status_code=303)
++        return RedirectResponse("/account?connect_error=invalid_state", status_code=303)
+     import httpx
+     try:
+         async with httpx.AsyncClient(timeout=30.0) as client:
+@@ -135,7 +135,7 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
+                         "redirect_uri": _redirect_uri("facebook"), "code": code})
+             if tok.status_code != 200:
+                 logger.error(f"FB code exchange failed: {tok.text[:200]}")
+-                return RedirectResponse("/settings?connect_error=facebook", status_code=303)
++                return RedirectResponse("/account?connect_error=facebook", status_code=303)
+             short = tok.json().get("access_token")
+             # → long-lived user token
+             lng = await client.get(
+@@ -155,7 +155,7 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
+                                              "access_token": user_token})
+             plist = (pages.json() if pages.status_code == 200 else {}).get("data", [])
+             if not plist:
+-                return RedirectResponse("/settings?connect_error=no_pages", status_code=303)
++                return RedirectResponse("/account?connect_error=no_pages", status_code=303)
+         page = plist[0]
+         ig = page.get("instagram_business_account") or {}
+         saved = connection_service.store(
+@@ -168,11 +168,11 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
+                       "linked_ig_username": ig.get("username"),
+                       "pages_count": len(plist)})
+         if not saved:
+-            return RedirectResponse("/settings?connect_error=store", status_code=303)
+-        return RedirectResponse("/settings?connected=facebook", status_code=303)
++            return RedirectResponse("/account?connect_error=store", status_code=303)
++        return RedirectResponse("/account?connected=facebook", status_code=303)
+     except Exception as e:
+         logger.error(f"facebook callback error: {e}")
+-        return RedirectResponse("/settings?connect_error=facebook", status_code=303)
++        return RedirectResponse("/account?connect_error=facebook", status_code=303)
+ 
+ 
+ # --------------------------------------------------------------------------
+@@ -199,7 +199,7 @@ async def instagram_authorize(request: Request):
+ async def instagram_callback(request: Request, code: str = Query(...), state: str = Query(...)):
+     user_id = _verify_state(state, "instagram")
+     if not user_id:
+-        return RedirectResponse("/settings?connect_error=invalid_state", status_code=303)
++        return RedirectResponse("/account?connect_error=invalid_state", status_code=303)
+     import httpx
+     try:
+         async with httpx.AsyncClient(timeout=30.0) as client:
+@@ -209,7 +209,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
+                 "redirect_uri": _redirect_uri("instagram"), "code": code})
+             if tok.status_code != 200:
+                 logger.error(f"IG code exchange failed: {tok.text[:200]}")
+-                return RedirectResponse("/settings?connect_error=instagram", status_code=303)
++                return RedirectResponse("/account?connect_error=instagram", status_code=303)
+             j = tok.json()
+             short, ig_uid = j.get("access_token"), str(j.get("user_id", ""))
+             lng = await client.get("https://graph.instagram.com/access_token", params={
+@@ -227,7 +227,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
+             metadata={"platform_user_id": str(ig_uid),
+                       "token_expires_in_days": 60})
+         if not saved:
+-            return RedirectResponse("/settings?connect_error=store", status_code=303)
++            return RedirectResponse("/account?connect_error=store", status_code=303)
+         # 60-day token expiry recorded for refresh scheduling
+         from datetime import datetime, timedelta, timezone
+         from src.core.supabase_client import supabase_db
+@@ -239,7 +239,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
+                                              + timedelta(days=60)).isoformat()})
+         except Exception:
+             pass
+-        return RedirectResponse("/settings?connected=instagram", status_code=303)
++        return RedirectResponse("/account?connected=instagram", status_code=303)
+     except Exception as e:
+         logger.error(f"instagram callback error: {e}")
+-        return RedirectResponse("/settings?connect_error=instagram", status_code=303)
++        return RedirectResponse("/account?connect_error=instagram", status_code=303)
+diff --git a/src/modules/pages/__init__.py b/src/modules/pages/__init__.py
+index 96f9ec5..c414ee1 100644
+--- a/src/modules/pages/__init__.py
++++ b/src/modules/pages/__init__.py
+@@ -225,7 +225,7 @@ module_registry.register_module(
+         NavEntry(href="/identity", label_key="nav.identity", icon="🔍",
+                  section="nav.workspaces", order=6, admin_only=True),
+         NavEntry(href="/analytics", label_key="nav.analytics", icon="📈",
+-                 section="nav.analytics_system", order=1, admin_only=True),
++                 section="nav.analytics_system", order=1),
+         NavEntry(href="/settings", label_key="nav.settings", icon="⚙️",
+                  section="nav.analytics_system", order=2, admin_only=True),
+     ],
+diff --git a/src/modules/threads_marketing/routes.py b/src/modules/threads_marketing/routes.py
+index feaf687..f6549da 100644
+--- a/src/modules/threads_marketing/routes.py
++++ b/src/modules/threads_marketing/routes.py
+@@ -73,11 +73,11 @@ async def threads_oauth_callback(request: Request, code: Optional[str] = None, s
+     if not user_id:
+         return RedirectResponse(url="/login?threads=expired_session", status_code=303)
+     if not code or not threads_oauth_manager.validate_state(state, user_id):
+-        return RedirectResponse(url="/settings?threads=error", status_code=303)
++        return RedirectResponse(url="/account?threads=error", status_code=303)
+     result = await threads_oauth_manager.exchange_code(code, user_id=user_id)
+     if result.get("status") != "success":
+-        return RedirectResponse(url="/settings?threads=error", status_code=303)
+-    return RedirectResponse(url=f"/settings?threads=connected&username={result.get('username', '')}", status_code=303)
++        return RedirectResponse(url="/account?threads=error", status_code=303)
++    return RedirectResponse(url=f"/account?threads=connected&username={result.get('username', '')}", status_code=303)
+ 
+ 
+ @router.post("/api/threads/oauth/refresh", tags=["Threads"])
+diff --git a/src/templates/static/i18n.js b/src/templates/static/i18n.js
+index d4370e9..a992534 100644
+--- a/src/templates/static/i18n.js
++++ b/src/templates/static/i18n.js
+@@ -63,6 +63,7 @@ const HUDHUD_TRANSLATIONS = {
+ 
+         // Global Nav & Sidebar
+         "nav.conversations": "Conversations & AI Agent",
++        "nav.account": "My Account",
+         "nav.inbox": "Live Inbox",
+         "nav.onboarding": "Agent Setup",
+         "nav.workspaces": "Workspaces",
+@@ -682,6 +683,7 @@ const HUDHUD_TRANSLATIONS = {
+ 
+         // Global Nav & Sidebar
+         "nav.conversations": "المحادثات والوكيل الذكي",
++        "nav.account": "حسابي",
+         "nav.inbox": "صندوق الوارد المباشر",
+         "nav.onboarding": "إعداد الوكيل الذكي",
+         "nav.workspaces": "مساحات العمل",
+diff --git a/tests/test_account_page.py b/tests/test_account_page.py
+new file mode 100644
+index 0000000..3f8e6ce
+--- /dev/null
++++ b/tests/test_account_page.py
+@@ -0,0 +1,135 @@
++"""Regression tests for the customer account page and role separation.
++
++These lock in the three defects the page was created to fix:
++  1. OAuth callbacks landed non-admin customers on an admin-only page (403).
++  2. Pause-AI / change-password / disconnect existed as APIs with no reachable UI.
++  3. /analytics served per-user data but was gated as admin-only.
++"""
++import re
++from pathlib import Path
++
++import pytest
++
++SRC = Path(__file__).resolve().parent.parent / "src"
++
++
++# ---------------------------------------------------------------------------
++# 1. OAuth callbacks must land somewhere a customer is allowed to open
++# ---------------------------------------------------------------------------
++def test_oauth_callbacks_never_redirect_to_an_admin_only_page():
++    from src.core.auth import ADMIN_PAGE_PATHS
++
++    offenders = []
++    for name in ("connections/routes.py", "threads_marketing/routes.py"):
++        text = (SRC / "modules" / name).read_text(encoding="utf-8")
++        for target in re.findall(r'RedirectResponse\(\s*url=["\']([^"\']+)|RedirectResponse\(\s*["\'](/[^"\']+)', text):
++            url = (target[0] or target[1]).split("?")[0]
++            if url in ADMIN_PAGE_PATHS:
++                offenders.append(f"{name} -> {url}")
++    assert not offenders, f"customer OAuth flow redirects into an admin page: {offenders}"
++
++
++def test_connect_callbacks_point_at_the_account_page():
++    text = (SRC / "modules" / "connections" / "routes.py").read_text(encoding="utf-8")
++    assert '"/account?connected=facebook"' in text
++    assert '"/account?connected=instagram"' in text
++
++
++# ---------------------------------------------------------------------------
++# 2. The account page exists, is customer-accessible, and wires the real APIs
++# ---------------------------------------------------------------------------
++def test_account_page_is_registered_for_any_authenticated_user():
++    import src.modules.account_page  # noqa: F401  (registers on import)
++    from src.core.auth import is_admin_page, is_public_path
++
++    assert not is_admin_page("/account"), "/account must not be admin-gated"
++    assert not is_public_path("/account"), "/account must still require a session"
++
++
++def test_account_page_exposes_every_self_service_action():
++    from src.modules.account_page import _ACCOUNT_HTML
++
++    for endpoint in (
++        "/api/ai/pause",            # pause my own agent
++        "/auth/change-password",    # rotate my own password
++        "/api/connections",         # list my channels
++        "/api/threads/disconnect",  # drop Threads
++        "/api/billing/subscription",
++    ):
++        assert endpoint in _ACCOUNT_HTML, f"account page never calls {endpoint}"
++
++    # The DELETE call is built dynamically, so assert on the method + path base.
++    assert "'/api/connections/' + encodeURIComponent(platform)" in _ACCOUNT_HTML
++    assert "method: 'DELETE'" in _ACCOUNT_HTML
++
++
++def test_account_page_uses_no_undefined_i18n_keys():
++    """hudhudI18n.t() returns the raw key when missing, printing e.g.
++    'acct.title' on screen. Only keys that exist in i18n.js may be used."""
++    from src.modules.account_page import _ACCOUNT_HTML
++
++    i18n = (SRC / "templates" / "static" / "i18n.js").read_text(encoding="utf-8")
++    used = set(re.findall(r'data-i18n="([^"]+)"', _ACCOUNT_HTML))
++    missing = sorted(k for k in used if f'"{k}"' not in i18n)
++    assert not missing, f"account page references i18n keys that do not exist: {missing}"
++
++
++def test_account_nav_entry_is_visible_to_customers():
++    import src.modules.account_page  # noqa: F401
++    from src.core.modules import module_registry, SIDEBAR_SECTIONS
++
++    hrefs = [n.href for n in module_registry.sorted_nav(is_admin=False)]
++    assert "/account" in hrefs, "customers cannot see the account page in the sidebar"
++
++    sections = {n.section for n in module_registry.sorted_nav(is_admin=False)}
++    assert sections <= set(SIDEBAR_SECTIONS), \
++        "a nav entry uses a section with no SIDEBAR_SECTIONS title"
++
++
++# ---------------------------------------------------------------------------
++# 3. Analytics is per-user data, so customers must reach it
++# ---------------------------------------------------------------------------
++def test_analytics_is_available_to_customers():
++    import src.modules.pages  # noqa: F401
++    from src.core.auth import is_admin_page
++    from src.core.modules import module_registry
++
++    assert not is_admin_page("/analytics")
++    hrefs = [n.href for n in module_registry.sorted_nav(is_admin=False)]
++    assert "/analytics" in hrefs
++
++
++def test_operator_tooling_stays_admin_only():
++    from src.core.auth import is_admin_page
++
++    for path in ("/settings", "/identity"):
++        assert is_admin_page(path), f"{path} must remain operator-only"
++
++
++# ---------------------------------------------------------------------------
++# 4. One free trial per account
++# ---------------------------------------------------------------------------
++def test_trial_cannot_be_restarted(monkeypatch):
++    from src.modules.billing.services import entitlement_service
++
++    for sub in ({"trial_ends_at": "2026-01-01T00:00:00+00:00", "status": "canceled"},
++                {"status": "trialing"},
++                {"status": "active"}):
++        monkeypatch.setattr(entitlement_service, "get_subscription", lambda _u, s=sub: s)
++        assert entitlement_service.has_used_trial("u1") is True
++        assert entitlement_service.start_trial("u1") is False, \
++            "an account that already consumed a trial must not get another"
++
++
++def test_first_trial_is_allowed(monkeypatch):
++    from src.modules.billing.services import entitlement_service
++
++    monkeypatch.setattr(entitlement_service, "get_subscription", lambda _u: None)
++    assert entitlement_service.has_used_trial("fresh-user") is False
++
++
++def test_trial_endpoint_refuses_a_second_trial():
++    text = (SRC / "modules" / "billing" / "__init__.py").read_text(encoding="utf-8")
++    route = text.split('@app.post("/api/billing/trial"')[1].split("@app.")[0]
++    assert "has_used_trial" in route, "the trial endpoint does not check prior trial use"
++    assert "409" in route
+diff --git a/tests/test_nav_registry.py b/tests/test_nav_registry.py
+index 63edaba..446a45e 100644
+--- a/tests/test_nav_registry.py
++++ b/tests/test_nav_registry.py
+@@ -20,19 +20,24 @@ def test_admin_sees_all_nav_with_active_state(client: TestClient):
+     nav = _nav_of(client, "/settings")
+     assert "/settings" in nav and "/identity" in nav and "/analytics" in nav
+     assert 'nav-item active' in nav          # current page highlighted
+-    # Wave 9.8: admin nav ships pre-separated - client titles (2) + a dev section
+-    assert nav.count("nav-section-title") == 2
++    # Wave 9.8: admin nav ships pre-separated — client section titles plus a
++    # dev section. Account and Analytics are customer-owned, so an admin sees
++    # them in the client half; only operator tooling sits under the dev badge.
++    assert nav.count("nav-section-title") == 4   # account, conversations, workspaces, analytics&system
+     assert "client-nav-section" in nav and "dev-nav-section" in nav
+     assert "dev-badge" in nav
+-    assert nav.count('class="nav-item') == 12  # /users + /templates admin console entries
++    assert nav.count('class="nav-item') == 13    # 12 previous + /account
+ 
+ 
+ def test_regular_user_hides_admin_nav(client_as_user: TestClient):
+     nav = _nav_of(client_as_user, "/leads")
+     assert "/leads" in nav
++    # Operator tooling stays hidden…
+     assert "/settings" not in nav
+     assert "/identity" not in nav
+-    assert "/analytics" not in nav
++    # …but everything scoped to the customer's own data must be reachable.
++    assert "/analytics" in nav
++    assert "/account" in nav
+     assert 'nav-item active' in nav
+ 
+ 
