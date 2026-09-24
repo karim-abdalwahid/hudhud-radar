@@ -269,14 +269,17 @@
                 if (res.ok) {
                     feedback.className = 'success-text';
                     feedback.textContent = '✅ ' + (data.message || 'Saved successfully!');
+                    if (window.hudhudToast) hudhudToast.success(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 'تم حفظ المستند وتحديث ذاكرة الذكاء الاصطناعي بنجاح' : 'Document saved & AI memory updated successfully');
                     loadDocumentsList();
                 } else {
                     feedback.className = 'error-text';
                     feedback.textContent = '❌ Error: ' + (data.detail || 'Save failed');
+                    if (window.hudhudToast) hudhudToast.error(data.detail || 'Save failed');
                 }
             } catch (e) {
                 feedback.className = 'error-text';
                 feedback.textContent = '❌ Connection failed';
+                if (window.hudhudToast) hudhudToast.error('Connection failed');
             }
         }
 
@@ -298,13 +301,14 @@
                     document.getElementById('editor-doc-title').textContent = t('kb.editor_choose');
                     document.getElementById('btn-save-doc').style.display = 'none';
                     document.getElementById('btn-delete-doc').style.display = 'none';
+                    if (window.hudhudToast) hudhudToast.success(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? 'تم حذف المستند بنجاح' : 'Document deleted successfully');
                     loadDocumentsList();
                 } else {
                     const err = await res.json();
-                    alert('Error: ' + (err.detail || 'Delete failed'));
+                    if (window.hudhudToast) hudhudToast.error(err.detail || 'Delete failed');
                 }
             } catch (e) {
-                alert('Connection error');
+                if (window.hudhudToast) hudhudToast.error('Connection error');
             }
         }
 
@@ -318,7 +322,7 @@
         async function createNewDoc() {
             let name = document.getElementById('new-doc-name').value.trim();
             if (!name) {
-                alert('Please provide a document name');
+                if (window.hudhudToast) hudhudToast.warning('Please provide a document name');
                 return;
             }
             if (!name.endsWith('.md')) {
@@ -334,14 +338,15 @@
                 });
                 if (res.ok) {
                     hideNewDocModal();
+                    if (window.hudhudToast) hudhudToast.success(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? `تم إنشاء المستند '${name}' بنجاح` : `Document '${name}' created successfully`);
                     await loadDocumentsList();
                     selectDocument(name);
                 } else {
                     const err = await res.json();
-                    alert('Error: ' + (err.detail || 'Creation failed'));
+                    if (window.hudhudToast) hudhudToast.error(err.detail || 'Creation failed');
                 }
             } catch (e) {
-                alert('Connection error');
+                if (window.hudhudToast) hudhudToast.error('Connection error');
             }
         }
 
@@ -366,15 +371,18 @@
                 if (res.ok) {
                     status.className = 'success-text';
                     status.textContent = `✅ Saved '${data.filename || file.name}' and updated memory!`;
+                    if (window.hudhudToast) hudhudToast.success(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? `تم رفع المستند '${data.filename || file.name}' بنجاح وتحديث الذاكرة!` : `Uploaded '${data.filename || file.name}' successfully!`);
                     await loadDocumentsList();
                     if (data.filename) selectDocument(data.filename);
                 } else {
                     status.className = 'error-text';
                     status.textContent = '❌ Error: ' + (data.detail || 'Upload failed');
+                    if (window.hudhudToast) hudhudToast.error(data.detail || 'Upload failed');
                 }
             } catch (e) {
                 status.className = 'error-text';
                 status.textContent = '❌ Connection error';
+                if (window.hudhudToast) hudhudToast.error('Connection error');
             }
         }
 
@@ -387,13 +395,19 @@
                 const res = await fetch('/api/knowledge/sync-meta', { method: 'POST' });
                 const data = await res.json();
                 if (res.ok) {
-                    alert(`✅ Ingestion complete!\nDocument: ${data.filename || 'synced_meta_content.md'}\nWords: ${data.words_count || 0}`);
+                    if (window.hudhudToast) {
+                        hudhudToast.success(
+                            window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' 
+                                ? `تمت المزامنة بنجاح! المستند: ${data.filename || 'synced_meta_content.md'} (${data.words_count || 0} كلمة)`
+                                : `Ingestion complete! Document: ${data.filename || 'synced_meta_content.md'} (${data.words_count || 0} words)`
+                        );
+                    }
                     await loadDocumentsList();
                 } else {
-                    alert('Notice: ' + (data.detail || 'Sync encountered an issue'));
+                    if (window.hudhudToast) hudhudToast.warning(data.detail || 'Sync encountered an issue');
                 }
             } catch (e) {
-                alert('Connection error');
+                if (window.hudhudToast) hudhudToast.error('Connection error');
             } finally {
                 btn.disabled = false;
                 btn.textContent = t('kb.sync_meta_btn');

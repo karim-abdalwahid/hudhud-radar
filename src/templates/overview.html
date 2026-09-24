@@ -287,7 +287,13 @@
 
         function renderSystemAlerts(alerts) {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
-            const colors = {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const colors = isDark ? {
+                critical: { bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.35)', text: '#f87171' },
+                warning:  { bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.35)', text: '#fbbf24' },
+                info:     { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.35)', text: '#60a5fa' },
+                ok:       { bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.35)', text: '#34d399' }
+            } : {
                 critical: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
                 warning:  { bg: '#fffbeb', border: '#fde68a', text: '#b45309' },
                 info:     { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8' },

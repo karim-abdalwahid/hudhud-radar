@@ -581,24 +581,31 @@
         }
 
         async function publishPostNow(postId) {
-            if (!confirm(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? "تأكيد النشر الفوري؟" : "Confirm immediate publish?")) return;
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            if (!confirm(isAr ? "تأكيد النشر الفوري؟" : "Confirm immediate publish?")) return;
             try {
                 const res = await fetch(`/api/content/posts/${postId}/publish-now`, { method: 'POST' });
                 const data = await res.json();
-                alert(data.status === 'published' ? "Published successfully!" : "Status: " + JSON.stringify(data));
+                if (data.status === 'published') {
+                    if (window.hudhudToast) hudhudToast.success(isAr ? "تم نشر المنشور على القناة بنجاح!" : "Post published successfully!");
+                } else {
+                    if (window.hudhudToast) hudhudToast.warning((isAr ? "حالة النشر: " : "Status: ") + (data.status || JSON.stringify(data)));
+                }
                 loadContentPosts();
             } catch (err) {
-                alert("Execution failed: " + err);
+                if (window.hudhudToast) hudhudToast.error((isAr ? "فشل النشر: " : "Execution failed: ") + err);
             }
         }
 
         async function deletePost(postId) {
-            if (!confirm(window.hudhudI18n && window.hudhudI18n.currentLang === 'ar' ? "تأكيد حذف المنشور؟" : "Confirm delete?")) return;
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            if (!confirm(isAr ? "تأكيد حذف المنشور؟" : "Confirm delete?")) return;
             try {
                 await fetch(`/api/content/posts/${postId}`, { method: 'DELETE' });
+                if (window.hudhudToast) hudhudToast.success(isAr ? "تم حذف المنشور بنجاح" : "Post deleted successfully");
                 loadContentPosts();
             } catch (err) {
-                alert("Delete failed: " + err);
+                if (window.hudhudToast) hudhudToast.error((isAr ? "فشل الحذف: " : "Delete failed: ") + err);
             }
         }
 

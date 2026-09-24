@@ -193,7 +193,7 @@
                     </div>
 
                     <!-- Where to configure each redirect (clears the "Form can't be saved" confusion) -->
-                    <div style="margin-top:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:#1e40af; line-height:1.8;">
+                    <div style="margin-top:14px; background:var(--badge-blue-bg); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:12px; font-size:12.5px; color:var(--text-primary); line-height:1.8;">
                         <strong>📍 إعداد فورم Threads في لوحة Meta (انسخ حرفياً):</strong><br>
                         1️⃣ <b>Redirect Callback URL</b>:<br>
                         <code class="mono" style="direction:ltr; display:inline-block;" data-base-url="/api/threads/oauth/callback"></code><br>
@@ -725,7 +725,7 @@
                 }
                 list.innerHTML = provs.map(p => `
                     <div style="display:flex; align-items:center; gap:12px; background:var(--bg-input); border:1px solid var(--border-default); border-radius:12px; padding:12px 14px;">
-                        <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid var(--border-default); border-radius:9px; flex-shrink:0;">${PROVIDER_LOGOS[p.logo_key] || '⚡'}</div>
+                        <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:var(--bg-card); border:1px solid var(--border-default); border-radius:9px; flex-shrink:0;">${PROVIDER_LOGOS[p.logo_key] || '⚡'}</div>
                         <div style="flex:1; min-width:0;">
                             <div style="font-size:14px; font-weight:700;">${p.display_name} <span style="font-size:10px; color:var(--text-muted); font-weight:500; margin-inline-start:6px;">${p.kind}</span> ${p.status==='disabled' ? '<span class="badge badge-muted" style="font-size:10px;">معطّل</span>' : ''}</div>
                             <div style="font-size:11.5px; color:var(--text-muted); direction:ltr; text-align:start;">${p.api_key_masked || 'no key'} · ${p.enabled_models}/${p.models_count} models enabled · ${p.last_synced_at ? 'synced ' + p.last_synced_at.slice(0,16) : 'never synced'}</div>

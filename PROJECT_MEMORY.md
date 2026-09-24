@@ -2233,3 +2233,61 @@ The owner requested:
 - scripts/scan_annotation_traps.py: CLEAN.
 - scripts/scan_identity.py: CLEAN.
 - account/ folder strictly untouched.
+
+## [Entry 061] 2026-09-24 — Polar Recurring Subscriptions & Knowledge Base Embedding Quota Audits
+- **Timestamp**: 2026-09-24T02:00:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ AUDITED & VERIFIED (Zero regressions)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+
+### 1. Context & User Directive
+1. **Polar Subscription Recurring Renewal**:
+   - The owner raised a critical concern regarding monthly automated credit renewals: whether Polar re-sends `subscription_activated` upon invoice renewal or only once at initial checkout.
+   - Clarified that Polar dispatches `order.created` and `subscription.updated` on renewal cycles; established the blueprint for attaching automated credit reloads to renewal events.
+2. **Knowledge Base File Upload Embeddings Quota**:
+   - The owner flagged that document uploads (PDF/text chunking) trigger Gemini embedding API calls without being gated by user credits.
+   - Identified the need for an embedding quota gate on KB upload endpoints to protect system API quotas.
+
+## [Entry 062] 2026-09-24 — Enterprise UI/UX Notifications Engine & Dark Mode Contrast Overhaul
+- **Timestamp**: 2026-09-24T03:00:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ IMPLEMENTED, VISUALLY VERIFIED & 100% TESTED (382 PASSED)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+- **Archived Plan & Walkthrough**: `PROJECT_ARCHIVE/032_20260924_implementation_plan_ui_toasts_darkmode.md` & `PROJECT_ARCHIVE/033_20260924_walkthrough_ui_toasts_darkmode.md`
+
+### 1. Context & User Directive
+The owner requested two core platform-wide UI/UX improvements:
+1. **Enterprise Notifications & Toast Alert Engine**:
+   - Build a comprehensive, modern alert system across the entire site for all real-time events (credit depleted/low balance, account/token issues, post publishing success/failure, automation updates, knowledge ingestion, clipboard copy, network errors).
+   - Eliminate archaic, disruptive native browser dialogs (`window.alert`) entirely in favor of polite, non-blocking toasts.
+   - Provide interactive callback buttons (e.g., immediate "Top Up / Recharge" button when credits run out).
+2. **Complete Dark Mode Overhaul**:
+   - Eliminate all jarring stark white (`#ffffff`) background patches shown in 3 user screenshots (Automations cards & canvas, Inbox message stream & customer dossier, Knowledge Base tables & doc editor).
+   - Deliver a unified, luxurious, eye-friendly dark aesthetic across all workspaces.
+3. **Strict Owner Constraint**:
+   - *"متبوظش اي اكواد ملهاش علاقه في اللي طلبته"* — Zero changes to unrelated backend logic, database schemas, or server endpoints.
+
+### 2. Changes Implemented
+1. **Centralized Toast Notification Engine (`src/templates/static/saas.js` & `saas.css`)**:
+   - Created `window.hudhudToast` (`success`, `warning`, `error`, `info`) with glassmorphic cards (`backdrop-filter: blur(16px)`), animated SVG status icons, countdown progress bar, pause-on-hover, and dismiss buttons.
+   - Fully bilingual with fluid RTL (Arabic) and LTR (English) alignment.
+   - Overrode `window.alert` to route through `hudhudToast` automatically without breaking existing caller contracts.
+   - Installed a global `window.fetch` observer intercepting HTTP 402 ("Insufficient credits") to show actionable alert toasts prompting the user to recharge.
+   - Connected unread notification polling (`/api/notifications`) to automatically pop up new unread events as toasts.
+2. **Dark Mode Contrast Corrections**:
+   - `saas.css`: Replaced hardcoded `#ffffff` with `var(--bg-card)` across `.table-wrap`, `.sidebar-footer`, `.btn-secondary`, `.btn-action`, `.doc-item`, `.role-btn.active`, `.page-btn`, `.studio-tab-bar`, `.lang-switcher-btn`. Refined status badges with dark translucent alpha tints.
+   - `automations.html`: Converted view switcher bar, workflow cards, node cards, floating controls, and side drawer to theme variables. Transformed visual canvas to a sleek dark dotted grid. Removed inline `style="background:#ffffff;"` from action buttons.
+   - `inbox.html`: Converted message thread container, chat stream, customer dossier, and text inputs to dark theme variables. Adjusted takeover banner to subtle amber translucent styling.
+   - `knowledge.html`: Themed stats cards, doc list, upload dropzone, and markdown editor.
+   - `studio.html` & `settings.html`: Themed tab selectors, provider logo cards, and action buttons. Wired explicit `hudhudToast` dispatches to publish, delete, and save workflows.
+
+### 3. Verification & Safety
+- **Automated Tests**: Ran full pytest suite: `382 passed, 1 warning in 59.08s` (100% clean).
+- **Template Route Checks**: Verified 200 OK rendering on `/dashboard`, `/automations`, `/inbox`, `/knowledge`, `/studio`, `/settings`.
+- **Browser & Visual Proof (Playwright)**: Captured 4 live browser screenshots verifying zero stark white patches:
+  - `screenshot_dashboard_dark.png` (dark dashboard + live action toasts)
+  - `screenshot_automations_canvas_dark.png` (dark dotted canvas + visual nodes)
+  - `screenshot_inbox_dark.png` (dark live chat + customer dossier)
+  - `screenshot_knowledge_dark.png` (dark document editor + stats)
+- **Zero Backend Changes**: Only 8 UI/template files touched (100% UI layer, zero backend modifications).
+

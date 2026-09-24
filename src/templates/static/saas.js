@@ -364,6 +364,26 @@ async function refreshNotifications() {
             badge.style.display = (data.unread || 0) > 0 ? 'block' : 'none';
         }
         renderBellDropdown(data.notifications || []);
+
+        // Toast any new unread notification that hasn't been toasted this session
+        try {
+            const seen = JSON.parse(sessionStorage.getItem('hudhud_toasted_notifs') || '[]');
+            const unread = (data.notifications || []).filter(n => !n.read && !seen.includes(n.id));
+            if (unread.length > 0) {
+                const latest = unread[0];
+                seen.push(latest.id);
+                sessionStorage.setItem('hudhud_toasted_notifs', JSON.stringify(seen.slice(-50)));
+                const tType = latest.type === 'error' ? 'error' : latest.type === 'warning' ? 'warning' : latest.type === 'success' ? 'success' : 'info';
+                if (window.hudhudToast) {
+                    window.hudhudToast.show({
+                        title: latest.title,
+                        message: latest.body || '',
+                        type: tType,
+                        duration: 6000
+                    });
+                }
+            }
+        } catch (e) {}
     } catch (e) { /* silent — bell is a courtesy */ }
 }
 
@@ -375,7 +395,20 @@ function renderBellDropdown(items) {
         dd.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">${isAr ? 'لا إشعارات بعد' : 'No notifications yet'}</div>`;
         return;
     }
-    const colors = { success: '#059669', warning: '#b45309', error: '#dc2626', broadcast: '#1d4ed8', info: '#64748b' };
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const colors = isDark ? {
+        success: '#34d399',
+        warning: '#fbbf24',
+        error: '#f87171',
+        broadcast: '#60a5fa',
+        info: '#94a3b8'
+    } : {
+        success: '#059669',
+        warning: '#b45309',
+        error: '#dc2626',
+        broadcast: '#1d4ed8',
+        info: '#64748b'
+    };
     dd.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border-default);position:sticky;top:0;background:var(--bg-card);">
             <strong style="font-size:13px;">${isAr ? 'الإشعارات' : 'Notifications'}</strong>
@@ -581,3 +614,232 @@ window.platformIcon = function (platform, size = 20) {
         }).catch(function () { /* noop */ });
     } catch (e) { /* noop */ }
 })();
+
+// ====================================================================
+// Enterprise Hudhud Toast & Notification Engine (Universal Alert System)
+// Animated, glassmorphic, theme-aware, RTL/LTR compatible, action-capable
+// ====================================================================
+const hudhudToast = {
+    container: null,
+    activeToasts: [],
+    maxConcurrent: 4,
+
+    getOrCreateContainer() {
+        if (!this.container || !document.body.contains(this.container)) {
+            this.container = document.getElementById('hudhud-toast-container');
+            if (!this.container) {
+                this.container = document.createElement('div');
+                this.container.id = 'hudhud-toast-container';
+                document.body.appendChild(this.container);
+            }
+        }
+        return this.container;
+    },
+
+    getIconSvg(type) {
+        switch (type) {
+            case 'success':
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+            case 'warning':
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+            case 'error':
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+            case 'info':
+            default:
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+        }
+    },
+
+    show(options) {
+        if (typeof options === 'string') {
+            options = { message: options, type: 'info' };
+        }
+        const {
+            title = '',
+            message = '',
+            type = 'info',
+            duration = 5000,
+            actionText = null,
+            onAction = null
+        } = options;
+
+        const container = this.getOrCreateContainer();
+
+        // Enforce max concurrency limit
+        while (this.activeToasts.length >= this.maxConcurrent) {
+            const oldest = this.activeToasts.shift();
+            if (oldest) this.dismiss(oldest, true);
+        }
+
+        const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+        const defaultTitle = title || (
+            type === 'success' ? (isAr ? 'تم بنجاح' : 'Success') :
+            type === 'error' ? (isAr ? 'حدث خطأ' : 'Error') :
+            type === 'warning' ? (isAr ? 'تنبيه' : 'Warning') :
+            (isAr ? 'إشعار' : 'Notice')
+        );
+
+        const toast = document.createElement('div');
+        toast.className = `hudhud-toast toast-${type}`;
+        toast.setAttribute('role', 'alert');
+
+        let actionHtml = '';
+        if (actionText && typeof onAction === 'function') {
+            actionHtml = `<div class="hudhud-toast-actions"><button type="button" class="hudhud-toast-btn hudhud-toast-btn-primary">${escapeHtml(actionText)}</button></div>`;
+        }
+
+        toast.innerHTML = `
+            <div class="hudhud-toast-main">
+                <div class="hudhud-toast-icon">${this.getIconSvg(type)}</div>
+                <div class="hudhud-toast-body">
+                    <div class="hudhud-toast-title">${escapeHtml(defaultTitle)}</div>
+                    <div class="hudhud-toast-message">${escapeHtml(message)}</div>
+                    ${actionHtml}
+                </div>
+                <button type="button" class="hudhud-toast-close" title="${isAr ? 'إغلاق' : 'Dismiss'}">✕</button>
+            </div>
+            ${duration > 0 ? '<div class="hudhud-toast-progress"><div class="hudhud-toast-progress-bar"></div></div>' : ''}
+        `;
+
+        if (actionText && typeof onAction === 'function') {
+            const btn = toast.querySelector('.hudhud-toast-btn');
+            if (btn) {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    try { onAction(); } catch (err) { console.error(err); }
+                    this.dismiss(toast);
+                };
+            }
+        }
+
+        const closeBtn = toast.querySelector('.hudhud-toast-close');
+        if (closeBtn) {
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.dismiss(toast);
+            };
+        }
+
+        container.appendChild(toast);
+        this.activeToasts.push(toast);
+
+        // Auto-dismiss with progress countdown and pause on hover
+        if (duration > 0) {
+            const progressBar = toast.querySelector('.hudhud-toast-progress-bar');
+            let remaining = duration;
+            let startTime = Date.now();
+            let timer = null;
+
+            const startTimer = () => {
+                startTime = Date.now();
+                if (progressBar) {
+                    progressBar.style.transition = `width ${remaining}ms linear`;
+                    progressBar.style.width = '0%';
+                }
+                timer = setTimeout(() => {
+                    this.dismiss(toast);
+                }, remaining);
+            };
+
+            const pauseTimer = () => {
+                clearTimeout(timer);
+                const elapsed = Date.now() - startTime;
+                remaining = Math.max(0, remaining - elapsed);
+                if (progressBar) {
+                    const currentPct = (remaining / duration) * 100;
+                    progressBar.style.transition = 'none';
+                    progressBar.style.width = `${currentPct}%`;
+                }
+            };
+
+            toast.onmouseenter = pauseTimer;
+            toast.onmouseleave = startTimer;
+            startTimer();
+        }
+
+        return toast;
+    },
+
+    dismiss(toast, immediate = false) {
+        if (!toast || !toast.parentNode) return;
+        const idx = this.activeToasts.indexOf(toast);
+        if (idx !== -1) this.activeToasts.splice(idx, 1);
+
+        if (immediate) {
+            toast.remove();
+        } else {
+            toast.classList.add('toast-hiding');
+            setTimeout(() => {
+                try { toast.remove(); } catch (e) {}
+            }, 250);
+        }
+    },
+
+    success(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'success', ...options });
+    },
+
+    error(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'error', ...options });
+    },
+
+    warning(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'warning', ...options });
+    },
+
+    info(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'info', ...options });
+    }
+};
+
+window.hudhudToast = hudhudToast;
+window.toast = hudhudToast;
+
+// Polite non-blocking replacement for window.alert
+window.alert = function (message) {
+    if (typeof message === 'object') {
+        try { message = JSON.stringify(message); } catch (e) {}
+    }
+    const str = String(message || '');
+    if (str.toLowerCase().includes('fail') || str.toLowerCase().includes('error') || str.includes('خطأ') || str.includes('فشل')) {
+        hudhudToast.error(str);
+    } else if (str.toLowerCase().includes('success') || str.includes('نجاح') || str.includes('✓') || str.includes('✅')) {
+        hudhudToast.success(str);
+    } else if (str.toLowerCase().includes('warn') || str.includes('تنبيه') || str.includes('تحذير') || str.includes('⚠️')) {
+        hudhudToast.warning(str);
+    } else {
+        hudhudToast.info(str);
+    }
+};
+
+// Global fetch observer for automatic error/credit handling
+(function() {
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        try {
+            const response = await originalFetch.apply(this, args);
+            // 402: Insufficient credits
+            if (response.status === 402) {
+                const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+                // Don't toast if it's a silent auth check
+                if (!url.includes('/auth/me')) {
+                    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                    hudhudToast.warning(
+                        isAr ? 'رصيدك غير كافٍ لإتمام هذه العملية. يرجى تجديد الاشتراك أو شحن الرصيد.' 
+                             : 'Insufficient AI credits. Please recharge or renew your subscription.',
+                        isAr ? 'رصيد الذكاء الاصطناعي نافد' : 'AI Credits Depleted',
+                        {
+                            duration: 7000,
+                            actionText: isAr ? 'شحن الرصيد' : 'Top Up / Upgrade',
+                            onAction: () => { window.location.href = '/onboarding'; }
+                        }
+                    );
+                }
+            }
+            return response;
+        } catch (err) {
+            throw err;
+        }
+    };
+})();
+
