@@ -7,7 +7,7 @@ Owner requirement: "قسم فيه الـ Templates المستخدمة وأقدر
 - Trigger → Template → Notification: lifecycle events render the template
   (if active) and deliver via notification_service (email later, v1.1).
 - Admin APIs: list / get / update / restore-default / toggle.
-- Page: /templates (admin-only) with live preview.
+- Page: /templates (admin-only) with bilingual live preview & editing.
 """
 from typing import Any, Dict, Optional
 
@@ -23,30 +23,54 @@ from src.modules.notifications.service import notification_service
 
 
 # ------------------------------------------------------------------
-# Built-in defaults (mirror of the SQL seed; powers "restore default")
+# Built-in defaults (bilingual: English and Arabic lifecycle seeds)
 # ------------------------------------------------------------------
 DEFAULT_TEMPLATES: Dict[str, Dict[str, str]] = {
     "welcome_signup": {
+        "subject_ar": "🎉 أهلاً بك في هدهد، {user_name}!",
+        "body_ar": "حسابك جاهز الآن. الخطوة التالية: اربط صفحتك من الإعدادات وسيبدأ الوكيل الذكي بالرد على عملائك فوراً.",
+        "subject_en": "🎉 Welcome to Hudhud, {user_name}!",
+        "body_en": "Your account is ready. Next step: connect your social channels from Settings to activate automated replies.",
         "subject": "🎉 أهلاً بك في هدهد، {user_name}!",
         "body": "حسابك جاهز الآن. الخطوة التالية: اربط صفحتك من الإعدادات وسيبدأ الوكيل الذكي بالرد على عملائك فوراً.",
     },
     "welcome_login": {
+        "subject_ar": "👋 رجوع سعيد، {user_name}",
+        "body_ar": "أهلاً بعودتك! راجع إشعارات محادثاتك الجديدة من صندوق الوارد.",
+        "subject_en": "👋 Welcome back, {user_name}",
+        "body_en": "Welcome back! Check your latest conversations and notifications in your Live Inbox.",
         "subject": "👋 رجوع سعيد، {user_name}",
         "body": "أهلاً بعودتك! راجع إشعارات محادثاتك الجديدة من صندوق الوارد.",
     },
     "trial_ending": {
+        "subject_ar": "⏳ تجربتك المجانية تنتهي قريباً",
+        "body_ar": "تجربتك المجانية (3 أيام) تنتهي بتاريخ {trial_end}. للاستمرار في خدمة الردود الذكية، فعّل خطتك من لوحة التحكم.",
+        "subject_en": "⏳ Your free trial is ending soon",
+        "body_en": "Your 3-day free trial expires on {trial_end}. Activate your subscription to keep automated AI replies running uninterrupted.",
         "subject": "⏳ تجربتك المجانية تنتهي قريباً",
         "body": "تجربتك المجانية (3 أيام) تنتهي بتاريخ {trial_end}. للاستمرار في خدمة الردود الذكية، فعّل خطتك من لوحة التحكم.",
     },
     "plan_purchased": {
+        "subject_ar": "✅ تم تفعيل خطتك: {plan}",
+        "body_ar": "مبروك! خطتك ({plan}) مفعّلة الآن — رصيد الذكاء الاصطناعي المخصص أُضيف لحسابك.",
+        "subject_en": "✅ Plan activated: {plan}",
+        "body_en": "Congratulations! Your {plan} subscription is active — AI credits have been added to your balance.",
         "subject": "✅ تم تفعيل خطتك: {plan}",
         "body": "مبروك! خطتك ({plan}) مفعّلة الآن — رصيد الذكاء الاصطناعي المخصص أُضيف لحسابك.",
     },
     "credits_low": {
+        "subject_ar": "⚠️ رصيد الذكاء الاصطناعي منخفض",
+        "body_ar": "باقي لديك {credits} رصيد فقط. الوكيل سيعمل بالقوالب الاحتياطية عند النفاد — تواصل معنا للتجديد.",
+        "subject_en": "⚠️ Low AI credits warning",
+        "body_en": "You have {credits} credits remaining. The agent will fall back to static templates when depleted — top up anytime.",
         "subject": "⚠️ رصيد الذكاء الاصطناعي منخفض",
         "body": "باقي لديك {credits} رصيد فقط. الوكيل سيعمل بالقوالب الاحتياطية عند النفاد — تواصل معنا للتجديد.",
     },
     "agent_new_lead": {
+        "subject_ar": "🎯 عميل محتمل جديد!",
+        "body_ar": "الوكيل التقط عميلاً مهتماً: {lead_name} — شاهده في إدارة العملاء.",
+        "subject_en": "🎯 New qualified lead captured!",
+        "body_en": "Your AI agent captured a new prospect: {lead_name} — view details in your Leads CRM.",
         "subject": "🎯 عميل محتمل جديد!",
         "body": "الوكيل التقط عميلاً مهتماً: {lead_name} — شاهده في إدارة العملاء.",
     },
@@ -75,15 +99,24 @@ def get_template_row(key: str) -> Optional[Dict[str, Any]]:
     return rows[0] if rows else None
 
 
-def render_and_notify(key: str, user_id: str, values: Optional[Dict[str, Any]] = None) -> bool:
+def render_and_notify(key: str, user_id: str, values: Optional[Dict[str, Any]] = None, lang: Optional[str] = None) -> bool:
     """Lifecycle hook: renders template `key` (if active) and notifies the user.
-    Used by other modules (auth signup, scheduler, credits). Fail-silent."""
+    Supports user language preferences ('en' vs 'ar'). Fail-silent."""
     try:
         row = get_template_row(key)
         if not row or not row.get("is_active"):
             return False  # admin disabled this template — deliver nothing
-        subject = _fill_placeholders(row["subject"], values or {})
-        body = _fill_placeholders(row["body"], values or {})
+        d = DEFAULT_TEMPLATES.get(key, {})
+        subj_raw = row.get("subject") or d.get("subject_ar", "")
+        body_raw = row.get("body") or d.get("body_ar", "")
+        if lang == "en":
+            subj_raw = row.get("subject_en") or d.get("subject_en", subj_raw)
+            body_raw = row.get("body_en") or d.get("body_en", body_raw)
+        elif lang == "ar":
+            subj_raw = row.get("subject_ar") or d.get("subject_ar", subj_raw)
+            body_raw = row.get("body_ar") or d.get("body_ar", body_raw)
+        subject = _fill_placeholders(subj_raw, values or {})
+        body = _fill_placeholders(body_raw, values or {})
         notification_service.create(user_id, subject, body, "info",
                                     {"template": key, **(values or {})})
         return True
@@ -95,6 +128,10 @@ def render_and_notify(key: str, user_id: str, values: Optional[Dict[str, Any]] =
 class TemplateUpdatePayload(BaseModel):
     subject: Optional[str] = None
     body: Optional[str] = None
+    subject_ar: Optional[str] = None
+    body_ar: Optional[str] = None
+    subject_en: Optional[str] = None
+    body_en: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -103,8 +140,15 @@ def register(app: FastAPI) -> None:
     async def list_templates(request: Request):
         _require_admin(request)
         rows = supabase_db.select("message_templates") or []
+        for r in rows:
+            k = r.get("key", "")
+            d = DEFAULT_TEMPLATES.get(k, {})
+            r.setdefault("subject_ar", d.get("subject_ar", r.get("subject", "")))
+            r.setdefault("body_ar", d.get("body_ar", r.get("body", "")))
+            r.setdefault("subject_en", d.get("subject_en", ""))
+            r.setdefault("body_en", d.get("body_en", ""))
         rows.sort(key=lambda r: r.get("key", ""))
-        return {"status": "success", "templates": rows, "known_keys": TEMPLATE_KEYS}
+        return {"status": "success", "templates": rows, "known_keys": TEMPLATE_KEYS, "defaults": DEFAULT_TEMPLATES}
 
     @app.put("/api/admin/templates/{key}", tags=["Templates Manager"])
     async def update_template(key: str, payload: TemplateUpdatePayload, request: Request):
@@ -190,7 +234,7 @@ textarea.body{min-height:74px;resize:vertical;line-height:1.6;}
             <div class="topbar-breadcrumb">
                 <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
                 <span class="crumb-sep">/</span>
-                <span class="crumb-current">Message Templates</span>
+                <span class="crumb-current" data-i18n="tpl.title">Message Templates</span>
             </div>
             <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
                 <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
@@ -201,8 +245,12 @@ textarea.body{min-height:74px;resize:vertical;line-height:1.6;}
         <div class="app-content">
             <div class="panel-section" style="margin-bottom:14px;">
                 <div class="panel-header"><div>
-                    <h3 class="panel-title">Automatic Message Templates</h3>
-                    <div class="panel-desc">Edit the automatic messages your platform sends (signup, trials, plans, credits, new leads). Placeholders fill automatically at send time.</div>
+                    <h3 class="panel-title" data-i18n="tpl.panel_title">Automatic Message Templates</h3>
+                    <div class="panel-desc" data-i18n="tpl.panel_desc">Edit the automatic messages your platform sends (signup, trials, plans, credits, new leads). Placeholders fill automatically at send time.</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button type="button" class="chip active" id="btn-lang-en" onclick="setTplLang('en')" data-i18n="tpl.lang_en">English View</button>
+                    <button type="button" class="chip" id="btn-lang-ar" onclick="setTplLang('ar')" data-i18n="tpl.lang_ar">العرض بالعربية</button>
                 </div></div>
             </div>
             <div id="tpl-list"><div style="color:var(--text-muted);">Loading…</div></div>
@@ -220,13 +268,42 @@ const PLACEHOLDERS = {
     credits_low: '{credits}',
     agent_new_lead: '{lead_name}'
 };
-const DEFAULTS = {};
+let tplLang = 'en';
+let allTemplates = [];
+let allDefaults = {};
+
+function setTplLang(lang) {
+    tplLang = lang;
+    const bEn = document.getElementById('btn-lang-en');
+    const bAr = document.getElementById('btn-lang-ar');
+    if (bEn) bEn.className = 'chip' + (lang === 'en' ? ' active' : '');
+    if (bAr) bAr.className = 'chip' + (lang === 'ar' ? ' active' : '');
+    renderTemplates();
+}
 
 async function load() {
+    tplLang = (window.hudhudI18n && window.hudhudI18n.currentLang) || 'en';
+    const bEn = document.getElementById('btn-lang-en');
+    const bAr = document.getElementById('btn-lang-ar');
+    if (bEn) bEn.className = 'chip' + (tplLang === 'en' ? ' active' : '');
+    if (bAr) bAr.className = 'chip' + (tplLang === 'ar' ? ' active' : '');
+
     const r = await fetch('/api/admin/templates');
     const d = await r.json();
+    allTemplates = d.templates || [];
+    allDefaults = d.defaults || {};
+    renderTemplates();
+}
+
+function renderTemplates() {
     const box = document.getElementById('tpl-list');
-    box.innerHTML = d.templates.map(t => `
+    box.innerHTML = allTemplates.map(t => {
+        const def = allDefaults[t.key] || {};
+        const isEn = tplLang === 'en';
+        const subj = isEn ? (t.subject_en || def.subject_en || t.subject) : (t.subject_ar || def.subject_ar || t.subject);
+        const body = isEn ? (t.body_en || def.body_en || t.body) : (t.body_ar || def.body_ar || t.body);
+        const dir = isEn ? 'ltr' : 'rtl';
+        return `
         <div class="tpl-card" data-key="${t.key}">
             <div class="tpl-head">
                 <span class="tpl-key">${t.key}</span>
@@ -236,26 +313,38 @@ async function load() {
                     <button class="btn btn-warn" onclick="restoreDefault('${t.key}')">↺ Restore default</button>
                 </span>
             </div>
-            <label>Subject</label>
-            <input class="subject" id="subj-${t.key}" value="${escapeHtml(t.subject)}">
-            <label>Body — placeholders: <code>${PLACEHOLDERS[t.key] || '{user_name}'}</code></label>
-            <textarea class="body" id="body-${t.key}">${escapeHtml(t.body)}</textarea>
+            <label>Subject (${isEn ? 'English' : 'العربية'})</label>
+            <input class="subject" id="subj-${t.key}" value="${escapeHtml(subj)}" style="direction:${dir};">
+            <label>Body (${isEn ? 'English' : 'العربية'}) — placeholders: <code>${PLACEHOLDERS[t.key] || '{user_name}'}</code></label>
+            <textarea class="body" id="body-${t.key}" style="direction:${dir};">${escapeHtml(body)}</textarea>
             <div style="margin-top:8px;">
                 <button class="btn btn-primary" onclick="saveTemplate('${t.key}')">💾 Save</button>
                 <button class="btn btn-ghost" onclick="previewTemplate('${t.key}')">👁 Preview</button>
             </div>
-            <div class="preview" id="prev-${t.key}" style="display:none;"></div>
-        </div>`).join('');
+            <div class="preview" id="prev-${t.key}" style="display:none; direction:${dir};"></div>
+        </div>`;
+    }).join('');
 }
 
 async function saveTemplate(key) {
     const subject = document.getElementById('subj-' + key).value;
     const body = document.getElementById('body-' + key).value;
+    const isEn = tplLang === 'en';
+    const payload = isEn
+        ? { subject_en: subject, body_en: body, subject: subject, body: body }
+        : { subject_ar: subject, body_ar: body, subject: subject, body: body };
     const r = await fetch(`/api/admin/templates/${key}`, {
         method: 'PUT', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ subject, body })
+        body: JSON.stringify(payload)
     });
-    if (r.ok) { await load(); } else { const d = await r.json(); alert(d.detail || 'Save failed'); }
+    if (r.ok) {
+        if (window.hudhudToast) hudhudToast.success('Template saved successfully');
+        await load();
+    } else {
+        const d = await r.json();
+        if (window.hudhudToast) hudhudToast.error(d.detail || 'Save failed');
+        else alert(d.detail || 'Save failed');
+    }
 }
 
 async function toggleActive(key, current) {
@@ -267,8 +356,16 @@ async function toggleActive(key, current) {
 }
 
 async function restoreDefault(key) {
-    if (!confirm('Restore the original default template?')) return;
-    await fetch(`/api/admin/templates/${key}/restore`, { method: 'POST' });
+    if (!confirm('Restore default template?')) return;
+    const def = allDefaults[key] || {};
+    const isEn = tplLang === 'en';
+    const subj = isEn ? def.subject_en : def.subject_ar;
+    const body = isEn ? def.body_en : def.body_ar;
+    const payload = { subject: subj, body: body, is_active: true };
+    await fetch(`/api/admin/templates/${key}`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
     await load();
 }
 
@@ -276,10 +373,14 @@ function previewTemplate(key) {
     const box = document.getElementById('prev-' + key);
     const subject = document.getElementById('subj-' + key).value;
     const body = document.getElementById('body-' + key).value;
+    const isEn = tplLang === 'en';
     const ph = PLACEHOLDERS[key] || '{user_name}';
     const sample = ph.replace(/\{(\w+)\}/g, (m, k) => ({
-        user_name: 'أحمد محمد', trial_end: '2026-09-21', plan: 'Growth Pro',
-        credits: '12', lead_name: 'سارة م.'
+        user_name: isEn ? 'John Smith' : 'أحمد محمد',
+        trial_end: '2026-09-30',
+        plan: 'Growth Pro',
+        credits: '12',
+        lead_name: isEn ? 'Sarah Miller' : 'سارة م.'
     }[k] || m));
     box.style.display = 'block';
     box.textContent = `📌 ${subject.replace(ph, sample)}\n\n${body.replace(ph, sample)}`;

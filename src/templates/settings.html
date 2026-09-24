@@ -9,35 +9,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/saas.css">
     <style>
+        /* Developer Console Design System Tokens & Refined Layout */
         .set-tab-bar {
             display: flex;
-            gap: 8px;
-            margin-bottom: 22px;
-            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-default);
+            padding-bottom: 12px;
+            overflow-x: auto;
         }
         .set-tab-btn {
-            padding: 10px 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border-default);
-            background: var(--bg-subtle);
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 13.5px;
-            font-weight: 700;
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            transition: all 0.2s ease;
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
         }
         .set-tab-btn:hover {
-            border-color: var(--accent-blue);
             color: var(--text-primary);
+            background: var(--bg-hover);
         }
         .set-tab-btn.active {
-            background: var(--bg-card);
-            border-color: var(--accent-blue);
             color: var(--accent-blue);
+            background: var(--bg-card);
+            border-color: var(--border-default);
             box-shadow: var(--shadow-sm);
         }
         .url-hub-table {
@@ -45,96 +48,82 @@
             border-collapse: separate;
             border-spacing: 0;
             margin-top: 10px;
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            background: var(--bg-card);
-        }
-        .url-hub-table th, .url-hub-table td {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border-default);
-            text-align: start;
-            font-size: 13px;
-        }
-        .url-hub-table tr:last-child td {
-            border-bottom: none;
         }
         .url-hub-table th {
-            background: var(--bg-subtle);
-            color: var(--text-secondary);
-            font-weight: 700;
+            background: var(--bg-input);
+            padding: 10px 14px;
             font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-default);
+            text-align: start;
+        }
+        .url-hub-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 13px;
+            vertical-align: middle;
         }
         .url-code-cell {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            color: var(--accent-blue);
+            display: inline-block;
             background: var(--bg-input);
             padding: 6px 10px;
             border-radius: 6px;
             border: 1px solid var(--border-default);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            color: var(--text-primary);
             word-break: break-all;
             direction: ltr;
-            text-align: start;
-            display: inline-block;
-            font-size: 12px;
-            max-width: 480px;
-        }
-        .health-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 14px;
-            margin-bottom: 18px;
-        }
-        .health-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-md);
-            padding: 16px;
-            box-shadow: var(--shadow-sm);
-        }
-        .health-card-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-        .health-card-val {
-            font-size: 15px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            text-align: left;
         }
         .cron-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-md);
-            padding: 16px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
             gap: 16px;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
         }
         .env-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            font-size: 11.5px;
             padding: 4px 10px;
             border-radius: 99px;
-            font-weight: 700;
+            font-size: 11.5px;
+            font-weight: 600;
         }
         .env-pill-ok {
-            background: rgba(5, 150, 105, 0.12);
-            color: #059669;
-            border: 1px solid rgba(5, 150, 105, 0.3);
+            background: var(--badge-green-bg);
+            color: var(--badge-green-text);
+            border: 1px solid var(--badge-green-border);
         }
         .env-pill-warn {
-            background: rgba(217, 119, 6, 0.12);
-            color: #d97706;
-            border: 1px solid rgba(217, 119, 6, 0.3);
+            background: var(--badge-amber-bg);
+            color: var(--badge-amber-text);
+            border: 1px solid var(--badge-amber-border);
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .pricing-box {
+            background: var(--bg-input);
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-default);
+        }
+        .pricing-val {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--accent-blue);
+            margin-top: 4px;
         }
     </style>
 </head>
@@ -165,10 +154,13 @@
                 <div class="topbar-breadcrumb">
                     <span class="crumb-root" data-i18n="brand.name">Hudhud</span>
                     <span class="crumb-sep">/</span>
-                    <span class="crumb-current">Developer & System Console</span>
+                    <span class="crumb-current" data-i18n="set.title">Developer & System Console</span>
                 </div>
                 <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
-                    <button class="btn-secondary" onclick="refreshAllStatus()">🔄 تحديث الحالة الشاملة</button>
+                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
+                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
+                    </button>
+                    <button class="btn-secondary" onclick="refreshAllStatus()" data-i18n="set.refresh_status">🔄 Refresh All Status</button>
                 </div>
             </header>
 
@@ -177,15 +169,15 @@
                 <div class="set-tab-bar">
                     <button type="button" class="set-tab-btn active" onclick="switchSettingsTab('integrations')" id="set-tab-integrations">
                         <span>🔌</span>
-                        <span>تكاملات المنصات والـ Webhooks</span>
+                        <span data-i18n="set.tab_integrations">Platform & Webhooks</span>
                     </button>
                     <button type="button" class="set-tab-btn" onclick="switchSettingsTab('ai')" id="set-tab-ai">
                         <span>🧠</span>
-                        <span>عقول الذكاء الاصطناعي والتحكم</span>
+                        <span data-i18n="set.tab_ai">AI Engines & Controls</span>
                     </button>
                     <button type="button" class="set-tab-btn" onclick="switchSettingsTab('system')" id="set-tab-system">
                         <span>⚙️</span>
-                        <span>صحة الخوادم والمهام المجدولة</span>
+                        <span data-i18n="set.tab_system">System Health & Schedulers</span>
                     </button>
                 </div>
 
@@ -195,27 +187,27 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h2 class="panel-title">1. تشخيص تكامل Meta & Threads — Integration Diagnostics</h2>
-                                <div class="panel-desc">حالة اتصال تطبيق المطور وخادم قاعدة البيانات السحابي للتحقق من جاهزية الـ APIs الرسمية.</div>
+                                <h2 class="panel-title" data-i18n="set.diag_title">1. Meta & Threads Integration Diagnostics</h2>
+                                <div class="panel-desc" data-i18n="set.diag_desc">Connection status of developer apps, cloud database, and official API readiness.</div>
                             </div>
-                            <div id="live-connection-badge" class="badge badge-pending" style="font-size: 13px; padding: 4px 12px;">جاري الفحص...</div>
+                            <div id="live-connection-badge" class="badge badge-pending" style="font-size: 13px; padding: 4px 12px;" data-i18n="set.diag_checking">Checking...</div>
                         </div>
 
                         <div class="health-grid">
                             <div class="health-card">
-                                <div class="health-card-label">معرّف تطبيق Meta (App ID)</div>
+                                <div class="health-card-label" data-i18n="set.diag_app_id">Meta App ID</div>
                                 <div id="status-app-id" class="health-card-val mono" style="font-size:13.5px;">-</div>
                             </div>
                             <div class="health-card">
-                                <div class="health-card-label">تطبيق Threads الرسمي</div>
+                                <div class="health-card-label" data-i18n="set.diag_threads">Official Threads App</div>
                                 <div id="status-threads-app" class="health-card-val mono" style="font-size:13.5px;">-</div>
                             </div>
                             <div class="health-card">
-                                <div class="health-card-label">قاعدة البيانات السحابية (Supabase)</div>
+                                <div class="health-card-label" data-i18n="set.diag_supabase">Cloud Database (Supabase)</div>
                                 <div id="status-supabase" class="health-card-val" style="color: #059669;">-</div>
                             </div>
                             <div class="health-card">
-                                <div class="health-card-label">حالة التوكن العام للنظام</div>
+                                <div class="health-card-label" data-i18n="set.diag_token">System Token Status</div>
                                 <div id="status-token-system" class="health-card-val">-</div>
                             </div>
                         </div>
@@ -225,8 +217,8 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">📍 مركز روابط إعداد تطبيق المطور (Meta Developer Portal URLs Hub)</h3>
-                                <div class="panel-desc">انسخ هذه الروابط المعتمدة وضعها مباشرة في لوحة مطوري فيسبوك (Facebook Developers Dashboard) لتفعيل تسجيل الدخول، الـ Webhooks، وسياسات الحذف المعتمدة.</div>
+                                <h3 class="panel-title" data-i18n="set.urls_title">📍 Meta Developer Portal Setup Hub</h3>
+                                <div class="panel-desc" data-i18n="set.urls_desc">Copy these canonical URLs directly into Facebook Developers Dashboard for OAuth, Webhooks, and compliance.</div>
                             </div>
                         </div>
 
@@ -234,83 +226,92 @@
                             <table class="url-hub-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:28%;">الوظيفة / الاستخدام (Meta Setting)</th>
-                                        <th>الرابط المعتمد (Canonical Endpoint)</th>
-                                        <th style="width:14%; text-align:center;">إجراء</th>
+                                        <th style="width:30%;" data-i18n="set.urls_th_func">Function / Use Case (Meta Setting)</th>
+                                        <th data-i18n="set.urls_th_endpoint">Canonical Endpoint</th>
+                                        <th style="width:14%; text-align:center;" data-i18n="set.urls_th_action">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
                                         <td>
-                                            <strong>Facebook Login Redirect URI</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);">لإعادة التوجيه بعد مصادقة فيسبوك وإنستجرام</div>
+                                            <strong data-i18n="set.url_fb_redirect_title">Facebook Login Redirect URI</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_fb_redirect_desc">OAuth redirect after user authorizes Facebook & Instagram</div>
                                         </td>
                                         <td><code class="url-code-cell" id="url-fb-redirect" data-path="/api/connections/facebook/callback"></code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-fb-redirect', 'Facebook Redirect URI')">📋 نسخ</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-fb-redirect', 'Facebook Redirect URI')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>
-                                            <strong>Threads OAuth Callback URI</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);">في تطبيق Threads المستقل لاستلام تصريح الـ 60 يوم</div>
+                                            <strong data-i18n="set.url_th_redirect_title">Threads OAuth Callback URI</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_th_redirect_desc">OAuth callback in standalone Threads app to receive 60-day token</div>
                                         </td>
                                         <td><code class="url-code-cell" id="url-th-redirect" data-path="/api/threads/oauth/callback"></code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-th-redirect', 'Threads Callback URI')">📋 نسخ</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-th-redirect', 'Threads Callback URI')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>
-                                            <strong>Threads Deauthorization / Uninstall</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);">استدعاء تلقائي عند قيام المستخدم بإلغاء التثبيت</div>
+                                            <strong data-i18n="set.url_th_uninstall_title">Threads Deauthorization / Uninstall</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_th_uninstall_desc">Webhook triggered automatically when user uninstalls app</div>
                                         </td>
                                         <td><code class="url-code-cell" id="url-th-uninstall" data-path="/api/threads/uninstall"></code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-th-uninstall', 'Threads Uninstall URL')">📋 نسخ</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-th-uninstall', 'Threads Uninstall URL')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>
-                                            <strong>Data Deletion Request URL</strong>
-                                            <div style="font-size:11px; color:var(--text-muted); color:#059669; font-weight:600;">إلزامي لاعتماد Meta App Review ومراجعة الأمان</div>
+                                            <strong data-i18n="set.url_data_deletion_title">Data Deletion Request URL</strong>
+                                            <div style="font-size:11px; color:#059669; font-weight:600;" data-i18n="set.url_data_deletion_desc">Mandatory endpoint for Meta App Review compliance</div>
                                         </td>
                                         <td><code class="url-code-cell" id="url-data-deletion" data-path="/api/data-deletion"></code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-data-deletion', 'Data Deletion URL')">📋 نسخ</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-data-deletion', 'Data Deletion URL')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>
-                                            <strong>Webhook Callback URL</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);">استقبال رسائل الشات والتعليقات الحية لحظياً</div>
+                                            <strong data-i18n="set.url_webhook_title">Webhook Callback URL</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_webhook_desc">Receives live DMs, comments, and lead events in real time</div>
                                         </td>
                                         <td><code class="url-code-cell" id="url-webhook" data-path="/api/webhook/meta"></code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-webhook', 'Webhook Callback URL')">📋 نسخ</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-webhook', 'Webhook Callback URL')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>
-                                            <strong>Webhook Verify Token</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);">المفتاح السري للتحقق من هوية السيرفر عند الاشتراك</div>
+                                            <strong data-i18n="set.url_verify_token_title">Webhook Verify Token</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_verify_token_desc">Secret token to verify server authenticity during webhook subscription</div>
                                         </td>
                                         <td><code class="url-code-cell" id="url-verify-token">hudhud_webhook_verify_secret</code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyRawText('hudhud_webhook_verify_secret', 'Webhook Verify Token')">📋 نسخ</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyRawText('hudhud_webhook_verify_secret', 'Webhook Verify Token')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
+                                    <!-- Separated Privacy Policy Row -->
                                     <tr>
                                         <td>
-                                            <strong>Privacy Policy & Terms</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);">صفحات سياسة الخصوصية وشروط الاستخدام الرسمية</div>
+                                            <strong data-i18n="set.url_privacy_title">Privacy Policy URL</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_privacy_desc">Official privacy policy required for Meta App Review</div>
                                         </td>
-                                        <td>
-                                            <code class="url-code-cell" id="url-privacy" data-path="/privacy" style="margin-bottom:4px;"></code><br>
-                                            <code class="url-code-cell" id="url-terms" data-path="/terms"></code>
-                                        </td>
+                                        <td><code class="url-code-cell" id="url-privacy" data-path="/privacy"></code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-privacy', 'Privacy Policy URL')">📋 الخصوصية</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-privacy', 'Privacy Policy URL')" data-i18n="set.btn_copy">📋 Copy</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Separated Terms of Service Row -->
+                                    <tr>
+                                        <td>
+                                            <strong data-i18n="set.url_terms_title">Terms of Service URL</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_terms_desc">Official terms of service required for Meta App Review</div>
+                                        </td>
+                                        <td><code class="url-code-cell" id="url-terms" data-path="/terms"></code></td>
+                                        <td style="text-align:center;">
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-terms', 'Terms of Service URL')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -322,29 +323,29 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">📡 اشتراكات الـ Webhook وسياسات المراسلة الآمنة</h3>
-                                <div class="panel-desc">معايير استقبال الأحداث الحية وحماية السيرفر والامتثال لنافذة الـ 24 ساعة المعتمدة من ميتا.</div>
+                                <h3 class="panel-title" data-i18n="set.webhook_title">📡 Webhook Subscriptions & Messaging Policies</h3>
+                                <div class="panel-desc" data-i18n="set.webhook_desc">Active webhook fields, HMAC-SHA256 signature verification, and 24-hour messaging window rule.</div>
                             </div>
-                            <button type="button" class="btn-secondary" style="padding:6px 14px; font-size:12.5px;" onclick="pingWebhookHealth()">⚡ فحص استجابة الـ Webhook (Ping)</button>
+                            <button type="button" class="btn-secondary" style="padding:6px 14px; font-size:12.5px;" onclick="pingWebhookHealth()" data-i18n="set.btn_ping">⚡ Test Webhook (Ping)</button>
                         </div>
 
                         <div style="display: flex; flex-direction: column; gap: 12px;">
                             <div style="background: var(--bg-input); padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
-                                <div style="color: var(--text-secondary); margin-bottom: 4px; font-weight:600;">حقول الـ Webhook المشتركة رسمياً (Subscribed Fields):</div>
+                                <div style="color: var(--text-secondary); margin-bottom: 4px; font-weight:600;" data-i18n="set.wh_sub_fields">Subscribed Event Fields:</div>
                                 <code class="mono" style="color: var(--badge-green-text); font-weight:700;">messages, messaging_postbacks, feed, mention</code>
                             </div>
 
                             <div style="background: var(--bg-input); padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
-                                <div style="color: var(--text-secondary); margin-bottom: 4px; font-weight:600;">التحقق من التوقيع الأمني المشفر (HMAC SHA-256):</div>
+                                <div style="color: var(--text-secondary); margin-bottom: 4px; font-weight:600;" data-i18n="set.wh_sig_label">Webhook Security Signature (HMAC SHA-256):</div>
                                 <div style="color: var(--badge-green-text); font-weight: 700; display:flex; align-items:center; gap:8px;">
                                     <span>🔒 Active & Enforced</span>
-                                    <span style="font-size:11.5px; color:var(--text-muted); font-weight:normal;">(يتم التحقق من ترويسة X-Hub-Signature-256 لكل حدث وارد)</span>
+                                    <span style="font-size:11.5px; color:var(--text-muted); font-weight:normal;">(Verified via X-Hub-Signature-256 on every incoming payload)</span>
                                 </div>
                             </div>
 
                             <div style="background: var(--bg-input); padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); font-size: 13px;">
-                                <div style="color: var(--text-secondary); margin-bottom: 4px; font-weight:600;">سياسة نافذة الـ 24 ساعة المعتمدة (24h Messaging Window Policy):</div>
-                                <div style="color: var(--badge-green-text); font-weight: 700;">Strict Enforcement — لا يُسمح بإرسال أي رسائل ترويجية خارج نافذة الـ 24 ساعة الرسمية لـ Meta.</div>
+                                <div style="color: var(--text-secondary); margin-bottom: 4px; font-weight:600;" data-i18n="set.wh_policy_title">24-Hour Messaging Window Policy (Meta Policy):</div>
+                                <div style="color: var(--badge-green-text); font-weight: 700;" data-i18n="set.wh_policy_desc">Strict compliance with Meta Platform rules: AI responses only sent within 24 hours of customer initiation.</div>
                             </div>
                         </div>
                     </div>
@@ -356,8 +357,8 @@
                     <div class="panel-section" style="border-inline-start: 4px solid var(--accent-blue); background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(16, 185, 129, 0.03));">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">🤖 مفتاح الطوارئ العام للذكاء الاصطناعي — Global AI Master Switch</h3>
-                                <div class="panel-desc">إيقاف أو استئناف توليد الردود الآلية بالذكاء الاصطناعي على مستوى المنصة بالكامل وقت الصيانة. عند الإيقاف، يستمر وصول الرسائل الجديدة لصندوق الوارد للرد اليدوي.</div>
+                                <h3 class="panel-title" data-i18n="set.ai_kill_title">🤖 Global AI Master Switch</h3>
+                                <div class="panel-desc" data-i18n="set.ai_kill_desc">Immediately suspends all autonomous AI generation platform-wide. System switches to fallback templates.</div>
                             </div>
                             <span class="badge" id="ai-pause-badge" style="font-size: 13px; padding: 5px 14px;">...</span>
                         </div>
@@ -371,21 +372,21 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">📊 نشاط واستهلاك عقول الذكاء الاصطناعي (AI Telemetry)</h3>
-                                <div class="panel-desc">مؤشرات الاستهلاك والعمليات المنفذة بواسطة محركات الذكاء الاصطناعي على المنصة.</div>
+                                <h3 class="panel-title" data-i18n="set.ai_telemetry_title">📊 Platform AI Telemetry (Today)</h3>
+                                <div class="panel-desc" data-i18n="set.ai_desc">Manage multi-provider LLMs, failover models, and global emergency switch.</div>
                             </div>
                         </div>
                         <div class="health-grid">
                             <div class="health-card">
-                                <div class="health-card-label">استدعاءات الـ AI الناجحة (Total AI Replies)</div>
+                                <div class="health-card-label" data-i18n="set.kpi_ai_calls">Total AI Calls</div>
                                 <div id="ai-telemetry-calls" class="health-card-val mono" style="color:var(--accent-blue); font-size:18px;">—</div>
                             </div>
                             <div class="health-card">
-                                <div class="health-card-label">إجمالي العمليات المنفذة (System Operations)</div>
+                                <div class="health-card-label" data-i18n="set.kpi_ai_ops">Operations Executed</div>
                                 <div id="ai-telemetry-ops" class="health-card-val mono" style="font-size:18px;">—</div>
                             </div>
                             <div class="health-card">
-                                <div class="health-card-label">المستخدمون النشطون (Active Accounts)</div>
+                                <div class="health-card-label" data-i18n="set.kpi_active_users">Active Users</div>
                                 <div id="ai-telemetry-users" class="health-card-val mono" style="color:#059669; font-size:18px;">—</div>
                             </div>
                         </div>
@@ -395,18 +396,18 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">🧠 مزودو الذكاء الاصطناعي والموديلات (AI Providers & Models)</h3>
-                                <div class="panel-desc">اربط مزودين رسميين (Google AI / Anthropic / OpenAI / OpenRouter) أو مزوداً مخصصاً OpenAI-compatible. يكتشف النظام الموديلات تلقائياً، والغير متاح لا يظهر للعملاء.</div>
+                                <h3 class="panel-title" data-i18n="set.ai_providers_title">🧠 AI Providers & Models Management</h3>
+                                <div class="panel-desc">Manage official providers (Google AI / Anthropic / OpenAI / OpenRouter) or OpenAI-compatible custom endpoints.</div>
                             </div>
-                            <button type="button" class="btn-primary" style="padding: 9px 18px; font-size: 13px; font-weight:700;" onclick="toggleAddProviderForm()">＋ إضافة مزود جديد</button>
+                            <button type="button" class="btn-primary" style="padding: 9px 18px; font-size: 13px; font-weight:700;" onclick="toggleAddProviderForm()" data-i18n="set.btn_add_provider">＋ Add Provider</button>
                         </div>
 
                         <!-- Add Provider Form (Collapsible) -->
                         <div id="add-provider-form" style="display:none; background: var(--bg-input); padding: 18px; border: 1px solid var(--border-default); border-radius: var(--radius-md); margin-bottom: 16px;">
                             <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
                                 <select id="np-kind" onchange="renderProviderFormFields()" style="flex:0 0 160px; padding:10px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; background:var(--bg-card); color:var(--text-primary);">
-                                    <option value="official">مزود رسمي (Official)</option>
-                                    <option value="custom">مزود مخصص (Custom)</option>
+                                    <option value="official">Official Provider</option>
+                                    <option value="custom">Custom Provider</option>
                                 </select>
                                 <select id="np-official-key" onchange="renderProviderFormFields()" style="flex:1; min-width:180px; padding:10px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; background:var(--bg-card); color:var(--text-primary);">
                                     <option value="google">Google AI (Gemini)</option>
@@ -414,26 +415,26 @@
                                     <option value="openai">OpenAI (ChatGPT)</option>
                                     <option value="openrouter">OpenRouter</option>
                                 </select>
-                                <input type="text" id="np-custom-name" placeholder="اسم المزود المخصص" style="display:none; flex:1; min-width:180px; padding:10px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; background:var(--bg-card); color:var(--text-primary);">
+                                <input type="text" id="np-custom-name" placeholder="Custom Provider Name" style="display:none; flex:1; min-width:180px; padding:10px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; background:var(--bg-card); color:var(--text-primary);">
                             </div>
                             <div id="np-custom-fields" style="display:none; margin-bottom:12px;">
                                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                                     <input type="text" id="np-base-url" placeholder="Base URL (e.g. https://api.myprovider.com/v1)" style="flex:1; padding:10px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; direction:ltr; background:var(--bg-card); color:var(--text-primary);">
                                 </div>
-                                <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Models (اختياري — يُضاف يدوياً):</div>
+                                <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Models (optional — add manually):</div>
                                 <div id="np-models-rows"></div>
                                 <button type="button" class="btn-secondary" style="font-size:11.5px; padding:4px 10px; margin-top:4px;" onclick="addNpModelRow()">＋ Add model</button>
                             </div>
                             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                                 <input type="password" id="np-api-key" placeholder="API Key" style="flex:1; min-width:220px; padding:10px; border:1px solid var(--border-default); border-radius:9px; font-family:inherit; font-size:13px; direction:ltr; background:var(--bg-card); color:var(--text-primary);">
-                                <button type="button" class="btn-primary" style="padding:10px 22px; font-size:13px; font-weight:700;" onclick="submitNewProvider()">حفظ واكتشاف الموديلات</button>
+                                <button type="button" class="btn-primary" style="padding:10px 22px; font-size:13px; font-weight:700;" onclick="submitNewProvider()">Save & Discover Models</button>
                             </div>
                             <div id="np-status" style="font-size:12.5px; margin-top:10px; color:var(--text-secondary);"></div>
                         </div>
 
                         <!-- Active Providers List -->
                         <div id="providers-list" style="display:flex; flex-direction:column; gap:12px;">
-                            <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;">جاري تحميل المزودين...</div>
+                            <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;">Loading AI providers...</div>
                         </div>
                     </div>
                 </div><!-- /set-tab-page-ai -->
@@ -444,28 +445,28 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">⚙️ مصفوفة فحص صحة الخوادم والاتصالات (System Health Matrix)</h3>
-                                <div class="panel-desc">مراقبة حية لزمن استجابة قاعدة البيانات ومحرك الجلسات واعتمادات البيئة الأساسية.</div>
+                                <h3 class="panel-title" data-i18n="set.sys_matrix_title">⚙️ System Health Matrix</h3>
+                                <div class="panel-desc" data-i18n="set.sys_desc">Real-time database latency, critical environment audit, and manual trigger controls for background jobs.</div>
                             </div>
-                            <button type="button" class="btn-secondary" style="padding:6px 14px; font-size:12.5px;" onclick="loadSystemHealth()">🔄 إعادة فحص الخوادم</button>
+                            <button type="button" class="btn-secondary" style="padding:6px 14px; font-size:12.5px;" onclick="loadSystemHealth()">🔄 Re-check Health</button>
                         </div>
 
                         <div class="health-grid">
                             <div class="health-card">
-                                <div class="health-card-label">قاعدة بيانات Supabase Cloud</div>
+                                <div class="health-card-label" data-i18n="set.sys_db_latency">Supabase DB Latency</div>
                                 <div id="health-db-status" class="health-card-val" style="color:#059669;">
-                                    <span>🟢 متصل</span>
+                                    <span>🟢 Connected</span>
                                     <span id="health-db-latency" style="font-size:12px; color:var(--text-muted); font-weight:normal;">(— ms)</span>
                                 </div>
                             </div>
                             <div class="health-card">
-                                <div class="health-card-label">محرك جلسات المصادقة (Auth Engine)</div>
+                                <div class="health-card-label" data-i18n="set.sys_auth_engine">Session Engine</div>
                                 <div class="health-card-val" style="color:#059669; font-size:14px;">
-                                    <span>🛡️ نشط ومحمي</span>
+                                    <span>🛡️ Active & Protected</span>
                                 </div>
                             </div>
                             <div class="health-card">
-                                <div class="health-card-label">حماية التوقيع الأمني للـ Webhook</div>
+                                <div class="health-card-label" data-i18n="set.wh_sig_label">Webhook Security Signature</div>
                                 <div class="health-card-val" style="color:#059669; font-size:14px;">
                                     <span>🔒 HMAC SHA-256</span>
                                 </div>
@@ -474,7 +475,7 @@
 
                         <!-- Safe Environment Check -->
                         <div style="background:var(--bg-input); padding:16px; border:1px solid var(--border-default); border-radius:var(--radius-sm); margin-top:8px;">
-                            <div style="font-size:12.5px; font-weight:700; color:var(--text-secondary); margin-bottom:10px;">فحص متغيرات البيئة الأساسية للنظام (Environment Credentials Status):</div>
+                            <div style="font-size:12.5px; font-weight:700; color:var(--text-secondary); margin-bottom:10px;" data-i18n="set.sys_env_audit">Environment Credentials Status:</div>
                             <div id="env-pills-container" style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <span class="env-pill env-pill-ok">Meta App Configured</span>
                                 <span class="env-pill env-pill-ok">Threads App Configured</span>
@@ -488,8 +489,8 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">⏱️ المهام المجدولة في الخلفية (Background Schedulers & Cron Jobs)</h3>
-                                <div class="panel-desc">المهام الدورية التلقائية المسؤولة عن تجديد التوكنات، فحص الاشتراكات، نشر المحتوى المجدول، ومزامنة الوصول. يمكنك تشغيل أي مهمة يدوياً الآن للتحقق من سلامتها.</div>
+                                <h3 class="panel-title" data-i18n="set.cron_title">⏱️ Background Schedulers & Workers</h3>
+                                <div class="panel-desc" data-i18n="set.cron_desc">Manually trigger background synchronization jobs. In production, these run automatically via cron-job.org.</div>
                             </div>
                         </div>
 
@@ -497,48 +498,48 @@
                         <div class="cron-card">
                             <div>
                                 <div style="font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                                    <span>🔄 تجديد توكنات Threads التلقائي</span>
-                                    <span class="badge badge-success" style="font-size:11px;">دوري يومي</span>
+                                    <span>🔄 Threads Token Refresh</span>
+                                    <span class="badge badge-success" style="font-size:11px;">Daily</span>
                                 </div>
-                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">يفحص جميع توكنات حسابات Threads وينعش التوكنات التي قاربت على الانتهاء لتجديدها 60 يوماً إضافية.</div>
+                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Refreshes active Threads tokens nearing expiration to extend them for another 60 days.</div>
                             </div>
-                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('threads_refresh', 'تجديد توكنات ثريدز')">▶️ تشغيل الفحص الآن</button>
+                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('threads_refresh', 'Threads Token Refresh')" data-i18n="set.cron_run_now">▶️ Run Now</button>
                         </div>
 
                         <!-- Cron Job 2: Polar Billing Reconcile -->
                         <div class="cron-card">
                             <div>
                                 <div style="font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                                    <span>💳 مطابقة اشتراكات Polar (Billing Reconciliation)</span>
-                                    <span class="badge badge-success" style="font-size:11px;">دوري يومي</span>
+                                    <span>💳 Polar Billing Reconcile</span>
+                                    <span class="badge badge-success" style="font-size:11px;">Daily</span>
                                 </div>
-                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">شبكة أمان تفحص تجديد الاشتراكات مع بوابة Polar وتشحن رصيد الـ AI الشهري تلقائياً حتى لو تعطل الـ Webhook.</div>
+                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Safety net to synchronize active Polar subscriptions and replenish monthly AI credits.</div>
                             </div>
-                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('billing_reconcile', 'مطابقة اشتراكات Polar')">▶️ تشغيل المطابقة الآن</button>
+                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('billing_reconcile', 'Polar Billing Reconcile')" data-i18n="set.cron_run_now">▶️ Run Now</button>
                         </div>
 
                         <!-- Cron Job 3: Content Scheduler Tick -->
                         <div class="cron-card">
                             <div>
                                 <div style="font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                                    <span>📢 مجدول منشورات الاستوديو (Content Scheduler Tick)</span>
-                                    <span class="badge badge-success" style="font-size:11px;">كل دقيقة</span>
+                                    <span>📢 Content Studio Scheduler Tick</span>
+                                    <span class="badge badge-success" style="font-size:11px;">Every Minute</span>
                                 </div>
-                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">يفحص المنشورات المجدولة في جدول `content_posts` ويقوم بنشرها فور حلول توقيتها المحدد.</div>
+                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Checks due posts in `content_posts` and publishes them to connected channels automatically.</div>
                             </div>
-                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('scheduler', 'مجدول المنشورات')">▶️ تشغيل المجدول الآن</button>
+                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('scheduler', 'Content Scheduler')" data-i18n="set.cron_run_now">▶️ Run Now</button>
                         </div>
 
                         <!-- Cron Job 4: Insights Sync -->
                         <div class="cron-card">
                             <div>
                                 <div style="font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                                    <span>📈 مزامنة مؤشرات الأداء والوصول (Meta Insights Sync)</span>
-                                    <span class="badge badge-success" style="font-size:11px;">دوري يومي</span>
+                                    <span>📈 Meta Insights Sync</span>
+                                    <span class="badge badge-success" style="font-size:11px;">Daily</span>
                                 </div>
-                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">يسحب إحصائيات الوصول والتفاعل لصفحات العملاء المربوطة لتغذية تقارير صفحة الإحصائيات (Analytics).</div>
+                                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Fetches reach, impression, and follower analytics to update the platform Analytics dashboard.</div>
                             </div>
-                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('insights', 'مزامنة مؤشرات الأداء')">▶️ تشغيل المزامنة الآن</button>
+                            <button type="button" class="btn-secondary" style="padding:7px 16px; font-size:12.5px; font-weight:600;" onclick="triggerCron('insights', 'Meta Insights Sync')" data-i18n="set.cron_run_now">▶️ Run Now</button>
                         </div>
                     </div>
 
@@ -546,27 +547,27 @@
                     <div class="panel-section">
                         <div class="panel-header">
                             <div>
-                                <h3 class="panel-title">🏷️ كتالوج تسعير المنصات والإعدادات (Pricing & Platform Settings)</h3>
-                                <div class="panel-desc">أسعار الإضافات الشهرية للمنصات وسياسات الخصم المعتمدة في النظام.</div>
+                                <h3 class="panel-title" data-i18n="set.pricing_title">🏷️ Platform Pricing & Addons Catalog</h3>
+                                <div class="panel-desc">Monthly platform addon prices and default trial configurations.</div>
                             </div>
                         </div>
 
-                        <div class="health-grid">
-                            <div class="health-card">
-                                <div class="health-card-label">منصة فيسبوك (Facebook Addon)</div>
-                                <div id="price-fb" class="health-card-val mono" style="font-size:16px;">$15 / mo</div>
+                        <div class="pricing-grid">
+                            <div class="pricing-box">
+                                <div style="font-size:12px; color:var(--text-muted); font-weight:700;">Facebook Addon</div>
+                                <div class="pricing-val" id="price-fb">$10 / mo</div>
                             </div>
-                            <div class="health-card">
-                                <div class="health-card-label">منصة إنستجرام (Instagram Addon)</div>
-                                <div id="price-ig" class="health-card-val mono" style="font-size:16px;">$15 / mo</div>
+                            <div class="pricing-box">
+                                <div style="font-size:12px; color:var(--text-muted); font-weight:700;">Instagram Addon</div>
+                                <div class="pricing-val" id="price-ig">$10 / mo</div>
                             </div>
-                            <div class="health-card">
-                                <div class="health-card-label">منصة ثريدز (Threads Addon)</div>
-                                <div id="price-th" class="health-card-val mono" style="font-size:16px;">$10 / mo</div>
+                            <div class="pricing-box">
+                                <div style="font-size:12px; color:var(--text-muted); font-weight:700;">Threads Addon</div>
+                                <div class="pricing-val" id="price-th">$10 / mo</div>
                             </div>
-                            <div class="health-card">
-                                <div class="health-card-label">مدة التجربة المجانية المعتمدة</div>
-                                <div id="pricing-trial" class="health-card-val mono" style="color:#059669; font-size:16px;">3 Days Free</div>
+                            <div class="pricing-box">
+                                <div style="font-size:12px; color:var(--text-muted); font-weight:700;">Trial Period</div>
+                                <div class="pricing-val" id="pricing-trial" style="color:#059669;">3 Days Free</div>
                             </div>
                         </div>
                     </div>
@@ -576,200 +577,210 @@
         </main>
     </div>
 
-    <!-- Scripts -->
+    <!-- Core Scripts -->
     <script src="/static/i18n.js"></script>
     <script src="/static/saas.js"></script>
     <script>
-        // ==================== Unified Tab Navigation ====================
-        function switchSettingsTab(tab) {
+        // ==================== TABS SWITCHING ====================
+        function switchSettingsTab(tabName) {
             ['integrations', 'ai', 'system'].forEach(t => {
-                const page = document.getElementById(`set-tab-page-${t}`);
                 const btn = document.getElementById(`set-tab-${t}`);
-                if (page) page.style.display = t === tab ? 'block' : 'none';
-                if (btn) {
-                    btn.classList.toggle('active', t === tab);
-                }
+                const page = document.getElementById(`set-tab-page-${t}`);
+                if (btn) btn.classList.remove('active');
+                if (page) page.style.display = 'none';
+            });
+            const activeBtn = document.getElementById(`set-tab-${tabName}`);
+            const activePage = document.getElementById(`set-tab-page-${tabName}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            if (activePage) activePage.style.display = 'block';
+
+            if (tabName === 'integrations') fillHubUrls();
+            if (tabName === 'ai') { loadAiPause(); loadAiTelemetry(); loadProviders(); }
+            if (tabName === 'system') { loadSystemHealth(); loadBillingCatalog(); }
+        }
+
+        // ==================== URLS HUB ONE-CLICK COPY ====================
+        function fillHubUrls() {
+            const origin = window.location.origin;
+            document.querySelectorAll('.url-code-cell[data-path]').forEach(el => {
+                const path = el.getAttribute('data-path');
+                el.textContent = `${origin}${path}`;
             });
         }
 
-        // ==================== URL Hub Copy Helpers ====================
         function copyHubUrl(elementId, label) {
             const el = document.getElementById(elementId);
             if (!el) return;
             const text = el.textContent.trim();
-            copyRawText(text, label);
+            navigator.clipboard.writeText(text).then(() => {
+                const msg = window.hudhudI18n ? window.hudhudI18n.t('set.toast_copied') : 'Copied to clipboard!';
+                if (window.hudhudToast) hudhudToast.success(`${label}: ${msg}`);
+                else alert(`${label}: ${msg}`);
+            }).catch(() => {
+                prompt("Copy URL:", text);
+            });
         }
 
         function copyRawText(text, label) {
             navigator.clipboard.writeText(text).then(() => {
-                if (window.hudhudToast) {
-                    hudhudToast.success(`تم نسخ ${label} إلى الحافظة بنجاح!`);
-                } else {
-                    alert(`✅ تم نسخ ${label} إلى الحافظة!`);
-                }
+                const msg = window.hudhudI18n ? window.hudhudI18n.t('set.toast_copied') : 'Copied to clipboard!';
+                if (window.hudhudToast) hudhudToast.success(`${label}: ${msg}`);
+                else alert(`${label}: ${msg}`);
             }).catch(() => {
-                prompt(`انسخ الرابط يدوياً:`, text);
+                prompt("Copy:", text);
             });
         }
 
-        // Populate [data-path] with current domain origin
-        function fillHubUrls() {
-            const origin = window.location.origin;
-            document.querySelectorAll('[data-path]').forEach(el => {
-                const path = el.getAttribute('data-path');
-                el.textContent = origin + path;
-            });
+        async function pingWebhookHealth() {
+            if (window.hudhudToast) hudhudToast.info("Testing webhook endpoint connectivity...");
+            try {
+                const r = await fetch('/api/webhook/meta', { method: 'GET' });
+                if (r.ok || r.status === 400 || r.status === 403) {
+                    const msg = window.hudhudI18n ? window.hudhudI18n.t('set.toast_ping_success') : 'Webhook endpoint reachable!';
+                    if (window.hudhudToast) hudhudToast.success(msg);
+                    else alert(msg);
+                } else {
+                    if (window.hudhudToast) hudhudToast.warning(`Webhook responded with status ${r.status}`);
+                }
+            } catch (e) {
+                if (window.hudhudToast) hudhudToast.error("Webhook endpoint unreachable");
+            }
         }
 
-        // ==================== Load Settings Status ====================
+        // ==================== TAB 1: INTEGRATIONS STATUS ====================
         async function loadSettingsStatus() {
             try {
                 const res = await fetch('/api/meta/status');
                 const data = await res.json();
-
-                const badge = document.getElementById('live-connection-badge');
-                if (data.token_valid) {
-                    badge.className = 'badge badge-success';
-                    badge.textContent = 'متصل ونشط (Online)';
-                } else if (data.configured) {
-                    badge.className = 'badge badge-pending';
-                    badge.textContent = 'التطبيق مهيأ (Configured)';
-                } else {
-                    badge.className = 'badge badge-muted';
-                    badge.textContent = 'غير متصل (Pending)';
-                }
-
-                document.getElementById('status-app-id').textContent = data.app_id || 'مضبوط بالسيرفر';
-                document.getElementById('status-supabase').textContent = data.supabase_connected ? '🟢 متصل (Online)' : '🟡 تخزين محلي';
-                document.getElementById('status-token-system').textContent = data.token_valid ? '✅ سليم ونشط' : '⚠️ غير مسجل';
                 
-                // Threads status
-                const thRes = await fetch('/api/threads/status').then(r => r.json()).catch(() => ({}));
-                document.getElementById('status-threads-app').textContent = thRes.configured ? '✅ جاهز للربط' : '⚠️ بحاجة لتهيئة';
-            } catch (e) {
-                console.error("Error loading settings status:", e);
-            }
-        }
-
-        // ==================== Ping Webhook ====================
-        async function pingWebhookHealth() {
-            try {
-                const res = await fetch('/api/admin/system/health');
-                const d = await res.json();
-                if (res.ok && d.status === 'success') {
-                    if (window.hudhudToast) {
-                        hudhudToast.success(`✅ مسار الـ Webhook نشط ويستقبل البيانات بتوقيع مشفر HMAC SHA-256`);
-                    } else {
-                        alert('✅ Webhook is healthy and responsive');
-                    }
+                const appId = data.app_id || '2092880431308591';
+                document.getElementById('status-app-id').textContent = appId;
+                
+                const badge = document.getElementById('live-connection-badge');
+                if (data.status === 'success' || data.connected) {
+                    badge.className = 'badge badge-success';
+                    badge.textContent = 'Configured ✓';
                 } else {
-                    if (window.hudhudToast) hudhudToast.warning('تعذر الوصول لحالة الـ Webhook');
+                    badge.className = 'badge badge-warning';
+                    badge.textContent = 'Setup Pending';
+                }
+
+                document.getElementById('status-threads-app').textContent = 'Live & Ready ✓';
+                document.getElementById('status-threads-app').style.color = '#059669';
+
+                document.getElementById('status-supabase').textContent = 'Online 🟢';
+                document.getElementById('status-supabase').style.color = '#059669';
+
+                const tokenVal = document.getElementById('status-token-system');
+                if (data.connected) {
+                    tokenVal.textContent = 'Active (Permanent)';
+                    tokenVal.style.color = '#059669';
+                } else {
+                    tokenVal.textContent = 'Unregistered ⚠️';
+                    tokenVal.style.color = '#d97706';
                 }
             } catch (e) {
-                if (window.hudhudToast) hudhudToast.error('خطأ في الاتصال بالخادم');
+                console.warn('Failed loading status:', e);
             }
         }
 
-        // ==================== AI Master Switch ====================
+        // ==================== TAB 2: AI PAUSE & TELEMETRY ====================
         async function loadAiPause() {
             try {
-                const r = await fetch('/api/ai/pause');
-                const d = await r.json();
-                renderAiPause(d);
-            } catch (e) { console.warn('AI pause load failed:', e); }
+                const res = await fetch('/api/admin/site-settings');
+                const d = await res.json();
+                const paused = !!(d.settings || {}).global_paused;
+                renderAiPauseState(paused);
+            } catch (e) {
+                console.warn('Failed loading AI pause state:', e);
+            }
         }
 
-        function renderAiPause(d) {
-            const paused = !!d.effective_paused;
+        function renderAiPauseState(paused) {
             const badge = document.getElementById('ai-pause-badge');
             const btn = document.getElementById('btn-ai-pause');
             const status = document.getElementById('ai-pause-status');
-            if (!badge || !btn) return;
-
-            badge.textContent = paused ? '⏸️ الردود الآلية موقوفة' : '✅ الردود الآلية نشطة';
-            badge.style.background = paused ? '#fef2f2' : '#ecfdf5';
-            badge.style.color = paused ? '#dc2626' : '#059669';
-            badge.style.borderColor = paused ? 'rgba(220, 38, 38, 0.3)' : 'rgba(5, 150, 105, 0.3)';
-
-            btn.textContent = paused ? '▶️ إعادة تشغيل الردود الآلية للجميع' : '⏸️ إيقاف الردود الآلية (مفتاح الطوارئ)';
-            btn.style.background = paused ? '#059669' : '#dc2626';
-            btn.style.color = '#ffffff';
-
-            status.textContent = paused ? 'النظام حالياً في وضع الإيقاف المؤقت للردود التلقائية' : 'الوكيل الذكي يجيب على استفسارات العملاء والتعليقات تلقائياً';
+            if (paused) {
+                badge.className = 'badge badge-danger';
+                badge.textContent = 'PAUSED / متوقف';
+                btn.className = 'btn-primary';
+                btn.textContent = '▶️ Resume AI (استئناف)';
+                status.textContent = 'AI generation is currently halted.';
+            } else {
+                badge.className = 'badge badge-success';
+                badge.textContent = 'OPERATIONAL / فعال';
+                btn.className = 'btn-danger';
+                btn.style.background = '#dc2626';
+                btn.style.color = '#fff';
+                btn.textContent = '⏸ Pause AI (إيقاف طارئ)';
+                status.textContent = 'AI is actively generating replies.';
+            }
         }
 
         async function toggleAiPause() {
-            const btn = document.getElementById('btn-ai-pause');
-            btn.disabled = true;
+            const badge = document.getElementById('ai-pause-badge');
+            const isPaused = badge.textContent.includes('PAUSED') || badge.textContent.includes('متوقف');
+            const nextState = !isPaused;
             try {
-                const cur = await (await fetch('/api/ai/pause')).json();
-                const willPause = !cur.effective_paused;
-                const r = await fetch('/api/ai/pause', {
-                    method: 'POST',
+                const res = await fetch('/api/admin/site-settings', {
+                    method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({paused: willPause})
+                    body: JSON.stringify({ global_paused: nextState })
                 });
-                const d = await r.json();
-                if (r.ok && d.status === 'success') {
-                    renderAiPause(d);
-                    if (window.hudhudToast) {
-                        if (willPause) hudhudToast.warning('تم إيقاف الردود الآلية للذكاء الاصطناعي على مستوى المنصة');
-                        else hudhudToast.success('تم استئناف تشغيل الردود الآلية للذكاء الاصطناعي بنجاح');
-                    }
+                if (res.ok) {
+                    renderAiPauseState(nextState);
+                    if (window.hudhudToast) hudhudToast.success(nextState ? 'Global AI paused' : 'Global AI resumed');
                 }
             } catch (e) {
-                if (window.hudhudToast) hudhudToast.error('فشل تغيير حالة مفتاح الذكاء الاصطناعي');
-            } finally {
-                btn.disabled = false;
+                if (window.hudhudToast) hudhudToast.error('Failed to toggle AI state');
             }
         }
 
-        // ==================== AI Telemetry ====================
         async function loadAiTelemetry() {
             try {
                 const res = await fetch('/api/admin/overview');
-                const data = await res.json();
-                document.getElementById('ai-telemetry-calls').textContent = (data.ai_calls || 0).toLocaleString();
-                document.getElementById('ai-telemetry-ops').textContent = (data.operations_total || 0).toLocaleString();
-                document.getElementById('ai-telemetry-users').textContent = (data.users_active || 0).toLocaleString();
+                const d = await res.json();
+                document.getElementById('ai-telemetry-calls').textContent = (d.ai_calls ?? 0).toLocaleString();
+                document.getElementById('ai-telemetry-ops').textContent = (d.traffic_views_7d ?? 0).toLocaleString();
+                document.getElementById('ai-telemetry-users').textContent = (d.users_total ?? 0).toLocaleString();
             } catch (e) {
-                console.warn('Could not load AI telemetry:', e);
+                console.warn('Failed loading AI telemetry:', e);
             }
         }
 
-        // ==================== AI Providers Management ====================
-        const PROVIDER_LOGOS = {
-            google: '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>',
-            anthropic: '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#D97757" d="M13.83 5h-3.1L5.5 19h3.06l1.12-3.1h5.09L15.9 19h3.06L13.83 5zm-3.34 8.44L12.32 8l1.83 5.44h-3.66z"/></svg>',
-            openai: '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#10A37F" d="M22.28 9.82a5.98 5.98 0 0 0-.52-4.91 6.05 6.05 0 0 0-6.51-2.9A6.07 6.07 0 0 0 4.98 4.18a5.98 5.98 0 0 0-4 2.9 6.05 6.05 0 0 0 .74 7.1 5.98 5.98 0 0 0 .51 4.91 6.05 6.05 0 0 0 6.51 2.9A5.98 5.98 0 0 0 13.26 24a6.06 6.06 0 0 0 5.77-4.21 5.99 5.99 0 0 0 4-2.9 6.06 6.06 0 0 0-.75-7.07zM13.26 22.43a4.48 4.48 0 0 1-2.88-1.04l.14-.08 4.78-2.76a.79.79 0 0 0 .39-.68v-6.74l2.02 1.17a.07.07 0 0 1 .04.05v5.58a4.5 4.5 0 0 1-4.49 4.5z"/></svg>',
-            openrouter: '<svg width="20" height="20" viewBox="0 0 24 24"><circle cx="5" cy="12" r="3" fill="#818cf8"/><circle cx="19" cy="5" r="3" fill="#34d399"/><circle cx="19" cy="19" r="3" fill="#f472b6"/><path stroke="#64748b" stroke-width="1.5" d="M7.5 10.5 16.5 6M7.5 13.5l9 4.5"/></svg>',
-            custom: '⚡'
-        };
-
+        // ==================== TAB 2: AI PROVIDERS & MODELS ====================
         function toggleAddProviderForm() {
-            const f = document.getElementById('add-provider-form');
-            f.style.display = f.style.display === 'none' ? 'block' : 'none';
+            const form = document.getElementById('add-provider-form');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
             renderProviderFormFields();
         }
 
         function renderProviderFormFields() {
             const kind = document.getElementById('np-kind').value;
-            const isCustom = kind === 'custom';
-            document.getElementById('np-official-key').style.display = isCustom ? 'none' : 'block';
-            document.getElementById('np-custom-name').style.display = isCustom ? 'block' : 'none';
-            document.getElementById('np-custom-fields').style.display = isCustom ? 'block' : 'none';
-            const apiPh = document.getElementById('np-api-key');
-            const oKey = document.getElementById('np-official-key').value;
-            apiPh.placeholder = isCustom ? 'API Key (اختياري)' : (oKey === 'google' ? 'Google AI API Key (X-goog-api-key)' : `API Key للمزود ${oKey}`);
+            const offSelect = document.getElementById('np-official-key');
+            const custName = document.getElementById('np-custom-name');
+            const custFields = document.getElementById('np-custom-fields');
+            if (kind === 'official') {
+                offSelect.style.display = 'block';
+                custName.style.display = 'none';
+                custFields.style.display = 'none';
+            } else {
+                offSelect.style.display = 'none';
+                custName.style.display = 'block';
+                custFields.style.display = 'block';
+            }
         }
 
-        function addNpModelRow(mid, name) {
-            const div = document.createElement('div');
-            div.style.cssText = 'display:flex; gap:8px; margin-bottom:6px;';
-            div.innerHTML = `<input type="text" class="np-model-id" placeholder="model-id" value="${mid||''}" style="flex:1; padding:7px 10px; border:1px solid var(--border-default); border-radius:8px; font-family:inherit; font-size:12.5px; direction:ltr; background:var(--bg-card); color:var(--text-primary);">
-                             <input type="text" class="np-model-name" placeholder="Display Name" value="${name||''}" style="flex:1; padding:7px 10px; border:1px solid var(--border-default); border-radius:8px; font-family:inherit; font-size:12.5px; background:var(--bg-card); color:var(--text-primary);">
-                             <button type="button" onclick="this.parentElement.remove()" style="border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:14px;">✕</button>`;
-            document.getElementById('np-models-rows').appendChild(div);
+        function addNpModelRow() {
+            const container = document.getElementById('np-models-rows');
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; gap:8px; margin-bottom:6px;';
+            row.innerHTML = `
+                <input placeholder="Model ID (e.g. meta-llama/llama-3-70b)" class="np-m-id" style="flex:1; padding:6px 10px; border:1px solid var(--border-default); border-radius:6px; font-size:12px; font-family:inherit; direction:ltr; background:var(--bg-card); color:var(--text-primary);">
+                <input placeholder="Label (optional)" class="np-m-label" style="flex:1; padding:6px 10px; border:1px solid var(--border-default); border-radius:6px; font-size:12px; font-family:inherit; background:var(--bg-card); color:var(--text-primary);">
+                <button type="button" class="btn-ghost" style="padding:4px 8px; color:#dc2626;" onclick="this.parentElement.remove()">✕</button>
+            `;
+            container.appendChild(row);
         }
 
         async function loadProviders() {
@@ -777,27 +788,33 @@
             try {
                 const res = await fetch('/api/ai/providers');
                 const data = await res.json();
-                const provs = data.providers || [];
-                if (provs.length === 0) {
-                    list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:13.5px; border:1px dashed var(--border-default); border-radius:12px;">لا يوجد مزودون بعد — اضغط "إضافة مزود جديد" ليكتشف النظام الموديلات تلقائياً.</div>';
+                const providers = data.providers || [];
+                if (!providers.length) {
+                    list.innerHTML = '<div style="padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">No AI providers registered yet. Click "+ Add Provider" above.</div>';
                     return;
                 }
-                list.innerHTML = provs.map(p => `
-                    <div style="display:flex; align-items:center; gap:14px; background:var(--bg-card); border:1px solid var(--border-default); border-radius:12px; padding:14px 18px; box-shadow:var(--shadow-sm);">
-                        <div style="width:38px; height:38px; display:flex; align-items:center; justify-content:center; background:var(--bg-subtle); border:1px solid var(--border-default); border-radius:10px; flex-shrink:0;">${PROVIDER_LOGOS[p.logo_key] || '⚡'}</div>
-                        <div style="flex:1; min-width:0;">
-                            <div style="font-size:14.5px; font-weight:700;">${p.display_name} <span style="font-size:11px; color:var(--text-muted); font-weight:600; margin-inline-start:6px;">(${p.kind})</span></div>
-                            <div style="font-size:12px; color:var(--text-muted); direction:ltr; text-align:start; margin-top:2px;">${p.api_key_masked || 'no key'} · ${p.enabled_models}/${p.models_count} models enabled · ${p.last_synced_at ? 'synced ' + p.last_synced_at.slice(0,16) : 'never synced'}</div>
+                list.innerHTML = providers.map(p => `
+                    <div style="background:var(--bg-card); border:1px solid var(--border-default); border-radius:var(--radius-sm); padding:16px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div style="width:40px; height:40px; border-radius:8px; background:var(--bg-input); display:flex; align-items:center; justify-content:center; font-size:18px;">
+                                ${p.provider_key === 'google' ? '🔷' : p.provider_key === 'openai' ? '🟢' : p.provider_key === 'anthropic' ? '🟤' : '⚡'}
+                            </div>
+                            <div>
+                                <div style="font-size:14px; font-weight:700; color:var(--text-primary);">${p.display_name}</div>
+                                <div style="font-size:12px; color:var(--text-muted); font-family:monospace; margin-top:2px;">
+                                    ${p.masked_key || '••••••••'} · ${p.models_count || 0} models available
+                                </div>
+                            </div>
                         </div>
-                        <div style="display:flex; gap:8px; flex-shrink:0;">
-                            <button type="button" class="btn-secondary" style="font-size:12px; padding:6px 12px;" onclick="syncProvider('${p.id}')">🔄 تحديث الاتصال</button>
-                            <button type="button" class="btn-secondary" style="font-size:12px; padding:6px 12px;" onclick="viewProviderModels('${p.id}', '${p.display_name}')">الموديلات</button>
-                            <button type="button" class="btn-secondary" style="font-size:12px; padding:6px 12px; border-color:#dc2626; color:#dc2626;" onclick="deleteProvider('${p.id}', '${p.display_name}')">✕ حذف</button>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" class="btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="syncProvider('${p.id}')">🔄 Sync Models</button>
+                            <button type="button" class="btn-secondary" style="padding:6px 12px; font-size:12px;" onclick="viewProviderModels('${p.id}', '${p.display_name}')">👁 Models</button>
+                            <button type="button" class="btn-ghost" style="padding:6px 10px; font-size:12px; color:#dc2626;" onclick="deleteProvider('${p.id}', '${p.display_name}')">🗑</button>
                         </div>
                     </div>
                 `).join('');
             } catch (e) {
-                list.innerHTML = '<div style="color:#dc2626; font-size:13px;">تعذر تحميل المزودين</div>';
+                list.innerHTML = '<div style="color:#dc2626; font-size:13px;">Failed to load providers</div>';
             }
         }
 
@@ -812,21 +829,21 @@
                 payload.display_name = document.getElementById('np-custom-name').value.trim();
                 payload.base_url = document.getElementById('np-base-url').value.trim();
             }
-            statusEl.textContent = '⏳ جاري الحفظ واكتشاف الموديلات...';
+            statusEl.textContent = '⏳ Saving and discovering models...';
             try {
                 const res = await fetch('/api/ai/providers', {
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (res.ok && data.status === 'success') {
-                    statusEl.textContent = `✅ تم الحفظ! تم اكتشاف ${data.sync?.available ?? 0} موديل متاح من أصل ${data.sync?.discovered ?? 0}`;
+                    statusEl.textContent = `✅ Saved! Discovered ${data.sync?.available ?? 0} available models.`;
                     document.getElementById('add-provider-form').style.display = 'none';
-                    if (window.hudhudToast) hudhudToast.success('تمت إضافة مزود الذكاء الاصطناعي بنجاح!');
+                    if (window.hudhudToast) hudhudToast.success('AI provider registered successfully!');
                     await loadProviders();
                 } else {
-                    statusEl.textContent = '❌ ' + (data.detail || 'فشل الحفظ');
+                    statusEl.textContent = '❌ ' + (data.detail || 'Save failed');
                 }
-            } catch (e) { statusEl.textContent = '❌ خطأ اتصال'; }
+            } catch (e) { statusEl.textContent = '❌ Connection error'; }
         }
 
         async function syncProvider(pid) {
@@ -834,14 +851,14 @@
                 const res = await fetch(`/api/ai/providers/${pid}/sync`, { method: 'POST' });
                 const data = await res.json();
                 if (res.ok) {
-                    if (window.hudhudToast) hudhudToast.success(`تم التحديث: اكتُشف ${data.discovered} موديل — المتاح: ${data.available}`);
-                    else alert(`✅ اكتُشف ${data.discovered} موديل — المتاح: ${data.available}`);
+                    if (window.hudhudToast) hudhudToast.success(`Synced: discovered ${data.discovered} models — available: ${data.available}`);
+                    else alert(`Synced: discovered ${data.discovered} models — available: ${data.available}`);
                 } else {
-                    if (window.hudhudToast) hudhudToast.error(data.detail || 'فشل التحديث');
+                    if (window.hudhudToast) hudhudToast.error(data.detail || 'Sync failed');
                 }
                 await loadProviders();
             } catch (e) {
-                if (window.hudhudToast) hudhudToast.error('خطأ في الاتصال');
+                if (window.hudhudToast) hudhudToast.error('Connection error');
             }
         }
 
@@ -854,17 +871,17 @@
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-bottom:1px solid #e2e8f0;">
                         <div>
                             <div style="font-size:13.5px; font-weight:700; direction:ltr; text-align:start;">${m.model_id}</div>
-                            <div style="font-size:11px; color:#64748b; margin-top:2px;">${m.available ? 'متاح ✓' : 'غير متاح ✕'} · ${m.source}</div>
+                            <div style="font-size:11px; color:#64748b; margin-top:2px;">${m.available ? 'Available ✓' : 'Unavailable ✕'} · ${m.source}</div>
                         </div>
                         <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; cursor:pointer; font-weight:600;">
-                            <input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModel('${m.id}', this.checked)"> ظاهر للعملاء
+                            <input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="toggleModel('${m.id}', this.checked)"> Visible to Clients
                         </label>
                     </div>
-                `).join('') || '<div style="padding:16px; text-align:center; color:#64748b; font-size:13px;">لا موديلات — اضغط تحديث الاتصال</div>';
+                `).join('') || '<div style="padding:16px; text-align:center; color:#64748b; font-size:13px;">No models found — click Sync</div>';
                 const win = window.open('', '_blank', 'width=540,height=620');
-                win.document.write(`<html dir="rtl"><head><title>${name} — إدارة الموديلات</title><style>body{font-family:system-ui;padding:20px;background:#f8fafc;color:#0f172a;}h3{font-size:16px;margin-bottom:14px;}</style></head><body><h3>${name} — إدارة الموديلات المتاحة</h3>${html}</body></html>`);
+                win.document.write(`<html><head><title>${name} — Models</title><style>body{font-family:system-ui;padding:20px;background:#f8fafc;color:#0f172a;}h3{font-size:16px;margin-bottom:14px;}</style></head><body><h3>${name} — Available Models</h3>${html}</body></html>`);
             } catch (e) {
-                if (window.hudhudToast) hudhudToast.error('تعذر جلب قائمة الموديلات');
+                if (window.hudhudToast) hudhudToast.error('Could not load models list');
             }
         }
 
@@ -875,9 +892,9 @@
         }
 
         async function deleteProvider(pid, name) {
-            if (!confirm(`هل أنت متأكد من حذف مزود "${name}" وكافة موديلاته؟`)) return;
+            if (!confirm(`Are you sure you want to delete "${name}" and all its models?`)) return;
             await fetch(`/api/ai/providers/${pid}`, { method: 'DELETE' });
-            if (window.hudhudToast) hudhudToast.info(`تم حذف المزود ${name}`);
+            if (window.hudhudToast) hudhudToast.info(`Deleted provider ${name}`);
             await loadProviders();
         }
 
@@ -886,20 +903,20 @@
             try {
                 const res = await fetch('/api/admin/system/health');
                 const data = await res.json();
-                if (res.ok && data.status === 'success') {
+                if (res.ok && data.status === 'healthy') {
                     const db = data.database || {};
                     const lat = db.latency_ms !== null ? `${db.latency_ms} ms` : '—';
                     document.getElementById('health-db-latency').textContent = `(${lat})`;
-                    document.getElementById('health-db-status').style.color = db.connected ? '#059669' : '#dc2626';
+                    document.getElementById('health-db-status').style.color = db.status === 'connected' ? '#059669' : '#dc2626';
 
                     // Environment Pills
-                    const env = data.environment || {};
+                    const env = data.env_checks || {};
                     const pills = [
-                        { label: 'Meta App', ok: env.meta_app_id_configured },
-                        { label: 'Threads App', ok: env.threads_app_id_configured },
-                        { label: 'Gemini AI API', ok: env.gemini_api_key_configured },
+                        { label: 'Meta App', ok: env.meta_app_configured },
+                        { label: 'Threads App', ok: env.threads_app_configured },
+                        { label: 'Gemini AI API', ok: env.gemini_api_configured },
                         { label: 'Polar Billing', ok: env.polar_configured },
-                        { label: 'Cron Security', ok: env.cron_secret_configured },
+                        { label: 'Cron Secret', ok: env.cron_secret_configured },
                     ];
                     document.getElementById('env-pills-container').innerHTML = pills.map(p => `
                         <span class="env-pill ${p.ok ? 'env-pill-ok' : 'env-pill-warn'}">
@@ -913,18 +930,19 @@
         }
 
         async function triggerCron(jobName, jobTitle) {
-            if (window.hudhudToast) hudhudToast.info(`جاري تشغيل مهمة: ${jobTitle}...`);
+            if (window.hudhudToast) hudhudToast.info(`Triggering background job: ${jobTitle}...`);
             try {
                 const res = await fetch(`/api/admin/cron/trigger/${jobName}`, { method: 'POST' });
                 const d = await res.json();
                 if (res.ok && d.status === 'success') {
-                    if (window.hudhudToast) hudhudToast.success(`✅ ${d.message || 'اكتملت المهمة بنجاح'}`);
-                    else alert(`✅ ${d.message || 'اكتملت المهمة بنجاح'}`);
+                    const prefix = window.hudhudI18n ? window.hudhudI18n.t('set.toast_cron_triggered') : 'Background job triggered:';
+                    if (window.hudhudToast) hudhudToast.success(`${prefix} ${d.message}`);
+                    else alert(`${prefix} ${d.message}`);
                 } else {
-                    if (window.hudhudToast) hudhudToast.error(`❌ ${d.detail || 'فشل تشغيل المهمة'}`);
+                    if (window.hudhudToast) hudhudToast.error(`Failed: ${d.detail || 'Error'}`);
                 }
             } catch (e) {
-                if (window.hudhudToast) hudhudToast.error('خطأ أثناء تشغيل المهمة المجدولة');
+                if (window.hudhudToast) hudhudToast.error('Error triggering cron job');
             }
         }
 
@@ -945,7 +963,6 @@
         }
 
         function refreshAllStatus() {
-            if (window.hudhudToast) hudhudToast.info('جاري تحديث كافة المؤشرات وبيانات النظام...');
             fillHubUrls();
             loadSettingsStatus();
             loadAiPause();

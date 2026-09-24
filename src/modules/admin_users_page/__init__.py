@@ -22,6 +22,79 @@ _ADMIN_USERS_HTML = """<!DOCTYPE html>
    buttons/chips/modal) comes from saas.css, same as every other page. */
 .search{width:280px;padding:9px 14px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;}
 td .btn{white-space:nowrap;}
+.pagination-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-default);
+    margin-top: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pagination-btns {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.traffic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+.traffic-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    gap: 14px;
+    transition: all var(--transition-fast);
+}
+.traffic-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+}
+.traffic-route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 600;
+    min-width: 150px;
+    direction: ltr;
+}
+.traffic-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border-subtle);
+    border-radius: 99px;
+    overflow: hidden;
+    margin: 0 10px;
+}
+.traffic-bar-fill {
+    height: 100%;
+    background: var(--accent-blue-gradient);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+.traffic-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: var(--badge-blue-bg);
+    color: var(--badge-blue-text);
+    white-space: nowrap;
+}
 </style>
 </head>
 <body>
@@ -101,35 +174,13 @@ td .btn{white-space:nowrap;}
                     <tbody id="users-body"><tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">Loading…</td></tr></tbody>
                 </table>
                 </div>
-                <div id="pager" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:12.5px;color:var(--text-secondary);"></div>
+                <div id="pager" class="pagination-wrap"></div>
             </div>
 
             <div class="panel-section">
-                <div class="panel-header"><div><h3 class="panel-title">Traffic — Top Paths</h3>
-                <div class="panel-desc">Internal dashboard traffic log (7 days)</div></div></div>
+                <div class="panel-header"><div><h3 class="panel-title" data-i18n="users.traffic_title">Traffic — Top Paths</h3>
+                <div class="panel-desc" data-i18n="users.traffic_desc">Internal dashboard traffic log (7 days)</div></div></div>
                 <div id="traffic-box"><div style="color:var(--text-muted);font-size:13px;">Loading…</div></div>
-            </div>
-
-            <div class="panel-section">
-                <div class="panel-header"><div><h3 class="panel-title">Product Analytics (PostHog)</h3>
-                <div class="panel-desc">Toggle-gated — disabled means zero tracking (privacy-safe default)</div></div></div>
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;">
-                        <input type="checkbox" id="ph-enabled"> Enabled
-                    </label>
-                </div>
-                <div style="display:grid;gap:10px;max-width:560px;">
-                    <div>
-                        <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Project API Key</label>
-                        <input id="ph-key" placeholder="phc_..." style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
-                    </div>
-                    <div>
-                        <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Host (EU: https://eu.i.posthog.com)</label>
-                        <input id="ph-host" value="https://eu.i.posthog.com" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
-                    </div>
-                    <div><button class="btn-primary" style="padding:9px 18px;" onclick="saveAnalytics()">💾 Save analytics config</button>
-                    <span id="ph-status" style="font-size:12.5px;margin-inline-start:10px;"></span></div>
-                </div>
             </div>
         </div>
     </main>
@@ -237,10 +288,14 @@ const usersView = {
         }
 
         const pager = document.getElementById('pager');
+        const prevText = window.hudhudI18n ? window.hudhudI18n.t('users.btn_prev') : '‹ Prev';
+        const nextText = window.hudhudI18n ? window.hudhudI18n.t('users.btn_next') : 'Next ›';
         pager.innerHTML = `
-            <span>${rows.length} user(s) · page ${this.page}/${pages}</span>
-            <button class="btn btn-ghost" ${this.page <= 1 ? 'disabled' : ''} onclick="usersView.goto(${this.page - 1})">‹ Prev</button>
-            <button class="btn btn-ghost" ${this.page >= pages ? 'disabled' : ''} onclick="usersView.goto(${this.page + 1})">Next ›</button>`;
+            <span><strong>${rows.length}</strong> user(s) · page <strong>${this.page}</strong> of <strong>${pages}</strong></span>
+            <div class="pagination-btns">
+                <button class="btn btn-secondary" style="padding:6px 14px; font-size:12.5px;" ${this.page <= 1 ? 'disabled' : ''} onclick="usersView.goto(${this.page - 1})">${prevText}</button>
+                <button class="btn btn-secondary" style="padding:6px 14px; font-size:12.5px;" ${this.page >= pages ? 'disabled' : ''} onclick="usersView.goto(${this.page + 1})">${nextText}</button>
+            </div>`;
     },
 
     goto(p) { this.page = p; this.render(); },
@@ -345,39 +400,25 @@ async function loadTraffic() {
         const box = document.getElementById('traffic-box');
         const entries = Object.entries(d.by_path || {});
         if (!entries.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No traffic recorded yet</div>'; return; }
-        box.innerHTML = entries.map(([p, c]) => `<div class="traffic-row"><span>${escapeHtml(p)}</span><strong>${c}</strong></div>`).join('');
+        const maxHits = Math.max(...entries.map(e => e[1])) || 1;
+        box.innerHTML = '<div class="traffic-list">' + entries.map(([p, c]) => {
+            const pct = Math.max(6, Math.round((c / maxHits) * 100));
+            return `
+                <div class="traffic-item">
+                    <div class="traffic-route">
+                        <span class="badge" style="font-size:10.5px; padding:2px 6px; background:var(--bg-card); color:var(--text-secondary); border:1px solid var(--border-default);">GET</span>
+                        <span>${escapeHtml(p)}</span>
+                    </div>
+                    <div class="traffic-bar-track">
+                        <div class="traffic-bar-fill" style="width: ${pct}%;"></div>
+                    </div>
+                    <div class="traffic-badge">${c.toLocaleString()} views</div>
+                </div>`;
+        }).join('') + '</div>';
     } catch (e) { console.error(e); }
 }
 
-// Phase 9.6 — PostHog toggle-gated config (site-settings: analytics_config)
-async function loadAnalytics() {
-    try {
-        const r = await fetch('/api/admin/site-settings');
-        const d = await r.json();
-        const cfg = (d.settings || {}).analytics_config || {};
-        document.getElementById('ph-enabled').checked = !!cfg.enabled;
-        document.getElementById('ph-key').value = cfg.posthog_key || '';
-        document.getElementById('ph-host').value = cfg.posthog_host || 'https://eu.i.posthog.com';
-    } catch (e) { console.error(e); }
-}
-
-async function saveAnalytics() {
-    const status = document.getElementById('ph-status');
-    const cfg = {
-        enabled: document.getElementById('ph-enabled').checked,
-        posthog_key: document.getElementById('ph-key').value.trim(),
-        posthog_host: document.getElementById('ph-host').value.trim() || 'https://eu.i.posthog.com'
-    };
-    const r = await fetch('/api/admin/site-settings', {
-        method: 'PUT', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ analytics_config: cfg })
-    });
-    if (r.ok) { status.textContent = '✅ Saved'; status.style.color = '#059669'; }
-    else { const d = await r.json().catch(() => ({})); status.textContent = '❌ ' + (d.detail || 'Failed'); status.style.color = '#dc2626'; }
-    setTimeout(() => { status.textContent = ''; }, 3000);
-}
-
-document.addEventListener('DOMContentLoaded', () => { loadOverview(); loadUsers(); loadTraffic(); loadAnalytics(); });
+document.addEventListener('DOMContentLoaded', () => { loadOverview(); loadUsers(); loadTraffic(); });
 </script>
 </body>
 </html>"""

@@ -2411,3 +2411,57 @@ Based on 5 screenshots provided by the owner of the existing Developer Console (
   - **382 passed, 1 warning in 50.74s (100% pass rate)**.
   - Zero regressions across the entire platform.
 
+## [Entry 066] 2026-09-24 — Admin Alerts Resolution, Settings Bilingual Overhaul, /users UX Polish, Bilingual Templates & i18n Enterprise Architecture Study
+- **Timestamp**: 2026-09-24T07:00:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ COMPLETED & FULLY VERIFIED (382/382 PASSED)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+- **Architectural Study**: `docs/PROJECT_REPORTS/i18n_enterprise_architecture_study.md`
+
+### 1. Context & Owner Directives
+The owner submitted 5 screenshots and 6 numbered action points:
+1. Review and explain alerts shown on `/dashboard` (specifically Gemini error 503, Meta token, cron-job.org activity warning).
+2. Fix language mismatch on `/settings`: page was rendered in Arabic even when English mode was active.
+3. Separate Privacy Policy and Terms of Service URLs into distinct individual rows with dedicated copy buttons in `/settings`.
+4. Polish `/users`: fix ugly unstyled pagination text under the table, redesign raw "Traffic — Top Paths" into a modern visual component, and purge "Product Analytics (PostHog)" which does not belong in user management.
+5. Make Message Templates (`/templates`) bilingual (Arabic when site is Arabic, English when site is English).
+6. Perform an in-depth research study on site-wide internationalization (i18n), comparing the current DOM-based approach with enterprise standards (Shopify, Stripe, Linear, Vercel) and producing a comprehensive architectural migration blueprint.
+
+### 2. Implementation Summary
+1. **Gemini 503 Fix & Dashboard Alerts (Point 1)**:
+   - Root cause identified: Google Generative Language API retired `gemini-1.5-pro` in 2026, causing 404/503 errors.
+   - Updated `.env` model configuration to `LLM_MODEL=gemini-3.6-flash`.
+   - Verified via `_check_gemini()`: immediately returns `level: ok`, HTTP 200 operational status.
+2. **Settings Bilingual & Separated URLs (Points 2 & 3)**:
+   - Updated `src/templates/static/i18n.js` with comprehensive `set.*` keys for both `en` and `ar`.
+   - Rewrote `src/templates/settings.html`: all hardcoded Arabic text converted to English default with `data-i18n` attributes, seamlessly responding to the global language switcher and RTL flips.
+   - Separated Privacy Policy and Terms of Service in the Meta URLs Hub into two distinct rows, each with its own input field and individual copy button.
+3. **Users Page UX Modernization (Point 4)**:
+   - Modified `src/modules/admin_users_page/__init__.py`:
+     - Replaced raw `#pager` with a modern styled `.pagination-wrap` component with page counter and disabled button states.
+     - Redesigned "Traffic — Top Paths" using `.traffic-list`, HTTP method pills (`GET`), proportional visual progress bars (`.traffic-bar-fill`), and view count badges.
+     - Completely excised the "Product Analytics (PostHog)" panel and its JS handlers from the users page.
+     - Added `users.*` keys in `i18n.js` (EN + AR).
+4. **Bilingual Message Templates (Point 5)**:
+   - Modified `src/modules/templates_manager/__init__.py`:
+     - Seeded `DEFAULT_TEMPLATES` with both Arabic and English subjects and bodies (`subject_ar`, `subject_en`, `body_ar`, `body_en`).
+     - Added bilingual language switcher chips in `/templates` (`English View` / `العرض بالعربية`).
+     - Dynamic auto-sync with the site's active language (`window.hudhudI18n.currentLang`).
+     - Added `tpl.*` keys in `i18n.js` (EN + AR).
+5. **Enterprise i18n Architectural Study & Transition Blueprint (Point 6)**:
+   - Researched enterprise localization architectures (Shopify, Stripe, Linear, Vercel) and compared with HudhudRadar's current client-side DOM mutation approach.
+   - Authored a comprehensive architectural blueprint covering FOUC elimination, ICU MessageFormat with Unicode CLDR 6 Arabic plural forms, CSS Logical Properties, backend error localization (`Accept-Language`), and CI/CD translation parity testing.
+   - Documented in `docs/PROJECT_REPORTS/i18n_enterprise_architecture_study.md` and saved in brain artifacts.
+
+### 3. Verification & Test Proof
+- **Verification Script (`scratch/test_points_verification.py`)**:
+  - Gemini check: `level: ok` (operational).
+  - Settings page: 200 OK, `data-i18n` present, Privacy & Terms rows distinct with individual copy buttons.
+  - Users page: 200 OK, styled pagination present, visual traffic paths present, PostHog purged.
+  - Templates page: 200 OK, bilingual chips present, API returns `subject_en` & `subject_ar`.
+  - **All 5 automated checks passed 100%**.
+- **Pytest Full Suite**:
+  - Ran `pytest -q`: **382 passed, 1 warning in 57.73s**.
+  - Zero regressions.
+
+
