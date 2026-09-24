@@ -117,12 +117,23 @@ def register(app: FastAPI) -> None:
             logger.warning(f"usage_events insert failed for admin grant: {e}")
         try:
             from src.modules.notifications.service import notification_service
+            title_ar = f"⚡ تم إضافة {payload.amount} رصيد ردود ذكية"
+            body_ar = f"تمت إضافة الرصيد إلى حسابك بنجاح. رصيدك الإجمالي الآن: {new_total} نقطة."
+            title_en = f"⚡ Added {payload.amount} AI credits"
+            body_en = f"Credits successfully added to your account. Your new total: {new_total} points."
             notification_service.create(
                 user_id,
-                f"⚡ تم إضافة {payload.amount} رصيد ردود ذكية",
-                f"تمت إضافة الرصيد إلى حسابك بنجاح. رصيدك الإجمالي الآن: {new_total} نقطة.",
+                title_ar,
+                body_ar,
                 "success",
-                {"job": "credits_grant", "amount": payload.amount},
+                {
+                    "job": "credits_grant",
+                    "amount": payload.amount,
+                    "title_ar": title_ar,
+                    "body_ar": body_ar,
+                    "title_en": title_en,
+                    "body_en": body_en,
+                },
             )
         except Exception:
             pass

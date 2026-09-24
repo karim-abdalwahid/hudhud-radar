@@ -107,18 +107,23 @@ def render_and_notify(key: str, user_id: str, values: Optional[Dict[str, Any]] =
         if not row or not row.get("is_active"):
             return False  # admin disabled this template — deliver nothing
         d = DEFAULT_TEMPLATES.get(key, {})
-        subj_raw = row.get("subject") or d.get("subject_ar", "")
-        body_raw = row.get("body") or d.get("body_ar", "")
-        if lang == "en":
-            subj_raw = row.get("subject_en") or d.get("subject_en", subj_raw)
-            body_raw = row.get("body_en") or d.get("body_en", body_raw)
-        elif lang == "ar":
-            subj_raw = row.get("subject_ar") or d.get("subject_ar", subj_raw)
-            body_raw = row.get("body_ar") or d.get("body_ar", body_raw)
-        subject = _fill_placeholders(subj_raw, values or {})
-        body = _fill_placeholders(body_raw, values or {})
-        notification_service.create(user_id, subject, body, "info",
-                                    {"template": key, **(values or {})})
+        subj_ar = _fill_placeholders(row.get("subject_ar") or row.get("subject") or d.get("subject_ar", ""), values or {})
+        body_ar = _fill_placeholders(row.get("body_ar") or row.get("body") or d.get("body_ar", ""), values or {})
+        subj_en = _fill_placeholders(row.get("subject_en") or d.get("subject_en", ""), values or {})
+        body_en = _fill_placeholders(row.get("body_en") or d.get("body_en", ""), values or {})
+
+        subject = subj_en if lang == "en" else subj_ar
+        body = body_en if lang == "en" else body_ar
+
+        meta = {
+            "template": key,
+            "title_ar": subj_ar,
+            "body_ar": body_ar,
+            "title_en": subj_en,
+            "body_en": body_en,
+            **(values or {})
+        }
+        notification_service.create(user_id, subject, body, "info", meta)
         return True
     except Exception as e:
         logger.warning(f"render_and_notify({key}) failed (non-blocking): {e}")

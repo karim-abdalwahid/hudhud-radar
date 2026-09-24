@@ -246,3 +246,18 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
     except Exception as e:
         logger.error(f"instagram callback error: {e}")
         return RedirectResponse("/account?connect_error=instagram", status_code=303)
+
+
+# --------------------------------------------------------------------------
+# 🧵 threads door
+# --------------------------------------------------------------------------
+@router.get("/api/connections/threads/authorize", tags=["Connections"])
+async def threads_authorize(request: Request):
+    s = _require_user(request)
+    if s.get("role") != "admin" and not connection_service.assert_entitled(s["sub"], "threads"):
+        raise HTTPException(status_code=403, detail="threads service not in subscription")
+    from src.meta_api.threads_oauth import threads_oauth
+    res = threads_oauth.build_authorize_url(s["sub"])
+    if res.get("status") == "error":
+        raise HTTPException(status_code=400, detail=res.get("detail", "Failed to build Threads authorize URL"))
+    return res

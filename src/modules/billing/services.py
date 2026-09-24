@@ -237,12 +237,26 @@ class EntitlementService:
         if plan != "free" and not _from_heal:
             try:
                 from src.modules.notifications.service import notification_service
+                plan_name_en = cfg.get("name_en", plan.title())
+                plan_name_ar = cfg.get("name_ar", plan)
+                platforms_str = ", ".join(cfg.get("platforms", []))
+                title_ar = f"✅ تم تفعيل {plan_name_ar}"
+                body_ar = f"المنصات المشمولة في خطتك: {platforms_str}. رصيد الردود تم تحديثه."
+                title_en = f"✅ Plan activated: {plan_name_en}"
+                body_en = f"Included platforms: {platforms_str}. AI credits have been updated."
                 notification_service.create(
                     user_id,
-                    f"✅ تم تفعيل {cfg['name_ar']}",
-                    f"المنصات المشمولة في خطتك: {', '.join(cfg['platforms'])}. رصيد الردود تم تحديثه.",
+                    title_ar,
+                    body_ar,
                     "success",
-                    {"job": "plan_assigned", "plan": plan},
+                    {
+                        "job": "plan_assigned",
+                        "plan": plan,
+                        "title_ar": title_ar,
+                        "body_ar": body_ar,
+                        "title_en": title_en,
+                        "body_en": body_en,
+                    },
                 )
             except Exception:
                 pass

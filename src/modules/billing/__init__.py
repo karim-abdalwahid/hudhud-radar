@@ -223,11 +223,21 @@ def register(app: FastAPI) -> None:
                 if applied:
                     from src.modules.notifications.service import notification_service
                     trial_started = is_trial and upstream_status not in ("active", "past_due")
-                    title = "✅ بدأت تجربتك المجانية" if trial_started else "✅ تم تفعيل اشتراكك"
-                    detail = ("كل المنصات متاحة لمدة 3 أيام"
+                    title_ar = "✅ بدأت تجربتك المجانية" if trial_started else "✅ تم تفعيل اشتراكك"
+                    detail_ar = ("كل المنصات متاحة لمدة 3 أيام"
                               if trial_started else f"المنصات المفعلة: {', '.join(platforms) if platforms else 'أصبحت نشطة'}")
-                    notification_service.create(target_user["id"], title, detail,
-                                                "success", {"job": "payment", "trial": trial_started})
+                    title_en = "✅ Your free trial has started" if trial_started else "✅ Subscription activated"
+                    detail_en = ("All platforms available for 3 days"
+                              if trial_started else f"Active platforms: {', '.join(platforms) if platforms else 'Now active'}")
+                    notification_service.create(target_user["id"], title_ar, detail_ar,
+                                                "success", {
+                                                    "job": "payment",
+                                                    "trial": trial_started,
+                                                    "title_ar": title_ar,
+                                                    "body_ar": detail_ar,
+                                                    "title_en": title_en,
+                                                    "body_en": detail_en,
+                                                })
             except Exception:
                 pass
         elif kind == "subscription_canceled" and target_user:
@@ -236,10 +246,20 @@ def register(app: FastAPI) -> None:
                                                     source="subscription")
             try:
                 from src.modules.notifications.service import notification_service
+                title_ar = "⚠️ تم إلغاء اشتراكك"
+                body_ar = "المنصات المتوقفة — فعّل اشتراكاً لاستئناف الخدمة"
+                title_en = "⚠️ Subscription canceled"
+                body_en = "Channels paused — activate a plan to resume automated service"
                 notification_service.create(target_user["id"],
-                    "⚠️ تم إلغاء اشتراكك",
-                    "المنصات المتوقفة — فعّل اشتراكاً لاستئناف الخدمة",
-                    "warning", {"job": "payment"})
+                    title_ar,
+                    body_ar,
+                    "warning", {
+                        "job": "payment",
+                        "title_ar": title_ar,
+                        "body_ar": body_ar,
+                        "title_en": title_en,
+                        "body_en": body_en,
+                    })
             except Exception:
                 pass
 

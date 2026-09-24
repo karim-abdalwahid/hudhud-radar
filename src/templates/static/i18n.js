@@ -317,6 +317,9 @@ const HUDHUD_TRANSLATIONS = {
         "onboard.platform_ig_desc": "Turn Reels comments and DMs into qualified sales meetings instantly.",
         "onboard.platform_fb_title": "Facebook Messenger",
         "onboard.platform_fb_desc": "Engage ad inquiries and Page messages with zero wait time.",
+        "onboard.platform_th_title": "Threads by Meta",
+        "onboard.platform_th_desc": "Engage followers, auto-reply to mentions, and boost text reach.",
+        "onboard.coming_soon": "Coming Soon",
         "onboard.btn_connect": "Connect Channel",
         "onboard.connected": "✓ Connected",
 
@@ -1228,6 +1231,9 @@ const HUDHUD_TRANSLATIONS = {
         "onboard.platform_ig_desc": "تحويل تعليقات الريلز والرسائل الخاصة لعملاء مهتمين ومؤهلين للحجز فوراً.",
         "onboard.platform_fb_title": "فيسبوك ماسنجر",
         "onboard.platform_fb_desc": "التفاعل الفوري مع رسائل الإعلانات والصفحة الرسمية دون أي انتظار.",
+        "onboard.platform_th_title": "ثريدز من ميتا",
+        "onboard.platform_th_desc": "التفاعل الذكي مع المنشورات والإشارات والردود لزيادة التفاعل 24/7.",
+        "onboard.coming_soon": "قريباً",
         "onboard.btn_connect": "ربط القناة",
         "onboard.connected": "✓ متصل",
 

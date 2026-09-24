@@ -353,9 +353,74 @@ function injectNotificationsBell() {
     if (!_notifPolling) _notifPolling = setInterval(refreshNotifications, 60000);
 }
 
+function getEffectiveLang() {
+    return (window.hudhudI18n && window.hudhudI18n.currentLang) ||
+           localStorage.getItem('hudhud_lang') ||
+           document.documentElement.lang ||
+           'en';
+}
+
+function localizeNotificationClient(n, lang) {
+    if (!n) return n;
+    const isEn = lang === 'en';
+    const meta = n.meta || {};
+    let title = n.title || '';
+    let body = n.body || '';
+
+    if (isEn) {
+        if (meta.title_en) title = meta.title_en;
+        if (meta.body_en) body = meta.body_en;
+
+        // Dynamic Arabic -> English patterns if stored text is Arabic
+        if (/أهلاً بك (?:في|إلى) هدهد/i.test(title)) {
+            const m = title.match(/أهلاً بك (?:في|إلى) هدهد[،\s]+يا?\s*(.+?)!?$/);
+            const name = m ? m[1].trim() : (meta.user_name || '');
+            title = name ? `🎉 Welcome to Hudhud, ${name}!` : '🎉 Welcome to Hudhud!';
+            body = 'Your account is ready. Next step: connect your social channels from Settings to activate automated replies.';
+        } else if (title.includes('تم تفعيل')) {
+            const plan = title.replace('✅', '').replace('تم تفعيل', '').replace('خطتك:', '').replace('باقة', '').trim();
+            title = plan ? `✅ Plan activated: ${plan}` : '✅ Plan activated';
+            if (body.includes('المنصات المشمولة')) {
+                const m = body.match(/المنصات المشمولة في خطتك:\s*([^.]+)/);
+                const p = m ? m[1].trim() : 'All channels';
+                body = `Included platforms: ${p}. AI credits have been updated.`;
+            } else if (!meta.body_en) {
+                body = 'Your plan is active and AI credits have been added to your balance.';
+            }
+        } else if (title.includes('بدأت تجربتك المجانية')) {
+            title = '✅ Your free trial has started';
+            body = 'All messaging channels are available for 3 days.';
+        } else if (title.includes('تم إلغاء اشتراكك')) {
+            title = '⚠️ Subscription canceled';
+            body = 'Channels paused — activate a plan to resume automated service.';
+        } else if (title.includes('تم إضافة') && title.includes('رصيد')) {
+            const m = title.match(/(\d+)/);
+            title = m ? `⚡ Added ${m[1]} AI credits` : '⚡ Added AI credits';
+            const tot = body.match(/الآن:\s*(\d+)/);
+            body = tot ? `Credits successfully added to your account. Your new total: ${tot[1]} points.` : 'Credits successfully added to your account.';
+        } else if (title.includes('رصيد الذكاء الاصطناعي منخفض')) {
+            title = '⚠️ Low AI credits warning';
+            const m = body.match(/(\d+)/);
+            body = m ? `You have ${m[1]} credits remaining. The agent will fall back to static templates when depleted.` : 'Your AI credit balance is running low.';
+        } else if (title.includes('رصيد الردود الآلية خلص')) {
+            title = '⚠️ Out of AI credits';
+            body = 'The AI agent has temporarily paused automated replies because your AI credits are exhausted. New messages will still arrive in your inbox for manual replies.';
+        } else if (title.includes('عميل محتمل جديد')) {
+            title = '🎯 New qualified lead captured!';
+            body = meta.lead_name ? `Your AI agent captured a new prospect: ${meta.lead_name} — view details in your Leads CRM.` : 'Your AI agent captured a new prospect — view details in your Leads CRM.';
+        }
+    } else {
+        if (meta.title_ar) title = meta.title_ar;
+        if (meta.body_ar) body = meta.body_ar;
+    }
+
+    return Object.assign({}, n, { title, body });
+}
+
 async function refreshNotifications() {
     try {
-        const res = await fetch('/api/notifications?limit=20');
+        const lang = getEffectiveLang();
+        const res = await fetch(`/api/notifications?limit=20&lang=${encodeURIComponent(lang)}`);
         if (!res.ok) return; // 401 on public pages — silent
         const data = await res.json();
         const badge = document.getElementById('hudhud-bell-badge');
@@ -374,10 +439,11 @@ async function refreshNotifications() {
                 seen.push(latest.id);
                 sessionStorage.setItem('hudhud_toasted_notifs', JSON.stringify(seen.slice(-50)));
                 const tType = latest.type === 'error' ? 'error' : latest.type === 'warning' ? 'warning' : latest.type === 'success' ? 'success' : 'info';
+                const loc = localizeNotificationClient(latest, lang);
                 if (window.hudhudToast) {
                     window.hudhudToast.show({
-                        title: latest.title,
-                        message: latest.body || '',
+                        title: loc.title,
+                        message: loc.body || '',
                         type: tType,
                         duration: 6000
                     });
@@ -390,7 +456,8 @@ async function refreshNotifications() {
 function renderBellDropdown(items) {
     const dd = document.getElementById('hudhud-bell-dropdown');
     if (!dd) return;
-    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+    const lang = getEffectiveLang();
+    const isAr = lang === 'ar';
     if (!items.length) {
         dd.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">${isAr ? 'لا إشعارات بعد' : 'No notifications yet'}</div>`;
         return;
@@ -414,12 +481,15 @@ function renderBellDropdown(items) {
             <strong style="font-size:13px;">${isAr ? 'الإشعارات' : 'Notifications'}</strong>
             <button onclick="markAllNotificationsRead()" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;font-weight:600;">${isAr ? 'تعليم الكل كمقروء' : 'Mark all read'}</button>
         </div>
-        ${items.map(n => `
+        ${items.map(rawN => {
+            const n = localizeNotificationClient(rawN, lang);
+            return `
             <div style="padding:11px 14px;border-bottom:1px solid var(--border-default);${n.read ? 'opacity:0.55;' : ''}">
                 <div style="font-size:12.8px;font-weight:700;color:${colors[n.type] || 'var(--text-primary)'};">${escapeHtml(n.title)}</div>
                 ${n.body ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${escapeHtml(n.body)}</div>` : ''}
                 <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">${escapeHtml(String(n.created_at || '').slice(0, 16).replace('T', ' '))}</div>
-            </div>`).join('')}
+            </div>`;
+        }).join('')}
     `;
 }
 
@@ -550,6 +620,8 @@ window.addEventListener('hudhud_lang_change', () => {
     const btnDev = document.querySelector('#hudhud-btn-dev span[data-i18n]');
     if (btnClient) btnClient.textContent = isAr ? 'واجهة العميل' : 'Client View';
     if (btnDev) btnDev.textContent = isAr ? 'لوحة المطور' : 'Dev Console';
+    // Re-render and fetch notifications in the new language
+    try { refreshNotifications(); } catch (e) {}
 });
 
 

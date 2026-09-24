@@ -174,12 +174,23 @@ class UsageService:
                 meta = n.get("meta") or {}
                 if meta.get("job") == "credits_exhausted" and str(n.get("created_at") or "") >= cutoff:
                     return
+            title_ar = "⚠️ رصيد الردود الآلية خلص"
+            body_ar = ("الوكيل الذكي أوقف الردود التلقائية مؤقتاً لأن رصيد الـ AI credits "
+                       "انتهى. الرسائل الجديدة لسه بتوصل لصندوق الوارد للرد اليدوي. "
+                       "اشحن الرصيد من لوحة الإدارة للاستمرار.")
+            title_en = "⚠️ Out of AI credits"
+            body_en = ("The AI agent has temporarily paused automated replies because your AI credits are exhausted. "
+                       "New messages will still arrive in your Live Inbox for manual replies. "
+                       "Top up your credits to resume.")
             notification_service.create(
-                user_id, "⚠️ رصيد الردود الآلية خلص",
-                "الوكيل الذكي أوقف الردود التلقائية مؤقتاً لأن رصيد الـ AI credits "
-                "انتهى. الرسائل الجديدة لسه بتوصل لصندوق الوارد للرد اليدوي. "
-                "اشحن الرصيد من لوحة الإدارة للاستمرار.",
-                "warning", {"job": "credits_exhausted"},
+                user_id, title_ar, body_ar,
+                "warning", {
+                    "job": "credits_exhausted",
+                    "title_ar": title_ar,
+                    "body_ar": body_ar,
+                    "title_en": title_en,
+                    "body_en": body_en,
+                },
             )
         except Exception as e:
             logger.warning(f"credit-exhausted notice skipped for {user_id}: {e}")

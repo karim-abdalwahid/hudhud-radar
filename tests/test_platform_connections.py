@@ -191,9 +191,12 @@ def test_threads_authorize_requires_entitlement(client_as_user, fake_tables):
     """Threads must have the same server-side paid gate as the Meta doors."""
     res = client_as_user.get("/api/threads/oauth/authorize")
     assert res.status_code == 403
+    res_conn = client_as_user.get("/api/connections/threads/authorize")
+    assert res_conn.status_code == 403
 
 
-def test_authorize_returns_url_when_entitled(client, fake_tables):
+
+def test_authorize_returns_url_when_entitled(client, fake_tables, monkeypatch):
     """Admin session (conftest client) + granted entitlement → authorize URL."""
     me = client.get("/auth/me").json()
     _grant(me["user_id"], "platform:facebook")
@@ -201,6 +204,13 @@ def test_authorize_returns_url_when_entitled(client, fake_tables):
     assert res.status_code == 200
     assert res.json()["authorize_url"].startswith("https://www.facebook.com/v26.0/dialog/oauth")
     assert "state=" in res.json()["authorize_url"]
+    from src.config import settings
+    monkeypatch.setattr(settings, "THREADS_APP_ID", "threads-test-app")
+    _grant(me["user_id"], "platform:threads")
+    res_th = client.get("/api/connections/threads/authorize")
+    assert res_th.status_code == 200
+    assert "threads.net" in res_th.json()["authorize_url"]
+    assert "state=" in res_th.json()["authorize_url"]
 
 
 def test_instagram_authorize_includes_verifiable_csrf_state(client, fake_tables, monkeypatch):
