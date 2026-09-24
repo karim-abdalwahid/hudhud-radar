@@ -2291,3 +2291,26 @@ The owner requested two core platform-wide UI/UX improvements:
   - `screenshot_knowledge_dark.png` (dark document editor + stats)
 - **Zero Backend Changes**: Only 8 UI/template files touched (100% UI layer, zero backend modifications).
 
+## [Entry 063] 2026-09-24 — Fix Knowledge Base 0 Words & 0 KB Metric Display
+- **Timestamp**: 2026-09-24T04:10:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ RESOLVED & TESTED (382/382 PASSED)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+
+### 1. Context & Root Cause
+The owner reported that on `/knowledge`, all documents listed showed `0 words` and `0 KB` despite having real markdown content in the editor (e.g. 568 chars in `audience_insights.md`).
+- **Root Cause**: `db_knowledge_base.list_documents()` returned `word_count` (singular) and omitted `size_bytes`. `knowledge.html` expected `words_count` (plural) and `size_bytes`, thus defaulting both to 0.
+
+### 2. Changes Implemented
+1. `src/knowledge/db_knowledge_base.py`:
+   - Updated `list_documents` query to select `content`, compute `size_bytes = len(content.encode('utf-8'))`, and return both `word_count` and `words_count`.
+2. `src/agent/knowledge_base.py`:
+   - Mapped `size_bytes`, `words_count`, and `word_count` consistently.
+3. `src/templates/knowledge.html`:
+   - Resiliently fallback across `words_count` and `word_count`.
+   - Formatted KB display dynamically (`<10 KB` as 1 decimal place e.g. `0.9 KB`, `3.5 KB`).
+   - Synced total words KPI counter (now accurately showing `1,039` words).
+
+### 3. Verification
+- Verified via `TestClient` endpoint retrieval: 5 documents returned with exact word counts (366, 129, 189, 90, 265 words) and byte sizes. Total words: 1,039.
+- 382 passed in pytest.

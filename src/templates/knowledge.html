@@ -188,7 +188,7 @@
                 const docs = data.documents || [];
 
                 document.getElementById('stat-docs-count').textContent = docs.length;
-                const totalWords = docs.reduce((acc, d) => acc + (d.words_count || 0), 0);
+                const totalWords = docs.reduce((acc, d) => acc + (d.words_count || d.word_count || 0), 0);
                 document.getElementById('stat-words-count').textContent = totalWords.toLocaleString();
 
                 const listContainer = document.getElementById('docs-list-container');
@@ -200,18 +200,26 @@
                 const coreLabel = t('kb.core_badge');
                 const extractedLabel = t('kb.extracted_badge');
 
-                listContainer.innerHTML = docs.map(d => `
+                listContainer.innerHTML = docs.map(d => {
+                    const words = d.words_count ?? d.word_count ?? 0;
+                    const bytes = d.size_bytes != null ? d.size_bytes : (words * 6);
+                    let kbText = '0 KB';
+                    if (bytes > 0) {
+                        const kb = bytes / 1024;
+                        kbText = kb >= 10 ? `${Math.round(kb)} KB` : `${kb.toFixed(1)} KB`;
+                    }
+                    return `
                     <div class="doc-item ${currentEditingFilename === d.filename ? 'active' : ''}" onclick="selectDocument('${escapeHtml(d.filename)}')">
                         <div class="doc-title">
                             <span>📄 ${escapeHtml(d.filename)}</span>
                             ${d.is_core ? `<span class="badge badge-fb" style="font-size:10px;">${coreLabel}</span>` : `<span class="badge badge-muted" style="font-size:10px;">${extractedLabel}</span>`}
                         </div>
                         <div class="doc-meta">
-                            <span class="num">${t('kb.words_count', { count: (d.words_count || 0).toLocaleString() })}</span>
-                            <span class="num">${Math.round((d.size_bytes || 0) / 1024)} KB</span>
+                            <span class="num">${t('kb.words_count', { count: words.toLocaleString() })}</span>
+                            <span class="num">${kbText}</span>
                         </div>
                     </div>
-                `).join('');
+                `;}).join('');
 
                 if (!currentEditingFilename && docs.length > 0) {
                     selectDocument(docs[0].filename);

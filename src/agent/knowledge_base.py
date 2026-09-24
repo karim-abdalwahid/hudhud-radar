@@ -79,11 +79,14 @@ class KnowledgeBaseManager:
                 docs = []
                 for d in db_knowledge_base.list_documents():
                     content = d  # light rows only; fetch preview lazily below
+                    words = d.get("words_count") or d.get("word_count") or 0
+                    bytes_val = d.get("size_bytes") or len((self.knowledge_cache.get(d["filename"], "") or "").encode("utf-8"))
                     docs.append({
                         "name": d["filename"].removesuffix(".md"),
                         "filename": d["filename"],
-                        "size_bytes": len(self.knowledge_cache.get(d["filename"], "")),
-                        "words_count": d.get("word_count", 0),
+                        "size_bytes": bytes_val,
+                        "words_count": words,
+                        "word_count": words,
                         "updated_at": d.get("updated_at"),
                         "is_core": d.get("is_core", False),
                         "source": d.get("source", "upload"),

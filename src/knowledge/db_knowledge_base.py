@@ -268,7 +268,7 @@ class DBKnowledgeBase:
         try:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select(
-                    "filename,word_count,source,is_core,updated_at")
+                    "filename,word_count,content,source,is_core,updated_at")
                 q = q.eq("user_id", user_id)
                 docs = q.execute().data or []
             else:
@@ -278,7 +278,9 @@ class DBKnowledgeBase:
             return [
                 {
                     "filename": d["filename"],
-                    "word_count": d.get("word_count", 0),
+                    "word_count": d.get("word_count") or (len(d.get("content", "").split()) if d.get("content") else 0),
+                    "words_count": d.get("word_count") or (len(d.get("content", "").split()) if d.get("content") else 0),
+                    "size_bytes": len((d.get("content") or "").encode("utf-8")),
                     "source": d.get("source", "upload"),
                     "is_core": d.get("is_core", False),
                     "updated_at": d.get("updated_at"),
