@@ -103,22 +103,48 @@ def register(app: FastAPI) -> None:
         users = supabase_db.select("users", {"id": user_id})
         if not users:
             raise HTTPException(status_code=404, detail="User not found")
-        current = users[0].get("ai_credits", 100)
-        updated = supabase_db.update("users", user_id, {"ai_credits": current + payload.amount})
-        return {"status": "success", "ai_credits": (updated or {}).get("ai_credits"),
-                "granted": payload.amount, "note": payload.note}
+        current = int(users[0].get("ai_credits") or 0)
+        new_total = current + payload.amount
+        updated = supabase_db.update("users", user_id, {"ai_credits": new_total})
+        try:
+            supabase_db.insert("usage_events", {
+                "user_id": user_id,
+                "kind": "admin_grant",
+                "amount": payload.amount,
+                "meta": {"note": payload.note or "Admin grant", "previous": current, "new": new_total},
+            })
+        except Exception as e:
+            logger.warning(f"usage_events insert failed for admin grant: {e}")
+        try:
+            from src.modules.notifications.service import notification_service
+            notification_service.create(
+                user_id,
+                f"⚡ تم إضافة {payload.amount} رصيد ردود ذكية",
+                f"تمت إضافة الرصيد إلى حسابك بنجاح. رصيدك الإجمالي الآن: {new_total} نقطة.",
+                "success",
+                {"job": "credits_grant", "amount": payload.amount},
+            )
+        except Exception:
+            pass
+        return {
+            "status": "success",
+            "ai_credits": (updated or {}).get("ai_credits", new_total),
+            "granted": payload.amount,
+            "note": payload.note,
+        }
 
     @app.post("/api/admin/users/{user_id}/plan", tags=["Admin Console"])
     async def set_plan(user_id: str, payload: PlanPayload, request: Request):
         _require_admin(request)
         if payload.plan not in ("free", "starter", "growth", "scale"):
             raise HTTPException(status_code=400, detail="خطة غير معروفة")
-        from datetime import datetime, timezone
-        updated = supabase_db.update("users", user_id, {
+        from src.modules.billing.services import entitlement_service
+        sub_status = entitlement_service.apply_plan(user_id, payload.plan)
+        return {
+            "status": "success",
             "plan": payload.plan,
-            "plan_updated_at": datetime.now(timezone.utc).isoformat(),
-        })
-        return {"status": "success", "plan": (updated or {}).get("plan")}
+            "subscription": sub_status,
+        }
 
     @app.get("/api/admin/overview", tags=["Admin Console"])
     async def admin_overview(request: Request):

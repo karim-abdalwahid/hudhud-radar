@@ -19,6 +19,33 @@ MULTI_PLATFORM_DISCOUNTS = {1: 0, 2: 10, 3: 20}  # count → percent off (fallba
 TRIAL_DAYS = 3
 TRIAL_ENTITLEMENTS = ["platform:facebook", "platform:instagram", "platform:threads"]
 
+PLAN_CONFIG = {
+    "free": {
+        "platforms": [],
+        "min_credits": 100,
+        "name_ar": "باقة مجانية (Free)",
+        "name_en": "Free Plan",
+    },
+    "starter": {
+        "platforms": ["facebook", "instagram"],
+        "min_credits": 1000,
+        "name_ar": "باقة البداية (Starter)",
+        "name_en": "Starter Plan",
+    },
+    "growth": {
+        "platforms": ["facebook", "instagram", "threads"],
+        "min_credits": 5000,
+        "name_ar": "باقة النمو (Growth Pro)",
+        "name_en": "Growth Pro Plan",
+    },
+    "scale": {
+        "platforms": ["facebook", "instagram", "threads"],
+        "min_credits": 25000,
+        "name_ar": "باقة الشركات (Scale Agency)",
+        "name_en": "Scale Agency Plan",
+    },
+}
+
 
 class EntitlementService:
     """Reads/grants/revokes entitlements. Fail-safe: a lookup error denies
@@ -109,8 +136,10 @@ class EntitlementService:
     def upsert_subscription(self, user_id: str, **fields) -> Optional[Dict[str, Any]]:
         fields["updated_at"] = datetime.now(timezone.utc).isoformat()
         sub = self.get_subscription(user_id)
-        if sub:
+        if sub and sub.get("id"):
             return supabase_db.update("user_subscriptions", sub["id"], fields)
+        if sub:
+            return supabase_db.update("user_subscriptions", user_id, fields)
         return supabase_db.insert("user_subscriptions", {"user_id": user_id, **fields})
 
     def has_used_trial(self, user_id: str) -> bool:
@@ -172,22 +201,106 @@ class EntitlementService:
         logger.info(f"Trial started for {user_id} (ends {trial_end})")
         return True
 
-    def subscription_status(self, user_id: str) -> Dict[str, Any]:
+    def apply_plan(self, user_id: str, plan: str, _from_heal: bool = False) -> Dict[str, Any]:
+        """Applies a plan to a user: syncs users.plan, user_subscriptions,
+        and platform entitlements. Used by admin manual changes & auto-healing."""
+        cfg = PLAN_CONFIG.get(plan, PLAN_CONFIG["free"])
+        now_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            supabase_db.update("users", user_id, {
+                "plan": plan,
+                "plan_updated_at": now_iso,
+            })
+        except Exception as e:
+            logger.warning(f"users table plan update failed: {e}")
+
+        try:
+            if plan == "free":
+                self.upsert_subscription(user_id, status="canceled")
+                self.sync_from_platforms(user_id, [], source="admin")
+            else:
+                self.upsert_subscription(
+                    user_id,
+                    status="active",
+                    payment_provider="admin_manual",
+                    provider_subscription_id=f"manual_{plan}_{user_id[:8]}",
+                )
+                self.sync_from_platforms(user_id, cfg["platforms"], source="admin")
+                try:
+                    from src.modules.billing.usage import usage_service
+                    usage_service.ensure_minimum_credits(user_id, cfg["min_credits"])
+                except Exception as e:
+                    logger.warning(f"ensure_minimum_credits failed: {e}")
+        except Exception as e:
+            logger.warning(f"subscription/entitlement sync failed in apply_plan: {e}")
+
+        if plan != "free" and not _from_heal:
+            try:
+                from src.modules.notifications.service import notification_service
+                notification_service.create(
+                    user_id,
+                    f"✅ تم تفعيل {cfg['name_ar']}",
+                    f"المنصات المشمولة في خطتك: {', '.join(cfg['platforms'])}. رصيد الردود تم تحديثه.",
+                    "success",
+                    {"job": "plan_assigned", "plan": plan},
+                )
+            except Exception:
+                pass
+
+        return self.subscription_status(user_id, _auto_heal=False)
+
+    def subscription_status(self, user_id: str, _auto_heal: bool = True) -> Dict[str, Any]:
         sub = self.get_subscription(user_id) or {}
         status = sub.get("status", "none")
         trial_end = sub.get("trial_ends_at")
+
         # auto-expire trial
         if status == "trialing" and trial_end and trial_end <= datetime.now(timezone.utc).isoformat():
             self.upsert_subscription(user_id, status="canceled")
             for e in TRIAL_ENTITLEMENTS:
                 self.revoke(user_id, e)
             status = "canceled"
+
+        # Check assigned plan in users table
+        user_plan = "free"
+        try:
+            user_rows = supabase_db.select("users", {"id": user_id}) or []
+            if user_rows:
+                user_plan = user_rows[0].get("plan") or "free"
+            else:
+                from src.core.auth import user_store
+                u = user_store.get_by_id(user_id)
+                if u:
+                    user_plan = u.get("plan") or "free"
+        except Exception as e:
+            logger.warning(f"user plan lookup failed for {user_id}: {e}")
+
+        # Auto-heal: If an admin assigned a paid plan (starter, growth, scale)
+        # but user_subscriptions is not active or platform entitlements are missing:
+        if _auto_heal and user_plan in ("starter", "growth", "scale"):
+            platforms = self.connected_platforms(user_id)
+            if status not in ("active", "trialing") or not platforms:
+                self.apply_plan(user_id, user_plan, _from_heal=True)
+                sub = self.get_subscription(user_id) or {}
+                status = sub.get("status", "active")
+
+        effective_status = status
+        if effective_status not in ("active", "trialing") and user_plan in ("starter", "growth", "scale"):
+            effective_status = "active"
+
+        effective_platforms = self.connected_platforms(user_id)
+        if not effective_platforms and user_plan in ("starter", "growth", "scale"):
+            effective_platforms = PLAN_CONFIG.get(user_plan, {}).get("platforms", [])
+
+        effective_plan = user_plan if user_plan != "free" else (sub.get("plan_id") or effective_status)
         sub_payload = {
-            "status": status,
-            "platforms": self.connected_platforms(user_id),
+            "status": effective_status,
+            "platforms": effective_platforms,
             "trial_ends_at": trial_end,
-            "can_connect": status in ("trialing", "active"),
-            "plan": sub.get("plan_id") or status,
+            "can_connect": effective_status in ("trialing", "active"),
+            "plan": effective_plan,
+            "plan_display": PLAN_CONFIG.get(effective_plan, {}).get("name_ar", "باقة مجانية"),
+            "plan_display_en": PLAN_CONFIG.get(effective_plan, {}).get("name_en", "Free Plan"),
         }
         return {
             **sub_payload,

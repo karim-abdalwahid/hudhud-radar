@@ -70,7 +70,8 @@ def fake_billing(client, monkeypatch):
             ent[rid] = {"id": rid, **data}
             return ent[rid]
         if table == "user_subscriptions":
-            subs[data["user_id"]] = {**data}
+            rid = data.get("id") or f"sub-{data['user_id'][:8]}"
+            subs[data["user_id"]] = {"id": rid, **data}
             return subs[data["user_id"]]
         if table == "coupons":
             coupons[data["code"]] = {**data}
@@ -82,6 +83,10 @@ def fake_billing(client, monkeypatch):
             ent[rid].update(data)
             return ent[rid]
         if table == "user_subscriptions":
+            for sub in subs.values():
+                if sub.get("id") == rid or sub.get("user_id") == rid:
+                    sub.update(data)
+                    return sub
             return data
         if table == "platform_addons_catalog" and rid in cat:
             cat[rid].update(data)
@@ -288,3 +293,37 @@ def test_site_settings_rejects_unknown_key(client: TestClient, fake_billing):
     r = client.put("/api/admin/site-settings", json={"evil_key": "x"})
     st = client.get("/api/admin/site-settings").json()["settings"]
     assert "evil_key" not in st
+
+
+def test_apply_plan_activates_subscription_and_platforms(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"p_grow_{uuid.uuid4().hex[:6]}@hudhud.test")
+    res = svc.apply_plan(u["id"], "growth")
+    assert res["status"] == "active"
+    assert res["plan"] == "growth"
+    assert "facebook" in res["platforms"]
+    assert "instagram" in res["platforms"]
+    assert "threads" in res["platforms"]
+    assert res["can_connect"] is True
+
+
+def test_apply_plan_free_cancels_and_revokes(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"p_free_{uuid.uuid4().hex[:6]}@hudhud.test")
+    svc.apply_plan(u["id"], "starter")
+    assert svc.subscription_status(u["id"])["status"] == "active"
+    res = svc.apply_plan(u["id"], "free")
+    assert res["status"] == "canceled"
+    assert res["platforms"] == []
+
+
+def test_auto_heal_existing_paid_user(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"p_heal_{uuid.uuid4().hex[:6]}@hudhud.test")
+    fake_billing["users"][u["id"]]["plan"] = "scale"
+    res = svc.subscription_status(u["id"])
+    assert res["status"] == "active"
+    assert res["plan"] == "scale"
+    assert set(res["platforms"]) == {"facebook", "instagram", "threads"}
+    assert res["can_connect"] is True
+
