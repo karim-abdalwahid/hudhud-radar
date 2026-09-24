@@ -2500,5 +2500,53 @@ The owner flagged 5 specific visual, operational, and architectural items:
 - `scratch/test_points_verification.py`: 100% PASS across all 5 checks, verifying PostHog in `/settings`, absence of duplicate language buttons, presence of `.health-card` styles, and persistence of `analytics_config` via `PUT /api/admin/site-settings`.
 - `pytest -q`: 382 passed, 1 warning (100% baseline maintained).
 
+## [Entry 068] 2026-09-24 — Surgical Relocation of /identity to Client View, Plans Distribution & Table Precision Alignment, Theme Switcher Device Option Purge
+- **Timestamp**: 2026-09-24T07:45:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ COMPLETED & FULLY VERIFIED (382/382 PASSED)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+
+### 1. Context & User Directives
+1. **Identity Review (`/identity`) Surgical Relocation to Client Workspace**:
+   - The user clarified that Identity Resolution & Review is an end-customer workspace tool (merging customer profiles across social channels without polluting CRM data), NOT a developer-only console tool.
+   - Requirement: Surgically relocate `/identity` to Client View for all regular users without damaging any underlying business logic or unrelated code.
+2. **Plans Distribution & Users Management Table Alignment (`/users`)**:
+   - The user provided a screenshot showing unstyled text (`free: 6`) under Plans Distribution.
+   - In the Users Management table, column headers (`th`) were centered while row cells (`td`) were left-aligned, creating severe visual displacement and unaligned data across all 8 columns.
+3. **Theme Switcher Dropdown ("Device" Option Purge)**:
+   - The user provided a screenshot of the theme selector dropdown and instructed to delete the "Device" option completely, retaining only "Light" and "Dark".
+
+### 2. Implementation Summary
+1. **Surgical Relocation of `/identity` to Client Workspaces**:
+   - `src/modules/pages/__init__.py`: Removed `admin_only=True` from the `/identity` `NavEntry`, placing it squarely in `nav.workspaces` (order 6) for all authenticated workspace users.
+   - `src/core/auth.py`: Removed `"/identity"` from `ADMIN_PAGE_PATHS` and `"/api/identity"` from `ADMIN_PATH_PREFIXES` so regular users are never blocked with HTTP 403.
+   - `src/core/modules.py`: Removed `"/identity"` from the developer route check in `initial_body_class()`, guaranteeing server-rendered `mode-client` by default with zero client-side role flicker.
+   - `src/templates/static/saas.js`: Removed `'/identity'` from `DEV_ROUTES` in `hudhudRoleManager`.
+   - `tests/test_nav_registry.py`: Updated `test_regular_user_hides_admin_nav` to assert `/identity` is present in regular user nav while dev console routes (`/settings`, `/users`, `/templates`) remain hidden.
+2. **Plans Distribution Redesign & Users Table Precision Alignment (`/users`)**:
+   - `src/templates/static/saas.css`: Added global `text-align: start;` to `th` to eliminate browser user-agent centering discrepancies across all data tables.
+   - `src/modules/admin_users_page/__init__.py`:
+     - **Plans Distribution**: Designed `.plans-grid` and `.plan-card` with icons (`🌱 Free`, `⚡ Starter`, `🚀 Growth`, `👑 Scale`), active user count badges, percentage proportions, and dynamic colored progress tracks (`.plan-progress-fill`).
+     - **Users Management Table**: Wrapped table in `.users-table-wrap`, applied `.users-table` with explicit column percentage widths (User 24%, Role 10%, Status 10%, Plan 10%, AI Credits 11%, Leads 9%, Joined 12%, Actions 14%), matching `text-align: start` across all data columns, right-aligned `.th-actions` and `.td-actions` (`.actions-wrap`), tabular numerical formatting, and unified bottom border connecting with `.pagination-wrap`.
+3. **Theme Switcher Simplification**:
+   - `src/templates/static/saas.js`:
+     - Excised `<option value="device">` from `injectSwitcher()`, leaving cleanly styled `☀️ Light` and `🌙 Dark`.
+     - Updated `hudhudTheme.get()` fallback from `'device'` to `'dark'`.
+     - Restricted allowed values in `hudhudTheme.set(mode)` to `['light', 'dark']`.
+     - Removed the OS `prefers-color-scheme` listener, ensuring theme choices are strictly deterministic.
+
+### 3. Verification & Test Proof
+- **Dedicated Script (`scratch/test_points_verification.py`)**:
+  - Regular client session gets HTTP 200 on `/identity` with server-rendered `mode-client`.
+  - Regular client session gets HTTP 200 on `/api/identity/queue` (zero 403 errors).
+  - Admin session gets HTTP 200 on `/identity` and `/users`.
+  - `/users` verified to contain `.plans-grid`, `.plan-card`, `.users-table-wrap`, and `.users-table`.
+  - `saas.css` verified to contain `th { text-align: start; }`.
+  - `saas.js` verified: `DEV_ROUTES` excludes `'/identity'`, `value="device"` completely purged, `light` and `dark` present.
+  - Result: `ALL 3 POINTS VERIFIED PERFECTLY!`.
+- **Full Pytest Suite**:
+  - Ran `pytest -q`: **382 passed, 1 warning in 55.00s (100% pass rate)**.
+
+
 
 

@@ -224,7 +224,7 @@ module_registry.register_module(
         NavEntry(href="/knowledge", label_key="nav.knowledge", icon="🧠",
                  section="nav.workspaces", order=5),
         NavEntry(href="/identity", label_key="nav.identity", icon="🔍",
-                 section="nav.workspaces", order=6, admin_only=True),
+                 section="nav.workspaces", order=6),
         NavEntry(href="/analytics", label_key="nav.analytics", icon="📈",
                  section="nav.analytics_system", order=1),
         NavEntry(href="/settings", label_key="nav.settings", icon="⚙️",

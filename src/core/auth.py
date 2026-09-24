@@ -61,12 +61,10 @@ ADMIN_EXACT_PATHS = frozenset({
 # Admin-only dashboard pages (server-side enforcement of Developer Console)
 ADMIN_PAGE_PATHS = frozenset({
     "/settings",
-    "/identity",
 })
 
 # Admin-only API path prefixes (any method)
 ADMIN_PATH_PREFIXES = (
-    "/api/identity",
     "/api/ai/providers",
     "/api/ai/models",
     "/api/admin",

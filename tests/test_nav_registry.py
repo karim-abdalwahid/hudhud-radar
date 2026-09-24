@@ -33,8 +33,10 @@ def test_regular_user_hides_admin_nav(client_as_user: TestClient):
     assert "/leads" in nav
     assert "/account" in nav
     assert "/analytics" in nav
+    assert "/identity" in nav
     assert "/settings" not in nav
-    assert "/identity" not in nav
+    assert "/users" not in nav
+    assert "/templates" not in nav
     assert 'nav-item active' in nav
 
 

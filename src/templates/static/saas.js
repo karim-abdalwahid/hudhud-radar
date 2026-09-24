@@ -6,7 +6,7 @@ let lastMetaData = null;
 const hudhudRoleManager = {
     // Admin-only surfaces (server 403s non-admins). Client View hides ALL of
     // them; Dev Console shows them and hides client workspace sections.
-    DEV_ROUTES: ['/settings', '/identity', '/users', '/templates'],
+    DEV_ROUTES: ['/settings', '/users', '/templates'],
     _isAdmin: false,
 
     isDevRoute() {
@@ -439,21 +439,18 @@ async function markAllNotificationsRead() {
 // --------------------------------------------------------------------
 const hudhudTheme = {
     get() {
-        const saved = localStorage.getItem('hudhud_theme') || 'device';
+        const saved = localStorage.getItem('hudhud_theme');
         if (saved === 'dark' || saved === 'light') return saved;
-        // device mode
-        return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
-            ? 'dark' : 'light';
+        return 'dark';
     },
     apply() {
-        const mode = localStorage.getItem('hudhud_theme') || 'device';
-        const effective = this.get();
-        document.documentElement.setAttribute('data-theme', effective);
+        const mode = this.get();
+        document.documentElement.setAttribute('data-theme', mode);
         const sel = document.getElementById('hudhud-theme-select');
         if (sel) sel.value = mode;
     },
     set(mode) {
-        if (!['light', 'dark', 'device'].includes(mode)) return;
+        if (!['light', 'dark'].includes(mode)) return;
         localStorage.setItem('hudhud_theme', mode);
         this.apply();
     },
@@ -471,18 +468,11 @@ const hudhudTheme = {
                 font-size:12.5px;font-weight:600;cursor:pointer;">
                 <option value="light">${isAr ? '☀️ فاتح' : '☀️ Light'}</option>
                 <option value="dark">${isAr ? '🌙 داكن' : '🌙 Dark'}</option>
-                <option value="device">${isAr ? '🖥️ حسب الجهاز' : '🖥️ Device'}</option>
             </select>`;
         const bell = document.getElementById('hudhud-bell');
         if (bell) actions.insertBefore(wrap, bell); else actions.appendChild(wrap);
         wrap.querySelector('select').onchange = (e) => this.set(e.target.value);
         this.apply();
-        // follow OS live in device mode
-        if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                if ((localStorage.getItem('hudhud_theme') || 'device') === 'device') this.apply();
-            });
-        }
     }
 };
 

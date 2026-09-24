@@ -835,6 +835,7 @@ table {
 }
 
 th {
+    text-align: start;
     background: var(--bg-subtle);
     color: var(--text-secondary);
     font-size: 12px;

@@ -235,7 +235,7 @@ def initial_body_class(current_path: str, is_admin: bool, role_mode_cookie: Opti
     if role_mode_cookie in ("client", "developer"):
         return f"mode-{role_mode_cookie}"
     is_dev_route = any(current_path == r or current_path.startswith(r + "/")
-                       for r in ("/settings", "/identity", "/users", "/templates"))
+                       for r in ("/settings", "/users", "/templates"))
     return "mode-developer" if is_dev_route else "mode-client"
 
 
