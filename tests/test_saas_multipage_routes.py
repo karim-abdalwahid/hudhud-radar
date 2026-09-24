@@ -48,3 +48,28 @@ def test_api_knowledge_search_fails_closed_without_database(client):
     assert resp.status_code == 503
     data = resp.json()
     assert "مشتركة" in data["detail"]
+
+
+def test_onboarding_page_and_skip_flow(client):
+    """Verifies that the onboarding page includes skip functionality and supports skipping KB text."""
+    resp = client.get("/onboarding")
+    assert resp.status_code == 200
+    assert "nextStep(2, true)" in resp.text
+    assert "nextStep(3, true)" in resp.text
+    assert "finalizeSetup(true)" in resp.text
+
+    # Skip setup payload (empty knowledge text)
+    save_resp = client.post(
+        "/api/onboarding/save-all",
+        json={
+            "knowledge_text": "",
+            "role": "sales",
+            "brain": "gemini",
+            "tone": "friendly",
+            "booking_link": "",
+        },
+    )
+    assert save_resp.status_code == 200
+    data = save_resp.json()
+    assert data["status"] == "success"
+

@@ -429,24 +429,24 @@
             <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
                 <span data-i18n="lang.switch_btn">🌐 العربية</span>
             </button>
-            <a href="/inbox" class="exit-link" data-i18n="topbar.exit_inbox">Go to Live Inbox →</a>
+            <a href="/inbox" class="exit-link" onclick="finalizeSetup(true); return false;" data-i18n="topbar.exit_inbox">Go to Live Inbox →</a>
         </div>
     </header>
 
     <div class="wizard-container">
         <!-- Stepper -->
         <div class="stepper-row">
-            <div class="step-node active" id="node-1">
+            <div class="step-node active" id="node-1" onclick="nextStep(1)" style="cursor: pointer;" title="Step 1">
                 <div class="step-badge" id="badge-1">1</div>
                 <span data-i18n="onboard.step1_tab">Knowledge Base</span>
             </div>
             <div class="step-line"></div>
-            <div class="step-node" id="node-2">
+            <div class="step-node" id="node-2" onclick="nextStep(2, true)" style="cursor: pointer;" title="Step 2">
                 <div class="step-badge" id="badge-2">2</div>
                 <span data-i18n="onboard.step2_tab">Agent Setup</span>
             </div>
             <div class="step-line"></div>
-            <div class="step-node" id="node-3">
+            <div class="step-node" id="node-3" onclick="nextStep(3, true)" style="cursor: pointer;" title="Step 3">
                 <div class="step-badge" id="badge-3">3</div>
                 <span data-i18n="onboard.step3_tab">Connect Channels</span>
             </div>
@@ -486,9 +486,9 @@
                 <div id="upload-status" style="font-size: 12.5px; margin-top: 6px;"></div>
             </div>
 
-            <div class="bottom-actions" style="justify-content: flex-end;">
-                <button class="btn-submit" onclick="nextStep(2)" data-i18n="onboard.btn_next">Next Step →</button>
-                <button class="btn-back" onclick="nextStep(2)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
+            <div class="bottom-actions" style="justify-content: flex-end; align-items: center; gap: 14px;">
+                <button type="button" class="btn-submit" onclick="nextStep(2)" data-i18n="onboard.btn_next">Next Step →</button>
+                <button type="button" class="btn-back" onclick="nextStep(2, true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
             </div>
         </div>
 
@@ -534,9 +534,9 @@
             </div>
 
             <div class="bottom-actions">
-                <button class="btn-back" onclick="nextStep(1)" data-i18n="onboard.btn_back">← Back</button>
-                <button class="btn-submit" onclick="nextStep(3)" data-i18n="onboard.btn_next">Next Step →</button>
-                <button class="btn-back" onclick="nextStep(3)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
+                <button type="button" class="btn-back" onclick="nextStep(1)" data-i18n="onboard.btn_back">← Back</button>
+                <button type="button" class="btn-submit" onclick="nextStep(3)" data-i18n="onboard.btn_next">Next Step →</button>
+                <button type="button" class="btn-back" onclick="nextStep(3, true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
             </div>
         </div>
 
@@ -578,17 +578,16 @@
             <!-- Phase 9.7: discovered-but-locked upsell cards (entitlement-gated) -->
             <div id="connections-upsell"></div>
 
-            <div style="text-align:center;margin-top:14px;">
-                <button class="btn-back" onclick="finalizeSetup(true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip_all">Skip for now — finish setup without connecting</button>
-            </div>
-
             <div id="save-status" style="text-align: center; font-size: 13.5px; margin: 16px 0;"></div>
 
-            <div class="bottom-actions" style="display:none;">
-                <button class="btn-back" onclick="nextStep(2)" data-i18n="onboard.btn_back">← Back</button>
-                <button class="btn-submit" onclick="finalizeSetup()" data-i18n="onboard.btn_finish">
-                    Launch AI Agent & Open Inbox 🚀
-                </button>
+            <div class="bottom-actions" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <button type="button" class="btn-back" onclick="nextStep(2)" data-i18n="onboard.btn_back">← Back</button>
+                <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+                    <button type="button" class="btn-back" onclick="finalizeSetup(true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip_all">Skip for now — finish setup without connecting</button>
+                    <button type="button" class="btn-submit" onclick="finalizeSetup(false)" data-i18n="onboard.btn_finish">
+                        Launch AI Agent & Open Inbox 🚀
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -599,6 +598,7 @@
 
     <script>
         let cur = 1;
+        let kbFileUploaded = false;
 
         function updateStepTitles(step) {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
@@ -630,26 +630,31 @@
             arrow.textContent = isShown ? '▾' : '▴';
         }
 
-        function nextStep(step) {
-            if (cur === 1 && step > 1) {
-                const txt = document.getElementById('kb-text').value.trim();
-                if (!txt) {
+        function nextStep(step, isSkip = false) {
+            if (!isSkip && cur === 1 && step > 1) {
+                const txt = (document.getElementById('kb-text') || {}).value ? document.getElementById('kb-text').value.trim() : '';
+                if (!txt && !kbFileUploaded) {
                     const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
                     alert(isAr ? 'يرجى كتابة نبذة عن نشاطك أو رفع ملف لتدريب الوكيل قبل المتابعة.' : 'Please write your business details or upload a file to train the agent before proceeding.');
                     return;
                 }
             }
 
-            document.getElementById('pane-1').style.display = 'none';
-            document.getElementById('pane-2').style.display = 'none';
-            document.getElementById('pane-3').style.display = 'none';
+            const p1 = document.getElementById('pane-1');
+            const p2 = document.getElementById('pane-2');
+            const p3 = document.getElementById('pane-3');
+            if (p1) p1.style.display = 'none';
+            if (p2) p2.style.display = 'none';
+            if (p3) p3.style.display = 'none';
 
-            document.getElementById(`pane-${step}`).style.display = 'block';
+            const targetPane = document.getElementById(`pane-${step}`);
+            if (targetPane) targetPane.style.display = 'block';
 
             // Stepper update
             for (let i = 1; i <= 3; i++) {
                 const node = document.getElementById(`node-${i}`);
                 const badge = document.getElementById(`badge-${i}`);
+                if (!node || !badge) continue;
                 node.classList.remove('active', 'completed');
 
                 if (i === step) {
@@ -683,6 +688,7 @@
                 const res = await fetch('/api/knowledge/upload', { method: 'POST', body: fd });
                 const data = await res.json();
                 if (res.ok) {
+                    kbFileUploaded = true;
                     status.textContent = isAr ? `✅ تم استيعاب وهضم الملف بنجاح! (${file.name})` : `✅ File processed and learned successfully! (${file.name})`;
                     status.style.color = '#10b981';
                 } else {
@@ -802,18 +808,23 @@
         }
 
         async function finalizeSetup(skip = false) {
-            const kbText = document.getElementById('kb-text').value.trim();
-            const roleSel = document.getElementById('agent-role').value;
+            const kbText = (document.getElementById('kb-text') || {}).value ? document.getElementById('kb-text').value.trim() : '';
+            const roleEl = document.getElementById('agent-role');
+            const roleSel = roleEl ? roleEl.value : 'sales';
             const roleCustom = (document.getElementById('agent-role-custom') || {}).value || '';
             const role = roleSel === 'custom' ? (roleCustom.trim() || 'custom') : roleSel;
-            const brain = document.getElementById('agent-brain').value;
-            const tone = document.getElementById('agent-tone').value;
-            const booking = document.getElementById('agent-booking-link').value.trim();
+            const brainEl = document.getElementById('agent-brain');
+            const brain = brainEl ? brainEl.value : 'gemini';
+            const toneEl = document.getElementById('agent-tone');
+            const tone = toneEl ? toneEl.value : 'friendly';
+            const booking = (document.getElementById('agent-booking-link') || {}).value ? document.getElementById('agent-booking-link').value.trim() : '';
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
 
             const status = document.getElementById('save-status');
-            status.textContent = isAr ? '⏳ جاري إطلاق وكيلك وتفعيل قنوات المراسلة...' : '⏳ Launching your AI sales agent and activating channels...';
-            status.style.color = 'var(--primary)';
+            if (status) {
+                status.textContent = isAr ? '⏳ جاري إطلاق وكيلك وتفعيل قنوات المراسلة...' : '⏳ Launching your AI sales agent and activating channels...';
+                status.style.color = 'var(--primary)';
+            }
 
             try {
                 const res = await fetch('/api/onboarding/save-all', {
@@ -830,17 +841,29 @@
 
                 if (res.ok) {
                     if (window.hudhudTrack) window.hudhudTrack('onboarding_completed', { role: role, brain: brain });
-                    status.textContent = isAr ? '✅ تم إطلاق الوكيل بنجاح! جاري توجيهك لصندوق الوارد...' : '✅ AI Agent launched successfully! Redirecting to Live Inbox...';
-                    status.style.color = '#10b981';
-                    setTimeout(() => { window.location.href = '/inbox'; }, 1000);
+                    if (status) {
+                        status.textContent = isAr ? '✅ تم إطلاق الوكيل بنجاح! جاري توجيهك لصندوق الوارد...' : '✅ AI Agent launched successfully! Redirecting to Live Inbox...';
+                        status.style.color = '#10b981';
+                    }
+                    setTimeout(() => { window.location.href = '/inbox'; }, 600);
                 } else {
-                    const data = await res.json();
-                    status.textContent = '❌ ' + (data.detail || (isAr ? 'فشل الحفظ' : 'Failed to save settings'));
-                    status.style.color = '#ef4444';
+                    const data = await res.json().catch(() => ({}));
+                    if (status) {
+                        status.textContent = '❌ ' + (data.detail || (isAr ? 'فشل الحفظ' : 'Failed to save settings'));
+                        status.style.color = '#ef4444';
+                    }
+                    if (skip) {
+                        setTimeout(() => { window.location.href = '/inbox'; }, 1000);
+                    }
                 }
             } catch (e) {
-                status.textContent = isAr ? '❌ فشل الاتصال بالخادم.' : '❌ Failed to connect to server.';
-                status.style.color = '#ef4444';
+                if (status) {
+                    status.textContent = isAr ? '❌ فشل الاتصال بالخادم.' : '❌ Failed to connect to server.';
+                    status.style.color = '#ef4444';
+                }
+                if (skip) {
+                    setTimeout(() => { window.location.href = '/inbox'; }, 1000);
+                }
             }
         }
 
@@ -848,7 +871,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const urlStep = new URLSearchParams(window.location.search).get('step');
             if (urlStep) {
-                nextStep(parseInt(urlStep));
+                nextStep(parseInt(urlStep), true);
             } else {
                 updateStepTitles(1);
             }
