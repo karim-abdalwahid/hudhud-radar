@@ -86,7 +86,12 @@ class AgentOrchestrator:
                 logger.warning(f"Profile enrichment skipped for Facebook sender {sender_id}: {e}")
             lead_in = ProfileDataExtractor.extract_from_facebook(profile_payload)
         else:
-            profile_payload = {"id": sender_id, "username": raw_event.get("sender", {}).get("username")}
+            sender_obj = raw_event.get("sender") or {}
+            profile_payload = {
+                "id": sender_id,
+                "username": sender_obj.get("username"),
+                "name": sender_obj.get("name"),
+            }
             try:
                 ig_profile = await self.client.get_profile(
                     sender_id,
@@ -97,6 +102,9 @@ class AgentOrchestrator:
                     profile_payload.update(ig_profile)
             except Exception as e:
                 logger.warning(f"Profile enrichment skipped for Instagram sender {sender_id}: {e}")
+            # If the API returned nothing useful, use the IGSID as a readable fallback
+            if not profile_payload.get("name") and not profile_payload.get("username"):
+                profile_payload["name"] = f"Instagram User ({sender_id})"
             lead_in = ProfileDataExtractor.extract_from_instagram(profile_payload)
 
         provenance = lead_in.data_provenance.model_copy(
