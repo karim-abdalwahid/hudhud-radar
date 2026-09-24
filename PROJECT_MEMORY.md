@@ -2357,3 +2357,57 @@ The owner requested an exhaustive, systemic audit of the entire codebase for:
 - Built and ran `scratch/deep_key_mismatch_audit.py` across all 25+ critical customer and admin API endpoints: **100% OK, 0 missing keys, 0 warnings**.
 - Ran full test suite via `pytest -q`: **382 passed, 1 warning in 112.87s** (100% clean baseline preserved).
 - Zero schema breaks, zero regressions.
+
+## [Entry 065] 2026-09-24 — Dev Console Restructuring: 3 Consolidated Tabs, Redundancy Elimination & System Health Hub
+- **Timestamp**: 2026-09-24T06:30:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ COMPLETED & FULLY VERIFIED (382/382 PASSED)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+- **Archive references**: `PROJECT_ARCHIVE/034_20260924_implementation_plan_dev_console_restructure.md`, `PROJECT_ARCHIVE/035_20260924_walkthrough_dev_console_restructure.md`
+- **Brain Architecture**: `PROJECT_BRAIN/Architecture/Dev_Console_Architecture.md`
+
+### 1. Context & Owner Directives
+Based on 5 screenshots provided by the owner of the existing Developer Console (`/settings`), the owner instructed a comprehensive restructuring:
+1. Identify and eliminate redundant elements (specifically: "Change Password" already exists in `/account`, client page connect flows "Connect with Facebook & Select Page" and "Connect Threads Account" belong to client-level onboarding, and legacy manual page tokens).
+2. Reorganize scattered controls (previously across 5 tabs) into a clean, logical 3-tab layout with high cohesion.
+3. Expose developer and system data that was previously missing: Meta Developer Portal URLs Hub with 1-click copy buttons, live Webhook monitoring and ping test, live database latency and safe environment audits, manual triggers for background cron jobs, and subscription/pricing catalog for administrators.
+
+### 2. Implementation Summary
+1. **Frontend Architecture (`src/templates/settings.html`)**:
+   - Modernized using the calm minimal glassmorphism design system, fully responsive and 100% Dark Mode compliant.
+   - **Tab 1: 🔌 Platform Integrations & Webhooks (`set-tab-page-integrations`)**:
+     - Meta Graph API & Threads Connection Diagnostics cards (App ID, Token status, Supabase cloud status).
+     - Meta Developer Portal URLs Hub (8 essential URLs with instant clipboard copy: FB Redirect URI, Threads Callback & Deauth, Data Deletion Request, Webhook Callback URL, Verify Token, Privacy Policy, Terms of Service).
+     - Webhook Subscriptions & Messaging Policies (Subscribed fields pills, HMAC SHA-256 enforcement indicator, 24-hr messaging window policy, live Ping test button).
+   - **Tab 2: 🧠 AI Engines & Controls (`set-tab-page-ai`)**:
+     - System-Wide Global AI Master Switch (`global_paused` toggle with visual live badge).
+     - AI Daily Telemetry KPI Cards (total AI calls, total operations, active users from `/api/admin/overview`).
+     - AI Providers & Models Management (Google AI, Anthropic, OpenAI, OpenRouter, Custom) with Add Provider form, live discovery, key masking, model toggles, sync, and delete.
+   - **Tab 3: ⚙️ System Health & Scheduler (`set-tab-page-system`)**:
+     - System Health Matrix (Live Supabase latency in ms, Auth session engine, environment credentials pills).
+     - Background Cron Schedulers (Threads token refresh, Polar subscription sync, Scheduled content publisher, Meta Insights sync, each with an instant "Run Now" trigger button linked to `/api/admin/cron/trigger/...` with `hudhudToast` feedback).
+     - Platform Pricing & Subscription Catalog for Admin (Addon prices for Facebook, Instagram, Threads, and multi-platform discounts + trial days).
+   - **Purged**:
+     - Completely removed "Change Password" form.
+     - Completely removed client-level Facebook SDK Connect and Threads Connect buttons.
+     - Completely removed legacy manual page token input forms.
+
+2. **Backend Admin Endpoints (`src/modules/admin_console/__init__.py`)**:
+   - Added `GET /api/admin/system/health`:
+     - Measures real-time Supabase latency via `supabase_db.select("app_settings")`.
+     - Validates presence of critical environment variables (`META_APP_ID`, `THREADS_APP_ID`, `GEMINI_API_KEY`, `POLAR_ACCESS_TOKEN`, `CRON_SECRET`) safely without leaking secrets.
+     - Reports webhook signature enforcement status.
+   - Added `POST /api/admin/cron/trigger/{job_name}`:
+     - Enables admin to trigger background workers (`scheduler`, `threads_refresh`, `billing_reconcile`, `insights`) with instant message feedback.
+   - Secured both endpoints behind `require_admin` dependency (RBAC: 401 for anonymous, 403 for non-admins).
+
+### 3. Verification & Test Proof
+- **Dedicated Script (`scratch/test_dev_console.py`)**:
+  - `GET /settings`: 200 OK, verified all 3 tabs present, 0 password inputs, 0 client connect buttons.
+  - `GET /api/admin/system/health`: 200 OK, latency measured, env checks verified.
+  - `POST /api/admin/cron/trigger/{job}`: 200 OK for all registered jobs.
+  - RBAC verification: 401 Unauthorized for unauthenticated calls.
+- **Full Test Suite (`pytest -q`)**:
+  - **382 passed, 1 warning in 50.74s (100% pass rate)**.
+  - Zero regressions across the entire platform.
+

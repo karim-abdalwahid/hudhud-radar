@@ -159,6 +159,80 @@ def register(app: FastAPI) -> None:
                 "recent": rows[:min(max(limit, 1), 300)],
                 "by_path": dict(sorted(by_path.items(), key=lambda kv: -kv[1])[:20])}
 
+    @app.get("/api/admin/system/health", tags=["Admin Console"])
+    async def system_health(request: Request):
+        _require_admin(request)
+        import time
+        from src.config import settings
+        t0 = time.time()
+        db_connected = False
+        db_latency_ms = None
+        try:
+            supabase_db.select("app_settings")
+            db_connected = True
+            db_latency_ms = round((time.time() - t0) * 1000, 1)
+        except Exception as e:
+            logger.warning(f"Health check DB ping failed: {e}")
+            db_connected = bool(supabase_db.is_connected)
+
+        return {
+            "status": "success",
+            "database": {
+                "connected": db_connected,
+                "latency_ms": db_latency_ms,
+                "mode": "supabase_cloud" if db_connected else "local_fallback"
+            },
+            "environment": {
+                "meta_app_id_configured": bool(settings.META_APP_ID),
+                "meta_app_secret_configured": bool(settings.META_APP_SECRET),
+                "threads_app_id_configured": bool(settings.THREADS_APP_ID),
+                "threads_app_secret_configured": bool(settings.THREADS_APP_SECRET),
+                "gemini_api_key_configured": bool(settings.GEMINI_API_KEY),
+                "polar_configured": bool(getattr(settings, "POLAR_ACCESS_TOKEN", None)),
+                "cron_secret_configured": bool(getattr(settings, "CRON_SECRET", None)),
+            },
+            "webhook": {
+                "path": "/api/webhook/meta",
+                "hmac_sha256_enforced": True,
+                "subscribed_fields": ["messages", "messaging_postbacks", "feed", "mention"],
+                "window_policy": "24h Strict Enforcement"
+            }
+        }
+
+    @app.post("/api/admin/cron/trigger/{job_name}", tags=["Admin Console"])
+    async def trigger_cron_job(job_name: str, request: Request):
+        _require_admin(request)
+        job = job_name.lower().strip()
+        from src.modules.context import (
+            content_scheduler, meta_insights_sync, threads_oauth_manager
+        )
+        from src.modules.billing.services import entitlement_service
+
+        try:
+            if job == "scheduler":
+                res = await content_scheduler.check_and_publish_due_posts()
+                return {"status": "success", "job": job, "message": f"تم فحص المنشورات المجدولة (تمت معالجة {len(res)})"}
+            elif job == "threads_refresh":
+                res = await threads_oauth_manager.refresh_if_expiring()
+                refreshed_cnt = len(res.get("refreshed", []))
+                return {"status": "success", "job": job, "message": f"تم فحص توكنات ثريدز (تجديد {refreshed_cnt})"}
+            elif job == "billing_reconcile":
+                res = entitlement_service.reconcile_active_subscriptions()
+                return {"status": "success", "job": job, "message": f"تمت مطابقة اشتراكات Polar بنجاح ({len(res.get('outcomes', []))} حساب)"}
+            elif job == "insights":
+                rows = supabase_db.select("platform_connections", {"status": "active"}) or []
+                owner_ids = sorted({str(r.get("user_id")) for r in rows if r.get("user_id")})
+                for oid in owner_ids:
+                    await meta_insights_sync.sync_recent_metrics(oid, days=7)
+                return {"status": "success", "job": job, "message": f"تمت مزامنة إحصائيات ميتا لـ {len(owner_ids)} حساب"}
+            else:
+                raise HTTPException(status_code=400, detail=f"مهمة غير معروفة: {job_name}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Admin trigger cron failed for {job}: {e}")
+            return {"status": "error", "job": job, "detail": str(e)[:200]}
+
 
 module_registry.register_module(
     name="admin_console",
