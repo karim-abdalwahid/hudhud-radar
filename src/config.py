@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # the app emits: OAuth redirects, compliance callbacks, templates, scripts).
     # Domain swap = change this env var in BOTH Vercel scopes + app dashboards.
     APP_BASE_URL: str = Field(
-        default="https://hudhud-radar.vercel.app",
+        default="https://www.hudhd.com",
         description="Canonical public origin without trailing slash",
     )
 
