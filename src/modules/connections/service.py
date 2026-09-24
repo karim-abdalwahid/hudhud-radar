@@ -168,14 +168,24 @@ class ConnectionService:
 
     def get_active_token_for_account(self, user_id: str, platform: str,
                                      account_id: Optional[str]) -> Optional[str]:
-        """Resolve the entitled user's token for exactly this recipient account."""
+        """Resolve the entitled user's token for exactly this recipient account.
+
+        _active_recipient_connections may return more than one row for Instagram
+        when the user has both a direct Instagram connection AND a Facebook
+        connection whose ``linked_ig_id`` points to the same IG account.
+        In that case we prefer the row whose platform matches directly so we
+        always use the strongest, most-specific token rather than failing closed.
+        """
         if not account_id or not self.assert_entitled(user_id, platform, raise_http=False):
             return None
         try:
             rows = self._active_recipient_connections(platform, str(account_id), user_id=user_id)
-            if len(rows) != 1:
+            if not rows:
                 return None
-            row = rows[0]
+            # Prefer a direct platform match (e.g. platform="instagram" row over
+            # the Facebook row that merely carries linked_ig_id in metadata).
+            direct = [r for r in rows if r.get("platform") == platform]
+            row = direct[0] if direct else rows[0]
             exp = row.get("token_expires_at")
             if exp and exp <= datetime.now(timezone.utc).isoformat():
                 return None
