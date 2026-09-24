@@ -65,19 +65,10 @@ class AgentOrchestrator:
         lead_record, is_new, queue_id = self.resolver.resolve_and_save_lead(lead_in)
         lead_id = lead_record["id"]
 
-        # 3. Human Takeover check: never auto-reply when a human is in control
-        if lead_record.get("human_takeover"):
-            logger.info(f"Human takeover active for lead {lead_id} — skipping AI auto-reply.")
-            return {
-                "lead_id": lead_id,
-                "is_new_lead": is_new,
-                "queue_id": queue_id,
-                "reply_sent": None,
-                "is_converted": False,
-                "human_takeover": True,
-            }
-
-        # 4. Store Inbound Message linked to lead
+        # 3. Store Inbound Message linked to lead — ALWAYS, before any early
+        # return. Human Takeover / AI Pause only silence the REPLY; the
+        # customer message must still land in the `messages` table so it
+        # appears in the Live Inbox (zero-fabrication threads read from here).
         inbound_msg = MessageCreate(
             lead_id=lead_id,
             platform=platform,
@@ -87,6 +78,19 @@ class AgentOrchestrator:
             sent_at=datetime.now(timezone.utc)
         )
         self.lead_svc.add_message(inbound_msg)
+
+        # 4. Human Takeover check: never auto-reply when a human is in control.
+        # The inbound message above is already stored — the inbox stays live.
+        if lead_record.get("human_takeover"):
+            logger.info(f"Human takeover active for lead {lead_id} — inbound stored, no auto-reply.")
+            return {
+                "lead_id": lead_id,
+                "is_new_lead": is_new,
+                "queue_id": queue_id,
+                "reply_sent": None,
+                "is_converted": False,
+                "human_takeover": True,
+            }
 
         # 4b. Global AI pause (Wave 9.8): the user manages personally — the
         # inbound message is STILL stored (human replies from the inbox),

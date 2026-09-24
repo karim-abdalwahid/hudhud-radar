@@ -191,6 +191,7 @@ async def instagram_authorize(request: Request):
         "redirect_uri": _redirect_uri("instagram"),
         "response_type": "code",
         "scope": IG_SCOPES,
+        "state": _sign_state(s["sub"], "instagram"),
     })
     return {"authorize_url": f"https://www.instagram.com/oauth/authorize?{params}"}
 

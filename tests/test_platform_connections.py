@@ -194,3 +194,95 @@ def test_authorize_returns_url_when_entitled(client, fake_tables):
     assert res.status_code == 200
     assert res.json()["authorize_url"].startswith("https://www.facebook.com/v26.0/dialog/oauth")
     assert "state=" in res.json()["authorize_url"]
+
+
+def test_instagram_authorize_url_includes_state(client, fake_tables, monkeypatch):
+    """AUDIT-2026-09-15 Fix: IG authorize must sign `state` — the callback REJECTS
+    state-less doors (invalid_state), which left the IG door permanently broken."""
+    me = client.get("/auth/me").json()
+    _grant(me["user_id"], "platform:instagram")
+    from src.config import settings as _s
+    monkeypatch.setattr(_s, "IG_APP_ID", "123456789012345")
+    res = client.get("/api/connections/instagram/authorize")
+    assert res.status_code == 200
+    url = res.json()["authorize_url"]
+    assert url.startswith("https://www.instagram.com/oauth/authorize?")
+    assert "state=" in url
+    # callback returns 303 to settings with connect_error on bad state, so a
+    # valid door must carry a state that _verify_state accepts
+    from urllib.parse import urlparse, parse_qs
+    st = parse_qs(urlparse(url).query).get("state", [""])[0]
+    assert conn_routes._verify_state(st, "instagram") == me["user_id"]
+
+
+# ---- IG 60-day token refresh (AUDIT-2026-09-15 Fix) ------------------------
+@pytest.mark.asyncio
+async def test_refresh_instagram_skips_far_future_tokens(fake_tables):
+    """Tokens expiring beyond the threshold must NOT be touched."""
+    from datetime import datetime, timedelta, timezone
+    future = datetime.now(timezone.utc) + timedelta(days=45)
+    connection_service.store(UID, "instagram", "tok-healthy", account_id="ig1")
+    for r in fake_tables["conns"].values():
+        if r["platform"] == "instagram":
+            r["token_expires_at"] = future.isoformat()
+    res = await connection_service.refresh_instagram_if_expiring()
+    assert res["status"] == "success"
+    assert res["refreshed"] == [] and res["failed"] == []
+
+
+@pytest.mark.asyncio
+async def test_refresh_instagram_refreshes_expiring_token(fake_tables, monkeypatch):
+    """Token expiring within threshold is refreshed via ig_refresh_token and
+    the row is updated with the new encrypted token + new expiry."""
+    from datetime import datetime, timedelta, timezone
+    expiring = datetime.now(timezone.utc) + timedelta(days=5)
+    connection_service.store(UID, "instagram", "tok-expiring", account_id="ig1", scopes=["basic"])
+    for r in fake_tables["conns"].values():
+        if r["platform"] == "instagram":
+            r["token_expires_at"] = expiring.isoformat()
+
+    class _Resp:
+        status_code = 200
+        @staticmethod
+        def json():
+            return {"access_token": "tok-fresh", "expires_in": 5184000}
+        text = ""
+
+    import httpx
+    async def _fake_get(*a, **k):
+        return _Resp()
+    monkeypatch.setattr(httpx.AsyncClient, "get", _fake_get)
+
+    res = await connection_service.refresh_instagram_if_expiring()
+    assert res["refreshed"] == [str(UID)[:8]]
+    fresh = [r for r in fake_tables["conns"].values() if r["platform"] == "instagram"][0]
+    assert decrypt_token(fresh["access_token_encrypted"]) == "tok-fresh"
+    new_exp = datetime.fromisoformat(fresh["token_expires_at"].replace("Z", "+00:00"))
+    assert new_exp > datetime.now(timezone.utc) + timedelta(days=50)
+
+
+@pytest.mark.asyncio
+async def test_refresh_instagram_reports_failure_not_raise(fake_tables, monkeypatch):
+    """A failing IG refresh must never crash the cron — reported, not raised."""
+    from datetime import datetime, timedelta, timezone
+    expiring = datetime.now(timezone.utc) + timedelta(days=3)
+    connection_service.store(UID, "instagram", "tok-bad", account_id="ig1")
+    for r in fake_tables["conns"].values():
+        if r["platform"] == "instagram":
+            r["token_expires_at"] = expiring.isoformat()
+
+    import httpx
+    class _FailResp:
+        status_code = 400
+        text = "OAuthException"
+        @staticmethod
+        def json():
+            return {}
+    async def _fake_get(*a, **k):
+        return _FailResp()
+    monkeypatch.setattr(httpx.AsyncClient, "get", _fake_get)
+
+    res = await connection_service.refresh_instagram_if_expiring()
+    assert res["status"] == "success"
+    assert res["refreshed"] == []
+    assert str(UID)[:8] in res["failed"]

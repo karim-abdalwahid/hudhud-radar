@@ -261,7 +261,7 @@
                     <span class="crumb-current" data-i18n="inbox.title">Unified Live Inbox</span>
                 </div>
                 <div class="topbar-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <span class="badge badge-success" data-i18n="inbox.ai_active_pill">⚡ Auto-Reply: Active (avg 3.4s)</span>
+                    <span class="badge badge-success" id="ai-state-pill" data-i18n="inbox.ai_active_pill">⚡ Auto-Reply: Active</span>
                 </div>
             </header>
 
@@ -376,22 +376,38 @@
         let hasLoadedLive = false;
         let activeConvId = null;
         let currentFilter = "all";
+        let lastConvSignature = "";
 
-        async function fetchLiveConversations() {
+        // Lightweight signature of the conversation set — polling only
+        // re-renders when something actually changed (new message, new thread,
+        // takeover flag). Keeps the open chat + input untouched on no-ops.
+        function conversationSignature(convs) {
+            return convs.map(c => {
+                const last = c.messages && c.messages.length ? c.messages[c.messages.length - 1] : null;
+                return `${c.id}|${c.isHumanTakeover ? 1 : 0}|${c.messages ? c.messages.length : 0}|${last ? last.mid + ':' + last.time : ''}`;
+            }).join('~');
+        }
+
+        async function fetchLiveConversations(silent) {
             try {
                 const res = await fetch('/api/inbox/conversations');
                 if (res.ok) {
                     const data = await res.json();
-                    liveConversations = data.conversations || [];
-                    hasLoadedLive = true;
-                    if (liveConversations.length > 0 && !activeConvId) {
-                        activeConvId = liveConversations[0].id;
-                    }
-                    renderThreads();
-                    if (activeConvId) {
-                        selectConversation(activeConvId);
-                    } else {
-                        renderEmptyChat();
+                    const next = data.conversations || [];
+                    const sig = conversationSignature(next);
+                    if (!silent || sig !== lastConvSignature) {
+                        lastConvSignature = sig;
+                        liveConversations = next;
+                        hasLoadedLive = true;
+                        if (liveConversations.length > 0 && !activeConvId) {
+                            activeConvId = liveConversations[0].id;
+                        }
+                        renderThreads();
+                        if (activeConvId) {
+                            selectConversation(activeConvId);
+                        } else {
+                            renderEmptyChat();
+                        }
                     }
                 }
             } catch (e) {
@@ -414,6 +430,14 @@
             const data = getActiveConversationsData();
             const filtered = data.filter(c => currentFilter === 'all' || c.channel === currentFilter);
 
+            // Sort by latest message activity (defensive client backstop; the
+            // server already returns newest-first). ISO timestamps compare lexically.
+            const sorted = [...filtered].sort((a, b) => {
+                const tA = (a.messages && a.messages.length) ? (a.messages[a.messages.length - 1].time || '') : (a.lastInboundAt || '');
+                const tB = (b.messages && b.messages.length) ? (b.messages[b.messages.length - 1].time || '') : (b.lastInboundAt || '');
+                return tB.localeCompare(tA);
+            });
+
             if (filtered.length === 0) {
                 list.innerHTML = `
                     <div style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
@@ -430,7 +454,7 @@
                 return;
             }
 
-            filtered.forEach(c => {
+            sorted.forEach(c => {
                 const item = document.createElement('div');
                 item.className = `conv-card ${c.id === activeConvId ? 'active' : ''}`;
                 item.onclick = () => selectConversation(c.id);
@@ -673,7 +697,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Show the honest empty state immediately — real data replaces it when loaded
             renderEmptyChat();
-            fetchLiveConversations();
+            fetchLiveConversations(false);
+            // Real-time: lightweight polling (Vercel serverless-safe — no
+            // websocket/SSE needed). 5s interval keeps the inbox live while
+            // change-detection prevents useless re-renders.
+            setInterval(() => fetchLiveConversations(true), 5000);
         });
 
         window.addEventListener('hudhud_lang_change', () => {
@@ -684,6 +712,32 @@
                 renderEmptyChat();
             }
         });
+    
+        // ===== AI state pill: honest live status (pause state + measured latency) =====
+        async function refreshAiPill() {
+            try {
+                const r = await fetch('/api/inbox/agent-status');
+                const d = await r.json();
+                const pill = document.getElementById('ai-state-pill');
+                if (!pill) return;
+                const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                if (d.ai_paused) {
+                    pill.textContent = isAr ? '⏸️ الرد الآلي: موقوف — وضع البشري' : '⏸️ Auto-Reply: Paused (Human Mode)';
+                    pill.className = 'badge badge-pending';
+                } else {
+                    const avg = d.avg_reply_seconds
+                        ? (isAr ? ' (متوسط ' + d.avg_reply_seconds + ' ث)' : ' (avg ' + d.avg_reply_seconds + 's)')
+                        : '';
+                    pill.textContent = (isAr ? '⚡ الرد الآلي: نشط' : '⚡ Auto-Reply: Active') + avg;
+                    pill.className = 'badge badge-success';
+                }
+            } catch (e) { /* keep static label on failure */ }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshAiPill();
+            setInterval(refreshAiPill, 60000);
+        });
+
     </script>
 </body>
 </html>

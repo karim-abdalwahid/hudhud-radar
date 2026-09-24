@@ -11,7 +11,7 @@ The golden upsell: a facebook connection may discover a linked Instagram account
 (stored in metadata.linked_ig) — discovery is free metadata, service stays locked
 until the instagram entitlement exists. Discovery = sales opportunity, not a leak.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
@@ -106,6 +106,63 @@ class ConnectionService:
         except Exception as e:
             logger.error(f"connection revoke failed: {e}")
             return False
+
+    async def refresh_instagram_if_expiring(self, days_threshold: int = 7) -> Dict[str, Any]:
+        """Wave: per-user Instagram (child-app, graph.instagram.com) tokens are
+        long-lived but expire after 60 days with NO auto-refresh. This mirrors
+        the Threads refresh cron: refresh any active IG connection expiring
+        within the threshold via grant_type=ig_refresh_token. Failures are
+        logged, never raised — callers always get a structured report."""
+        import httpx
+        refreshed, failed = [], []
+        cutoff = datetime.now(timezone.utc) + timedelta(days=days_threshold)
+        try:
+            rows = supabase_db.select("platform_connections",
+                                      {"platform": "instagram", "status": "active"}) or []
+        except Exception as e:
+            logger.warning(f"IG refresh: connection scan failed: {e}")
+            return {"status": "error", "refreshed": [], "failed": [], "error": str(e)[:200]}
+        for r in rows:
+            user_key = str(r.get("user_id"))[:8]
+            exp_s = r.get("token_expires_at")
+            try:
+                exp_dt = datetime.fromisoformat(str(exp_s).replace("Z", "+00:00")) if exp_s else None
+            except Exception:
+                exp_dt = None
+            # no expiry recorded → assume healthy, skip; expiring → refresh
+            if not exp_dt or exp_dt >= cutoff:
+                continue
+            try:
+                token = decrypt_token(r.get("access_token_encrypted") or "")
+                if not token:
+                    failed.append(user_key)
+                    continue
+                async with httpx.AsyncClient(timeout=20.0) as client:
+                    resp = await client.get(
+                        "https://graph.instagram.com/refresh_access_token",
+                        params={"grant_type": "ig_refresh_token", "access_token": token},
+                    )
+                if resp.status_code != 200:
+                    failed.append(user_key)
+                    logger.warning(f"IG refresh failed for {user_key}: {resp.status_code} {resp.text[:120]}")
+                    continue
+                data = resp.json()
+                new_token = data.get("access_token")
+                if not new_token:
+                    failed.append(user_key)
+                    continue
+                new_exp = datetime.now(timezone.utc) + timedelta(
+                    seconds=int(data.get("expires_in", 5184000)))
+                supabase_db.update("platform_connections", r["id"], {
+                    "access_token_encrypted": encrypt_token(new_token),
+                    "token_expires_at": new_exp.isoformat(),
+                })
+                refreshed.append(user_key)
+                logger.info(f"IG token refreshed for {user_key} — next expiry {new_exp.date()}")
+            except Exception as e:
+                failed.append(user_key)
+                logger.warning(f"IG refresh error for {user_key}: {e}")
+        return {"status": "success", "refreshed": refreshed, "failed": failed}
 
     def revoke_by_platform_user(self, platform: str, platform_user_id: str) -> int:
         """Deauthorize/uninstall callbacks: revoke connections matching the

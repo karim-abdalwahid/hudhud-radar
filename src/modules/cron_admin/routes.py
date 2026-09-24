@@ -9,6 +9,7 @@ import hmac
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 
+from src.modules.connections.service import connection_service
 from src.modules.context import *  # noqa: F401,F403 — shared kernel (services, settings, caches)
 from src.modules.context import (  # explicit for readability
     settings, logger, supabase_db, httpx, safe_error, _safe_error,
@@ -102,4 +103,22 @@ async def cron_threads_token_refresh(request: Request):
         _notify_admin("🔄 تحديث توكن Threads",
                       f"تم تحديث {len(result['refreshed'])} توكن(ات) قبل انتهائها",
                       "success", {"job": "threads_token_refresh", **result})
+    return result
+
+
+@router.get("/api/cron/instagram-token-refresh", tags=["Cron"])
+async def cron_instagram_token_refresh(request: Request):
+    """Daily: refresh per-user Instagram tokens expiring within 7 days.
+    Mirrors the Threads refresh cron. Failures are logged, never raised."""
+    _verify_cron_secret(request)
+    try:
+        result = await connection_service.refresh_instagram_if_expiring()
+    except Exception as e:
+        logger.error(f"instagram token-refresh cron failed (reported 200): {e}")
+        return {"status": "partial", "error": str(e)[:200]}
+    if result.get("refreshed"):
+        from src.modules.notifications.hooks import _notify_admin
+        _notify_admin("🔄 تحديث توكن Instagram",
+                      f"تم تحديث {len(result['refreshed'])} توكن(ات) قبل انتهائها",
+                      "success", {"job": "instagram_token_refresh", **result})
     return result

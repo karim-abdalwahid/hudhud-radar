@@ -76,15 +76,23 @@ async def get_inbox_conversations():
     """
     from src.core.event_dedup import event_deduplicator  # noqa: F401 (import guard)
     leads = supabase_db.select("leads", {}) or []
+    # Efficiency + correctness: fetch ALL messages ONCE and group by lead
+    # (no N+1 per-lead queries), then order threads by their LAST message
+    # (any sender) descending — newest activity always rises to the top.
+    msgs = supabase_db.select("messages", {}) or []
+    by_lead: Dict[str, list] = {}
+    for m in msgs:
+        by_lead.setdefault(m.get("lead_id"), []).append(m)
+
     threads = []
-    for lead in leads[:50]:
+    for lead in leads:
         lead_id = lead.get("id")
         platform = (lead.get("source") or "other").lower()
         # Real message history from the messages table (Zero-Fabrication policy)
-        msgs = lead_service.get_messages_for_lead(lead_id) or []
+        lead_msgs = sorted(by_lead.get(lead_id, []), key=lambda x: x.get("sent_at") or "")
         message_items = []
         last_inbound_at = None
-        for m in msgs:
+        for m in lead_msgs:
             sender = m.get("sender_type") or "lead"
             if sender == "lead" and m.get("sent_at"):
                 last_inbound_at = m.get("sent_at")
@@ -118,7 +126,11 @@ async def get_inbox_conversations():
             "lastInboundAt": last_inbound_at,
             "messages": message_items
         })
-    return {"status": "success", "conversations": threads}
+
+    # Sort by the TRUE last message (any sender) descending — newest activity
+    # always rises to the top (ISO sent_at strings sort lexically).
+    threads.sort(key=lambda t: (t.get("messages") or [{}])[-1].get("time") or "", reverse=True)
+    return {"status": "success", "conversations": threads[:50]}
 
 
 class TakeoverPayload(BaseModel):
@@ -169,6 +181,62 @@ async def _send_and_store_agent_message(lead: Dict[str, Any], text: str, extra_m
         metadata=extra_meta or {},
     ))
     return {"message_id": send_result.get("message_id"), "stored": stored is not None}
+
+
+@router.get("/api/inbox/agent-status", tags=["Live Inbox"])
+async def get_inbox_agent_status(request: Request):
+    """Honest AI-operational state for the inbox pill: effective pause flag +
+    average reply latency + agent replies in last 24h — computed from real
+    stored message pairs (zero fabrication: None avg when no data exists)."""
+    from datetime import timedelta
+    from src.ai.pause import is_ai_paused
+    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") if request else None
+    user_id = (session or {}).get("sub")
+
+    msgs = supabase_db.select("messages") or []
+    by_lead: dict = {}
+    for m in msgs:
+        by_lead.setdefault(m.get("lead_id"), []).append(m)
+    durs = []
+    now = datetime.now(tz.utc)
+    replies_24h = 0
+    for lst in by_lead.values():
+        lst.sort(key=lambda x: x.get("sent_at") or "")
+        for a, b in zip(lst, lst[1:]):
+            meta_b = b.get("metadata") or {}
+            if not isinstance(meta_b, dict):
+                meta_b = {}
+            # honest latency = customer message -> AUTOMATED agent reply only
+            # (human takeover / test sends carry sent_by, booking links carry type)
+            if (a.get("sender_type") == "lead" and b.get("sender_type") == "agent"
+                    and "is_conversion_reply" in meta_b
+                    and not meta_b.get("sent_by") and not meta_b.get("type")
+                    and a.get("sent_at") and b.get("sent_at")):
+                try:
+                    t1 = datetime.fromisoformat(str(a["sent_at"]).replace("Z", "+00:00"))
+                    t2 = datetime.fromisoformat(str(b["sent_at"]).replace("Z", "+00:00"))
+                    d = (t2 - t1).total_seconds()
+                    if 0 < d < 86400:
+                        durs.append(d)
+                except Exception:
+                    pass
+    for m in msgs:
+        meta_m = m.get("metadata") or {}
+        if (m.get("sender_type") == "agent" and m.get("sent_at")
+                and isinstance(meta_m, dict) and "is_conversion_reply" in meta_m):
+            try:
+                t = datetime.fromisoformat(str(m["sent_at"]).replace("Z", "+00:00"))
+                if now - t <= timedelta(hours=24):
+                    replies_24h += 1
+            except Exception:
+                pass
+    return {
+        "status": "success",
+        "ai_paused": is_ai_paused(user_id),
+        "avg_reply_seconds": round(sum(durs) / len(durs), 1) if durs else None,
+        "replies_last_24h": replies_24h,
+    }
 
 
 @router.post("/api/inbox/conversations/{lead_id}/takeover", tags=["Live Inbox"])
