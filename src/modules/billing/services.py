@@ -182,11 +182,16 @@ class EntitlementService:
             for e in TRIAL_ENTITLEMENTS:
                 self.revoke(user_id, e)
             status = "canceled"
-        return {
+        sub_payload = {
             "status": status,
             "platforms": self.connected_platforms(user_id),
             "trial_ends_at": trial_end,
             "can_connect": status in ("trialing", "active"),
+            "plan": sub.get("plan_id") or status,
+        }
+        return {
+            **sub_payload,
+            "subscription": sub_payload,
         }
 
     def reconcile_active_subscriptions(self) -> Dict[str, Any]:

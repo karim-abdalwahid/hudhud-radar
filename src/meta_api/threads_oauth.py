@@ -328,7 +328,7 @@ class ThreadsOAuthManager:
         except Exception:
             rows = []
         if len(rows) != 1:
-            return {"configured": configured, "connected": False}
+            return {"status": "success", "configured": configured, "connected": False}
         conn = rows[0]
         exp_s = conn.get("token_expires_at")
         expires_at = None
@@ -338,6 +338,7 @@ class ThreadsOAuthManager:
             except Exception:
                 pass
         status = {
+            "status": "success",
             "configured": configured,
             "connected": True,
             "username": (conn.get("account_name") or "").lstrip("@") or None,

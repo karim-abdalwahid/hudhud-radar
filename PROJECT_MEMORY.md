@@ -2314,3 +2314,46 @@ The owner reported that on `/knowledge`, all documents listed showed `0 words` a
 ### 3. Verification
 - Verified via `TestClient` endpoint retrieval: 5 documents returned with exact word counts (366, 129, 189, 90, 265 words) and byte sizes. Total words: 1,039.
 - 382 passed in pytest.
+
+## [Entry 064] 2026-09-24 — Comprehensive Codebase Audit: Key Mismatches & API Contract Verification
+- **Timestamp**: 2026-09-24T05:00:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ COMPLETED & FULLY VERIFIED (382/382 PASSED)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+
+### 1. Scope & Objective
+The owner requested an exhaustive, systemic audit of the entire codebase for:
+1. Field name mismatches (**Key Mismatch** e.g., `word_count` vs `words_count`).
+2. Query discrepancies, endpoint path mismatches, parameter names, and payload structures between frontend templates/scripts and backend FastAPI routers / Supabase models.
+3. Repair of all detected discrepancies without breaking changes, schema breaks, or regressions.
+
+### 2. Audit Findings & Systematic Solutions
+1. **Content Studio Posts (`/api/studio/posts` & `/api/content/posts`)**:
+   - Frontend in `overview.html` expected object with `.posts` array, along with `.caption` and `.scheduled_time`.
+   - Backend returned raw `List[ContentPostResponse]` with `content_text` and `scheduled_for`.
+   - **Fix**: Added `@computed_field` for `caption` and `scheduled_time` to `ContentPostResponse` in `src/content_studio/models.py`. Made `overview.html` accept both raw arrays and `{posts: [...]}` objects, with fallbacks for `content_text || caption` and `scheduled_for || scheduled_time`.
+2. **Identity Verification Review Queue (`/api/identity/queue`)**:
+   - UI (`identity.html`) expected `account_a_name`, `account_a_platform`, `account_a_id`, `account_b_name`, `account_b_platform`, `account_b_id`.
+   - Raw queue table only stored `primary_lead_id` and `candidate_lead_id`.
+   - **Fix**: Enriched `get_pending_reviews()` in `src/identity/review_queue.py` with related lead profiles. Added `"queue"` and `"count"` aliases alongside `"pending_reviews"` in `src/modules/identity/routes.py`.
+3. **Analytics Funnel Missing Metrics (`/api/analytics/summary`)**:
+   - `analytics.html` displayed phone and email lead funnel bars using `leads.phone_leads` and `leads.email_leads`.
+   - `statistics_engine.get_lead_conversion_metrics()` calculated contact presence but omitted separate `phone_leads` and `email_leads` counters.
+   - **Fix**: Added computed `phone_leads` and `email_leads` tallies in `src/analytics/statistics_engine.py`.
+4. **Notifications Unread Count (`/api/notifications/unread-count`)**:
+   - Returned `{"unread": cnt}`. Aliased with `"count": cnt` and `"unread_count": cnt` in `src/modules/notifications/__init__.py`.
+5. **Live Inbox Conversation ID Prefix (`/api/inbox/conversations/{lead_id}/...`)**:
+   - Thread items use `conv_{lead_id}` in UI. Direct mutations could pass `conv_` prefixed IDs.
+   - **Fix**: Normalized `_owned_lead` in `src/modules/inbox_onboarding/__init__.py` to `.removeprefix("conv_")` and updated mutation methods (`toggle_human_takeover`, `send_manual_inbox_message`) to use the canonical lead UUID.
+6. **Billing Usage & Subscription Aliases (`/api/billing/usage` & `/api/billing/subscription`)**:
+   - Added `credits`, `balance`, and `plan` aliases to `usage_service.summary` and billing routes.
+   - Added `subscription` wrapper and `plan` field to `subscription_status`.
+7. **Meta & Threads Status Symmetrical Keys**:
+   - `src/modules/meta/routes.py`: Added `connected`, `pages`, `token_status`, `instagram_business_account` aliases to `get_meta_status`.
+   - `src/meta_api/threads_oauth.py`: Added `"status": "success"` to connection status responses.
+   - `src/meta_api/extended_api.py`: Added dual `posts` and `threads` keys to `get_my_posts`.
+
+### 3. Verification & Safety Proof
+- Built and ran `scratch/deep_key_mismatch_audit.py` across all 25+ critical customer and admin API endpoints: **100% OK, 0 missing keys, 0 warnings**.
+- Ran full test suite via `pytest -q`: **382 passed, 1 warning in 112.87s** (100% clean baseline preserved).
+- Zero schema breaks, zero regressions.

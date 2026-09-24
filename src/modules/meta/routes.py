@@ -60,11 +60,16 @@ async def get_meta_status(request: Request):
     facebook = next((c for c in connections if c.get("platform") == "facebook"), None)
     instagram = next((c for c in connections if c.get("platform") == "instagram"), None)
     linked_ig = (facebook or {}).get("metadata", {}).get("linked_ig_id")
+    is_connected = bool(facebook or instagram)
     return {
         "configured": bool(settings.META_APP_ID and settings.META_APP_SECRET),
-        "token_valid": bool(facebook or instagram),
+        "token_valid": is_connected,
+        "connected": is_connected,
+        "token_status": "valid" if is_connected else "not_connected",
         "page_name": (facebook or {}).get("account_name"),
         "page_id": (facebook or {}).get("account_id"),
+        "pages": [facebook] if facebook else [],
+        "instagram_business_account": (instagram or {}).get("account_id") or linked_ig or None,
         "instagram_account_id": (instagram or {}).get("account_id") or linked_ig or None,
         "app_id": settings.META_APP_ID or None,
         "supabase_connected": supabase_db.is_connected,

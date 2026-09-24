@@ -42,7 +42,13 @@ def register(app: FastAPI) -> None:
         session = verify_session_token(token) if token else None
         if not session:
             raise HTTPException(status_code=401, detail="غير مصرح")
-        return {"unread": notification_service.unread_count(session["sub"])}
+        cnt = notification_service.unread_count(session["sub"])
+        return {
+            "status": "success",
+            "unread": cnt,
+            "count": cnt,
+            "unread_count": cnt,
+        }
 
     @app.post("/api/notifications/{notification_id}/read", tags=["Notifications"])
     async def mark_one_read(notification_id: str, request: Request):

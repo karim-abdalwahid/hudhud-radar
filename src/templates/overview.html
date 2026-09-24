@@ -204,17 +204,17 @@
                 // Fetch Posts
                 const postsRes = await fetch('/api/studio/posts');
                 const postsData = await postsRes.json();
-                const posts = postsData.posts || [];
+                const posts = Array.isArray(postsData) ? postsData : (postsData.posts || []);
                 const postsBody = document.getElementById('overview-posts-body');
                 if (posts.length === 0) {
                     postsBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">${isAr ? 'لا توجد منشورات مجدولة حالياً.' : 'No scheduled posts found.'}</td></tr>`;
                 } else {
                     postsBody.innerHTML = posts.slice(0, 5).map(p => `
                         <tr>
-                            <td><span class="badge badge-fb">${p.platform}</span></td>
-                            <td style="max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.caption || '-')}</td>
+                            <td><span class="badge ${p.platform === 'instagram' ? 'badge-ig' : 'badge-fb'}">${p.platform || 'both'}</span></td>
+                            <td style="max-width:240px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.content_text || p.caption || '-')}</td>
                             <td><span class="badge ${p.status === 'published' ? 'badge-success' : 'badge-pending'}">${p.status}</span></td>
-                            <td class="mono" style="font-size:11px;">${p.scheduled_time ? p.scheduled_time.slice(0, 16) : '-'}</td>
+                            <td class="mono" style="font-size:11px;">${p.scheduled_for ? String(p.scheduled_for).slice(0, 16).replace('T', ' ') : (p.scheduled_time ? String(p.scheduled_time).slice(0, 16) : '-')}</td>
                         </tr>
                     `).join('');
                 }
@@ -222,7 +222,7 @@
                 // Fetch Review Queue Count
                 const qRes = await fetch('/api/identity/queue');
                 const qData = await qRes.json();
-                const qItems = qData.queue || [];
+                const qItems = qData.queue || qData.pending_reviews || [];
                 const queueEl = document.getElementById('kpi-review-queue');
                 if (queueEl) queueEl.textContent = qItems.length;
 

@@ -79,7 +79,13 @@ def register(app: FastAPI) -> None:
         the usage card on /account."""
         session = _me(request)
         from src.modules.billing.usage import usage_service
-        return {"status": "success", **usage_service.summary(session["sub"])}
+        data = usage_service.summary(session["sub"])
+        return {
+            "status": "success",
+            **data,
+            "credits": data.get("ai_credits", 0),
+            "balance": data.get("ai_credits", 0),
+        }
 
     @app.get("/api/admin/billing/catalog", tags=["Billing"])
     async def admin_catalog(request: Request):

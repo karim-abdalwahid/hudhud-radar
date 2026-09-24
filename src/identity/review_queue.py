@@ -16,8 +16,30 @@ class IdentityReviewQueue:
         self.db = db
 
     def get_pending_reviews(self) -> List[Dict[str, Any]]:
-        """Retrieve all candidate matches awaiting supervisor review."""
-        return self.db.select("identity_verification_queue", {"status": "pending"})
+        """Retrieve all candidate matches awaiting supervisor review, enriched with lead details."""
+        raw_items = self.db.select("identity_verification_queue", {"status": "pending"}) or []
+        enriched = []
+        for item in raw_items:
+            row = dict(item)
+            try:
+                lead_a = self.db.select("leads", {"id": item.get("primary_lead_id")})
+                la = lead_a[0] if lead_a else {}
+            except Exception:
+                la = {}
+            try:
+                lead_b = self.db.select("leads", {"id": item.get("candidate_lead_id")})
+                lb = lead_b[0] if lead_b else {}
+            except Exception:
+                lb = {}
+
+            row.setdefault("account_a_name", la.get("full_name") or la.get("username") or "Account A")
+            row.setdefault("account_a_platform", la.get("source") or "meta")
+            row.setdefault("account_a_id", la.get("facebook_account_id") or la.get("instagram_account_id") or la.get("username") or item.get("primary_lead_id"))
+            row.setdefault("account_b_name", lb.get("full_name") or lb.get("username") or "Account B")
+            row.setdefault("account_b_platform", lb.get("source") or "meta")
+            row.setdefault("account_b_id", lb.get("facebook_account_id") or lb.get("instagram_account_id") or lb.get("username") or item.get("candidate_lead_id"))
+            enriched.append(row)
+        return enriched
 
     def approve_match(self, queue_id: str, reviewer_name: str, notes: Optional[str] = None) -> Dict[str, Any]:
         """

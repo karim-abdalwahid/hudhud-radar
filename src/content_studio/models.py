@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 from enum import Enum
 import uuid
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class ContentPlatform(str, Enum):
@@ -70,6 +70,16 @@ class ContentPostResponse(ContentPostBase):
     performance_metrics: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @computed_field
+    @property
+    def caption(self) -> str:
+        return self.content_text
+
+    @computed_field
+    @property
+    def scheduled_time(self) -> Optional[datetime]:
+        return self.scheduled_for
 
 
 class ContentGenerationRequest(BaseModel):

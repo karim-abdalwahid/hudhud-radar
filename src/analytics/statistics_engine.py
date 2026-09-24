@@ -96,10 +96,14 @@ class StatisticsEngine:
             return {
                 "total_leads": 0,
                 "leads_with_contact": 0,
+                "phone_leads": 0,
+                "email_leads": 0,
                 "conversion_rate_percent": 0.0,
                 "by_platform": {}
             }
 
+        phone_leads = sum(1 for l in leads if l.get("contact_phone"))
+        email_leads = sum(1 for l in leads if l.get("contact_email"))
         with_contact = [l for l in leads if l.get("contact_email") or l.get("contact_phone")]
         platforms = Counter(l.get("source", "other") for l in leads)
 
@@ -108,6 +112,8 @@ class StatisticsEngine:
         return {
             "total_leads": total_leads,
             "leads_with_contact": len(with_contact),
+            "phone_leads": phone_leads,
+            "email_leads": email_leads,
             "conversion_rate_percent": round(conversion_rate, 2),
             "by_platform": dict(platforms)
         }

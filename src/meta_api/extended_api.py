@@ -564,15 +564,16 @@ class ThreadsLeadsSync:
         """Lists the account's recent published threads (for the studio Threads manager)."""
         token = self._resolve_token(user_id)
         if not token:
-            return {"status": "skipped", "reason": "Threads غير مربوط"}
+            return {"status": "skipped", "reason": "Threads غير مربوط", "posts": [], "threads": []}
         async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.get(
                 f"{settings.THREADS_BASE_URL}/me/threads",
                 params={"fields": "id,text,timestamp", "limit": limit, "access_token": token},
             )
             if resp.status_code != 200:
-                return {"status": "error", "detail": resp.text[:300]}
-            return {"status": "success", "posts": resp.json().get("data", [])}
+                return {"status": "error", "detail": resp.text[:300], "posts": [], "threads": []}
+            data_items = resp.json().get("data", [])
+            return {"status": "success", "posts": data_items, "threads": data_items}
 
 
 meta_insights_sync = MetaInsightsSync()

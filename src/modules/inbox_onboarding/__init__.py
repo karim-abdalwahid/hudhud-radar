@@ -153,7 +153,8 @@ def _session_user_id(request: Request) -> str:
 def _owned_lead(lead_id: str, request: Request) -> Dict[str, Any]:
     """Return only the session user's CRM lead; never accept a raw id alone."""
     user_id = _session_user_id(request)
-    lead = lead_service.get_lead_by_id(lead_id, user_id=user_id)
+    normalized_id = str(lead_id or "").removeprefix("conv_")
+    lead = lead_service.get_lead_by_id(normalized_id, user_id=user_id)
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     return lead
@@ -251,8 +252,9 @@ async def send_manual_inbox_message(lead_id: str, payload: ManualMessagePayload,
                                                      tag="HUMAN_AGENT")
     except MetaAPIError as e:
         raise HTTPException(status_code=502, detail=f"Meta rejected the message: {str(e)[:240]}")
+    actual_lead_id = str(lead.get("id") or lead_id).removeprefix("conv_")
     if not lead.get("human_takeover"):
-        lead_service.update_lead(lead_id, {"human_takeover": True})
+        lead_service.update_lead(actual_lead_id, {"human_takeover": True})
     return {"status": "success", **result}
 
 

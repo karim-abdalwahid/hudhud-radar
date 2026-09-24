@@ -150,8 +150,12 @@ class UsageService:
                 total += amount
         except Exception as e:
             logger.warning(f"usage summary failed for {user_id}: {e}")
+        bal = self.balance(user_id)
         return {
-            "ai_credits": self.balance(user_id),
+            "ai_credits": bal,
+            "credits": bal,
+            "balance": bal,
+            "plan": "pay_as_you_go",
             "used_last_30d": total,
             "by_kind": by_kind,
             "period_days": days,

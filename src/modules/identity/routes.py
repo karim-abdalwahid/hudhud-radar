@@ -31,8 +31,12 @@ async def get_verification_queue():
     """Lists pending ambiguous matches awaiting human supervisor decision.
     Also returns the REAL configured thresholds so the UI never displays
     hardcoded policy numbers that drift from actual settings."""
+    reviews = identity_review_queue.get_pending_reviews()
     return {
-        "pending_reviews": identity_review_queue.get_pending_reviews(),
+        "status": "success",
+        "pending_reviews": reviews,
+        "queue": reviews,
+        "count": len(reviews),
         "policy": {
             "manual_confirmation_required": settings.REQUIRE_MANUAL_IDENTITY_CONFIRMATION,
             "auto_link_threshold_percent": round(settings.CONFIDENCE_THRESHOLD_AUTO_LINK * 100),
