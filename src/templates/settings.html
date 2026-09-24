@@ -297,22 +297,32 @@
                                     </tr>
                                     <tr>
                                         <td>
-                                            <strong data-i18n="set.url_webhook_title">Webhook Callback URL</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_webhook_desc">Receives live DMs, comments, and lead events in real time</div>
+                                            <strong data-i18n="set.url_webhook_title">Facebook Webhook Callback URL</strong>
+                                            <div style="font-size:11px; color:var(--text-muted);">Receives Facebook DMs, comments, and lead events in real time</div>
                                         </td>
                                         <td><code class="url-code-cell" id="url-webhook" data-path="/api/webhook/meta"></code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-webhook', 'Webhook Callback URL')" data-i18n="set.btn_copy">📋 Copy</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-webhook', 'Facebook Webhook URL')" data-i18n="set.btn_copy">📋 Copy</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Instagram Webhook Callback URL</strong>
+                                            <div style="font-size:11px; color:#7c3aed; font-weight:600;">Instagram API app → Configure webhooks → Callback URL</div>
+                                        </td>
+                                        <td><code class="url-code-cell" id="url-ig-webhook" data-path="/api/webhook/instagram"></code></td>
+                                        <td style="text-align:center;">
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyHubUrl('url-ig-webhook', 'Instagram Webhook URL')">📋 Copy</button>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>
                                             <strong data-i18n="set.url_verify_token_title">Webhook Verify Token</strong>
-                                            <div style="font-size:11px; color:var(--text-muted);" data-i18n="set.url_verify_token_desc">Secret token to verify server authenticity during webhook subscription</div>
+                                            <div style="font-size:11px; color:var(--text-muted);">Same token for both Facebook &amp; Instagram webhook subscriptions</div>
                                         </td>
-                                        <td><code class="url-code-cell" id="url-verify-token">hudhud_webhook_verify_secret</code></td>
+                                        <td><code class="url-code-cell" id="url-verify-token">hudhud_radar_secret_verify_token_2026</code></td>
                                         <td style="text-align:center;">
-                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyRawText('hudhud_webhook_verify_secret', 'Webhook Verify Token')" data-i18n="set.btn_copy">📋 Copy</button>
+                                            <button type="button" class="btn-secondary" style="padding:5px 12px; font-size:12px;" onclick="copyRawText('hudhud_radar_secret_verify_token_2026', 'Webhook Verify Token')" data-i18n="set.btn_copy">📋 Copy</button>
                                         </td>
                                     </tr>
                                     <!-- Separated Privacy Policy Row -->
@@ -688,19 +698,25 @@
         }
 
         async function pingWebhookHealth() {
-            if (window.hudhudToast) hudhudToast.info("Testing webhook endpoint connectivity...");
-            try {
-                const r = await fetch('/api/webhook/meta', { method: 'GET' });
-                if (r.ok || r.status === 400 || r.status === 403) {
-                    const msg = window.hudhudI18n ? window.hudhudI18n.t('set.toast_ping_success') : 'Webhook endpoint reachable!';
-                    if (window.hudhudToast) hudhudToast.success(msg);
-                    else alert(msg);
-                } else {
-                    if (window.hudhudToast) hudhudToast.warning(`Webhook responded with status ${r.status}`);
+            if (window.hudhudToast) hudhudToast.info("Testing Facebook & Instagram webhook endpoints...");
+            const results = [];
+            const endpoints = [
+                { url: '/api/webhook/meta',      label: 'Facebook Webhook (/api/webhook/meta)' },
+                { url: '/api/webhook/instagram', label: 'Instagram Webhook (/api/webhook/instagram)' },
+            ];
+            for (const ep of endpoints) {
+                try {
+                    // A GET with no params returns 403 (token mismatch) — that confirms the endpoint exists and is live.
+                    const r = await fetch(ep.url, { method: 'GET' });
+                    const alive = r.ok || r.status === 400 || r.status === 403;
+                    results.push(`${alive ? '✅' : '❌'} ${ep.label} → HTTP ${r.status}`);
+                } catch (e) {
+                    results.push(`❌ ${ep.label} → unreachable`);
                 }
-            } catch (e) {
-                if (window.hudhudToast) hudhudToast.error("Webhook endpoint unreachable");
             }
+            const msg = results.join('\n');
+            if (window.hudhudToast) hudhudToast.success("Webhook check complete — see details below");
+            alert("Webhook Health Check:\n\n" + msg);
         }
 
         // ==================== TAB 1: INTEGRATIONS STATUS ====================
