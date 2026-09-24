@@ -843,6 +843,14 @@
             }
         }
 
+        // Instant reactivity when popup completes connection
+        window.addEventListener('message', async (e) => {
+            if (e.data && e.data.type === 'hudhud_connected') {
+                clearInterval(pollTimer);
+                await refreshConnections();
+            }
+        });
+
         // Phase 9.7: per-user connections overview — tile states + locked upsell cards
         async function refreshConnections() {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
