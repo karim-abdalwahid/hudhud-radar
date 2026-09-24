@@ -222,6 +222,7 @@ class AgentOrchestrator:
             last_interaction = datetime.now(timezone.utc)
 
         send_result = {}
+        dispatch_error: Optional[str] = None
         try:
             if platform == PlatformSource.FACEBOOK:
                 send_result = await self.client.send_facebook_message(
@@ -258,13 +259,15 @@ class AgentOrchestrator:
             )
             self.lead_svc.add_message(outbound_msg)
         except Exception as e:
+            dispatch_error = str(e)
             logger.error(f"Failed to dispatch outbound response to {sender_id}: {e}")
 
         return {
             "lead_id": lead_id,
             "is_new_lead": is_new,
             "queue_id": queue_id,
-            "reply_sent": reply_text,
+            "reply_sent": reply_text if dispatch_error is None else None,
+            "reply_error": dispatch_error,
             "is_converted": is_converted
         }
 

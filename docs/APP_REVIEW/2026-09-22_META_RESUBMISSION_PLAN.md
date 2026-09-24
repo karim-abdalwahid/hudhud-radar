@@ -1,7 +1,29 @@
 # Meta App Review — Verified Resubmission Plan
 
-**Recorded:** 2026-09-22
+**Recorded:** 2026-09-22 · **Updated:** 2026-09-24 (live verification of the messaging blocker)
 **Status:** Audit and recording plan only. No permission, production setting, or application code was changed.
+
+## 2026-09-24 verification addendum — messaging is the only live gate
+
+A live production read-only probe (`diag_ig_dm.py`) confirmed the exact current state:
+
+| Probe (live, production) | Result | Meaning |
+|---|---|---|
+| `GET /{IG_ID}/subscribed_apps` | 400, field `subscribed_apps` not exposed | IG webhook subscription is not reflectable — consistent with capability gating |
+| `GET /{IG_ID}/conversations` | 400 **error #3** "Application does not have the capability" | **The blocker is live today:** `instagram_manage_messages` Advanced Access is still not granted |
+| `processed_events` (webhook) | All recent events are `[message]` Facebook only | No real IG DM has ever been delivered to the webhook |
+| Signed `object=instagram` simulation | Lead `src=instagram` + message stored in production (2026-09-24T13:00Z) | Site-side webhook→lead→message path is fully functional |
+
+Actions confirmed with the owner (2026-09-24): keep the existing plan below as the 
+recording script, and re-confirm **only** the permissions actually demonstrated once
+Advanced Access for `instagram_manage_messages` is granted. The AI auto-reply path
+(`src/agent/orchestrator.py`) is code-complete for Instagram; it is not reachable
+for real DMs until Meta grants the subscription capability.
+
+The verified degraded path fix (honest failure reporting, no silent fake success)
+was shipped separately in this same session: when Meta rejects a send, the
+orchestrator now returns `reply_sent: None` + `reply_error` instead of claiming
+the reply was delivered.
 
 ## Bottom line
 

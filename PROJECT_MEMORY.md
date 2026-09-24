@@ -2563,5 +2563,19 @@ The owner flagged 5 specific visual, operational, and architectural items:
   - Ran `pytest -q`: **382 passed, 1 warning in 55.00s (100% pass rate)**.
 
 
+### 37. Post-Entry Addition — IG AUTO-REPLY ROOT-CAUSE RE-VERIFIED LIVE + HONEST SEND FAILURE (session 38)
+
+- Owner asked (2026-09-24) for the same precise audit applied to Facebook, focused on: why does the AI NOT auto-reply to Instagram customers?
+- Root cause re-confirmed with LIVE evidence (not assumption), `diag_ig_dm.py` on production:
+  - `GET /{IG_ID}/subscribed_apps` → HTTP 400 (field not exposed — subscription gated).
+  - `GET /{IG_ID}/conversations` → HTTP 400 **error #3 "Application does not have the capability"** = `instagram_manage_messages` Advanced Access still NOT granted.
+  - `processed_events` → every recent event is `[message]` **Facebook only**; no real Instagram DM has EVER reached the webhook. Meta refuses the IG subscription, so the orchestrator is never invoked for a real IG customer.
+  - Signed `object=instagram` simulation STILL lands on production (lead `src=instagram` + message, 2026-09-24T13:00Z) — site-side webhook→lead→message path fully functional.
+- Code audit (both FB reference + IG path): no platform filter excludes instagram; orchestrator, lead record, token resolution (`get_send_token_for_instagram` → linked FB Page token) and `send_instagram_message` are all reachable for `PlatformSource.INSTAGRAM`. The block is Meta-side (Advanced Access), identical to memory 28 / AUDIT-2026-09-15 known-deferred item.
+- SECONDARY issue fixed (honest failure reporting): `orchestrator.py:260` swallowed ALL outbound exceptions and always returned `reply_sent=reply_text` — a Meta rejection would be API-invisible (fake success). Now returns `reply_sent: None` + `reply_error: <reason>` on any dispatch failure; outbound row stored only on real success.
+- App Review plan updated: `docs/APP_REVIEW/2026-09-22_META_RESUBMISSION_PLAN.md` gains 2026-09-24 verification addendum (live probe table + recording-script readiness for `instagram_manage_messages` once granted).
+- Tests: +2 (send-failure reported honestly; happy path leaves reply_error unset) → targeted green.
+
+
 
 

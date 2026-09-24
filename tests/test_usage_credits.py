@@ -420,6 +420,52 @@ async def test_orchestrator_does_not_bill_a_fallback_reply(monkeypatch):
     assert billed == []
 
 
+@pytest.mark.asyncio
+async def test_orchestrator_reports_send_failure_honestly(monkeypatch):
+    """A Meta rejection must NOT be reported as a sent reply — reply_sent must
+    be None and reply_error must carry the failure (no silent fake success)."""
+    from src.agent.orchestrator import AgentOrchestrator
+    from src.core.exceptions import MetaAPIError
+
+    orch = AgentOrchestrator()
+    lead_row = {"id": "lead_fail", "human_takeover": False, "user_id": "owner_1",
+                "facebook_account_id": "psid_1"}
+    stored = _wire_common_orchestrator_mocks(orch, monkeypatch, lead_row)
+    monkeypatch.setattr(orch.client, "send_facebook_message",
+                        AsyncMock(side_effect=MetaAPIError("IG Gated (#3)", status_code=400)))
+    monkeypatch.setattr("src.modules.billing.usage.usage_service.has_credits", lambda *_a, **_k: True)
+    monkeypatch.setattr(orch.engine, "generate_response",
+                        AsyncMock(return_value=("هذا رد", False, True)))
+
+    result = await orch.process_incoming_message_event(_event())
+
+    assert result["reply_sent"] is None          # honest: nothing actually delivered
+    assert result["reply_error"] is not None     # the reason is surfaced, not swallowed
+    assert len(stored) == 1                      # inbound still stored
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_success_sets_no_reply_error(monkeypatch):
+    """Happy path keeps reply_sent and leaves reply_error unset."""
+    from src.agent.orchestrator import AgentOrchestrator
+
+    orch = AgentOrchestrator()
+    lead_row = {"id": "lead_okerr", "human_takeover": False, "user_id": "owner_1",
+                "facebook_account_id": "psid_1"}
+    stored = _wire_common_orchestrator_mocks(orch, monkeypatch, lead_row)
+    monkeypatch.setattr(orch.client, "send_facebook_message",
+                        AsyncMock(return_value={"message_id": "wamid_ok"}))
+    monkeypatch.setattr("src.modules.billing.usage.usage_service.has_credits", lambda *_a, **_k: True)
+    monkeypatch.setattr(orch.engine, "generate_response",
+                        AsyncMock(return_value=("رد بنجاح", False, True)))
+
+    result = await orch.process_incoming_message_event(_event())
+
+    assert result["reply_sent"] == "رد بنجاح"
+    assert result["reply_error"] is None
+    assert len(stored) == 2  # inbound + outbound
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # 4. Content Studio route — 402 gate + bill-only-real-Gemini
 # ─────────────────────────────────────────────────────────────────────────
