@@ -179,36 +179,35 @@ async def configure_meta_credentials(payload: MetaConfigPayload, request: Reques
 async def subscribe_page_to_app(request: Request):
     """
     Subscribes the Facebook Page and/or Instagram account to the App for real-time Webhook delivery.
-    Calls POST /{page_id}/subscribed_apps?subscribed_fields=feed,messages
+    Works for Facebook-only, Instagram-only, or both connections.
     """
     from src.modules.connections.service import connection_service
     user_id = _require_session_user(request)
     facebook = connection_service.get_publish_credentials(user_id, "facebook")
-    if not facebook:
-        raise HTTPException(status_code=403, detail="An active entitled Facebook connection is required")
     instagram = connection_service.get_publish_credentials(user_id, "instagram")
-    page_id = facebook["account_id"]
-    token = facebook["access_token"]
+    if not facebook and not instagram:
+        raise HTTPException(status_code=403, detail="An active entitled Facebook or Instagram connection is required")
     results = {}
     async with httpx.AsyncClient(timeout=10.0) as client:
-        # 1. Subscribe Facebook Page
-        try:
-            fb_resp = await client.post(
-                f"{settings.META_GRAPH_API_BASE_URL}/{page_id}/subscribed_apps",
-                data={
-                    "subscribed_fields": "feed,messages,conversations",
-                    "access_token": token
-                }
-            )
-            results["facebook_page"] = fb_resp.json()
-        except Exception as e:
-            results["facebook_page"] = {"error": str(e)}
+        # 1. Subscribe Facebook Page (if connected)
+        if facebook:
+            try:
+                fb_resp = await client.post(
+                    f"{settings.META_GRAPH_API_BASE_URL}/{facebook['account_id']}/subscribed_apps",
+                    data={
+                        "subscribed_fields": "feed,messages,conversations",
+                        "access_token": facebook["access_token"]
+                    }
+                )
+                results["facebook_page"] = fb_resp.json()
+            except Exception as e:
+                results["facebook_page"] = {"error": str(e)}
 
-        # 2. Subscribe Instagram account if configured
+        # 2. Subscribe Instagram account (if connected — independent of Facebook)
         if instagram:
             try:
                 ig_resp = await client.post(
-                f"{settings.META_GRAPH_API_BASE_URL}/{instagram['account_id']}/subscribed_apps",
+                    f"{settings.META_GRAPH_API_BASE_URL}/{instagram['account_id']}/subscribed_apps",
                     data={
                         "subscribed_fields": "comments,messages,messaging_postbacks",
                         "access_token": instagram["access_token"]

@@ -171,6 +171,21 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
                       "pages_count": len(plist)})
         if not saved:
             return RedirectResponse("/account?connect_error=store", status_code=303)
+        # Auto-subscribe the Page (+ linked IG) to webhooks so messages
+        # arrive immediately without a separate manual step.
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as sub_client:
+                await sub_client.post(
+                    f"{settings.META_GRAPH_API_BASE_URL}/{page.get('id')}/subscribed_apps",
+                    data={"subscribed_fields": "feed,messages,conversations",
+                          "access_token": page.get("access_token")})
+                if ig.get("id"):
+                    await sub_client.post(
+                        f"{settings.META_GRAPH_API_BASE_URL}/{ig['id']}/subscribed_apps",
+                        data={"subscribed_fields": "comments,messages,messaging_postbacks",
+                              "access_token": page.get("access_token")})
+        except Exception as sub_err:
+            logger.warning(f"Auto-subscribe after FB connect failed (non-fatal): {sub_err}")
         return RedirectResponse("/account?connected=facebook", status_code=303)
     except Exception as e:
         logger.error(f"facebook callback error: {e}")
@@ -242,6 +257,16 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
                                              + timedelta(days=60)).isoformat()})
         except Exception:
             pass
+        # Auto-subscribe IG account to webhooks (independent of Facebook)
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as sub_client:
+                ig_account_id = str(m.get("user_id") or ig_uid)
+                await sub_client.post(
+                    f"{settings.META_GRAPH_API_BASE_URL}/{ig_account_id}/subscribed_apps",
+                    data={"subscribed_fields": "comments,messages,messaging_postbacks",
+                          "access_token": token})
+        except Exception as sub_err:
+            logger.warning(f"Auto-subscribe after IG connect failed: {sub_err}")
         return RedirectResponse("/account?connected=instagram", status_code=303)
     except Exception as e:
         logger.error(f"instagram callback error: {e}")
