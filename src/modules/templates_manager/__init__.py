@@ -236,11 +236,7 @@ textarea.body{min-height:74px;resize:vertical;line-height:1.6;}
                 <span class="crumb-sep">/</span>
                 <span class="crumb-current" data-i18n="tpl.title">Message Templates</span>
             </div>
-            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
-                <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
-                    <span data-i18n="lang.switch_btn">🌐 العربية</span>
-                </button>
-            </div>
+            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;"></div>
         </header>
         <div class="app-content">
             <div class="panel-section" style="margin-bottom:14px;">

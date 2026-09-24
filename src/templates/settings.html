@@ -107,6 +107,32 @@
             color: var(--badge-amber-text);
             border: 1px solid var(--badge-amber-border);
         }
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .health-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+        .health-card-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .health-card-val {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .pricing-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -157,10 +183,7 @@
                     <span class="crumb-current" data-i18n="set.title">Developer & System Console</span>
                 </div>
                 <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
-                    <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
-                        <span data-i18n="lang.switch_btn">🌐 العربية</span>
-                    </button>
-                    <button class="btn-secondary" onclick="refreshAllStatus()" data-i18n="set.refresh_status">🔄 Refresh All Status</button>
+                    <button type="button" class="btn-secondary" id="btn-topbar-refresh" onclick="refreshAllStatusWithFeedback(this)" data-i18n="set.refresh_status">🔄 Refresh All Status</button>
                 </div>
             </header>
 
@@ -448,7 +471,7 @@
                                 <h3 class="panel-title" data-i18n="set.sys_matrix_title">⚙️ System Health Matrix</h3>
                                 <div class="panel-desc" data-i18n="set.sys_desc">Real-time database latency, critical environment audit, and manual trigger controls for background jobs.</div>
                             </div>
-                            <button type="button" class="btn-secondary" style="padding:6px 14px; font-size:12.5px;" onclick="loadSystemHealth()">🔄 Re-check Health</button>
+                            <button type="button" id="btn-recheck-health" class="btn-secondary" style="padding:6px 14px; font-size:12.5px;" onclick="checkHealthWithFeedback(this)" data-i18n="set.recheck_health">🔄 Re-check Health</button>
                         </div>
 
                         <div class="health-grid">
@@ -568,6 +591,39 @@
                             <div class="pricing-box">
                                 <div style="font-size:12px; color:var(--text-muted); font-weight:700;">Trial Period</div>
                                 <div class="pricing-val" id="pricing-trial" style="color:#059669;">3 Days Free</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Phase 9.6: Product Analytics (PostHog) -->
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title" data-i18n="set.analytics_title">📊 Product Analytics & Telemetry (PostHog)</h3>
+                                <div class="panel-desc" data-i18n="set.analytics_desc">Track user flows, session recordings, and feature engagement with privacy-safe EU/US hosted PostHog.</div>
+                            </div>
+                            <span class="badge badge-success" id="ph-badge">Privacy Safe</span>
+                        </div>
+
+                        <div style="background:var(--bg-input); padding:18px; border:1px solid var(--border-default); border-radius:var(--radius-sm);">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:14px;">
+                                    <input type="checkbox" id="ph-enabled" style="width:18px; height:18px; accent-color:var(--accent-blue);">
+                                    <span data-i18n="set.analytics_enable">Enable PostHog Telemetry</span>
+                                </label>
+                                <span id="ph-status" style="font-size:12.5px; font-weight:700;"></span>
+                            </div>
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.analytics_key">Project API Key</label>
+                                    <input type="text" id="ph-key" class="form-input" placeholder="phc_..." style="width:100%; font-family:monospace; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary);">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.analytics_host">PostHog Host / Region</label>
+                                    <input type="text" id="ph-host" class="form-input" placeholder="https://eu.i.posthog.com" style="width:100%; font-family:monospace; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary);">
+                                </div>
+                            </div>
+                            <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+                                <button type="button" class="btn-primary" onclick="saveAnalytics(this)" style="padding:8px 20px; font-size:13px; font-weight:700;" data-i18n="set.analytics_save">💾 Save Analytics Config</button>
                             </div>
                         </div>
                     </div>
@@ -898,7 +954,7 @@
             await loadProviders();
         }
 
-        // ==================== TAB 3: System Health & Cron Trigger ====================
+        // ==================== TAB 3: System Health, Cron Trigger & PostHog ====================
         async function loadSystemHealth() {
             try {
                 const res = await fetch('/api/admin/system/health');
@@ -906,8 +962,10 @@
                 if (res.ok && data.status === 'healthy') {
                     const db = data.database || {};
                     const lat = db.latency_ms !== null ? `${db.latency_ms} ms` : '—';
-                    document.getElementById('health-db-latency').textContent = `(${lat})`;
-                    document.getElementById('health-db-status').style.color = db.status === 'connected' ? '#059669' : '#dc2626';
+                    const latEl = document.getElementById('health-db-latency');
+                    const statEl = document.getElementById('health-db-status');
+                    if (latEl) latEl.textContent = `(${lat})`;
+                    if (statEl) statEl.style.color = db.status === 'connected' ? '#059669' : '#dc2626';
 
                     // Environment Pills
                     const env = data.env_checks || {};
@@ -918,14 +976,42 @@
                         { label: 'Polar Billing', ok: env.polar_configured },
                         { label: 'Cron Secret', ok: env.cron_secret_configured },
                     ];
-                    document.getElementById('env-pills-container').innerHTML = pills.map(p => `
-                        <span class="env-pill ${p.ok ? 'env-pill-ok' : 'env-pill-warn'}">
-                            ${p.ok ? '✓' : '⚠️'} ${p.label}: ${p.ok ? 'Ready' : 'Not Set'}
-                        </span>
-                    `).join('');
+                    const pillsEl = document.getElementById('env-pills-container');
+                    if (pillsEl) {
+                        pillsEl.innerHTML = pills.map(p => `
+                            <span class="env-pill ${p.ok ? 'env-pill-ok' : 'env-pill-warn'}">
+                                ${p.ok ? '✓' : '⚠️'} ${p.label}: ${p.ok ? 'Ready' : 'Not Set'}
+                            </span>
+                        `).join('');
+                    }
+                    return lat;
                 }
             } catch (e) {
                 console.warn('System health check failed:', e);
+            }
+            return '—';
+        }
+
+        async function checkHealthWithFeedback(btn) {
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span style="display:inline-block; animation:spin 1s linear infinite;">🔄</span> Checking...';
+            }
+            try {
+                const lat = await loadSystemHealth();
+                const prefix = window.hudhudI18n ? window.hudhudI18n.t('set.health_verified') : 'System health verified! Latency: ';
+                if (window.hudhudToast) hudhudToast.success(prefix + lat);
+            } catch (e) {
+                if (window.hudhudToast) hudhudToast.error('System health check encountered an error');
+            } finally {
+                if (btn) {
+                    btn.innerHTML = '✓ Verified!';
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = origText;
+                    }, 1200);
+                }
             }
         }
 
@@ -953,27 +1039,109 @@
                     fetch('/api/admin/billing/settings').then(r => r.json()).catch(() => ({}))
                 ]);
                 const cat = rCat.catalog || {};
-                if (cat.facebook) document.getElementById('price-fb').textContent = `$${cat.facebook.price_usd} / mo`;
-                if (cat.instagram) document.getElementById('price-ig').textContent = `$${cat.instagram.price_usd} / mo`;
-                if (cat.threads) document.getElementById('price-th').textContent = `$${cat.threads.price_usd} / mo`;
-                if (rSet.trial_days) document.getElementById('pricing-trial').textContent = `${rSet.trial_days} Days Free`;
+                const fb = document.getElementById('price-fb');
+                const ig = document.getElementById('price-ig');
+                const th = document.getElementById('price-th');
+                const tr = document.getElementById('pricing-trial');
+                if (fb && cat.facebook) fb.textContent = `$${cat.facebook.price_usd} / mo`;
+                if (ig && cat.instagram) ig.textContent = `$${cat.instagram.price_usd} / mo`;
+                if (th && cat.threads) th.textContent = `$${cat.threads.price_usd} / mo`;
+                if (tr && rSet.trial_days) tr.textContent = `${rSet.trial_days} Days Free`;
             } catch (e) {
                 console.warn('Could not load billing catalog:', e);
             }
         }
 
-        function refreshAllStatus() {
-            fillHubUrls();
-            loadSettingsStatus();
-            loadAiPause();
-            loadAiTelemetry();
-            loadProviders();
-            loadSystemHealth();
-            loadBillingCatalog();
+        // Phase 9.6: PostHog Product Analytics Config
+        async function loadAnalytics() {
+            try {
+                const r = await fetch('/api/admin/site-settings');
+                const d = await r.json();
+                const cfg = (d.settings || {}).analytics_config || {};
+                const enEl = document.getElementById('ph-enabled');
+                const keyEl = document.getElementById('ph-key');
+                const hostEl = document.getElementById('ph-host');
+                if (enEl) enEl.checked = !!cfg.enabled;
+                if (keyEl) keyEl.value = cfg.posthog_key || '';
+                if (hostEl) hostEl.value = cfg.posthog_host || 'https://eu.i.posthog.com';
+            } catch (e) {
+                console.warn('Could not load analytics config:', e);
+            }
         }
 
+        async function saveAnalytics(btn) {
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Saving...'; }
+            const statusEl = document.getElementById('ph-status');
+            try {
+                const cfg = {
+                    enabled: document.getElementById('ph-enabled').checked,
+                    posthog_key: document.getElementById('ph-key').value.trim(),
+                    posthog_host: document.getElementById('ph-host').value.trim() || 'https://eu.i.posthog.com'
+                };
+                const r = await fetch('/api/admin/site-settings', {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ analytics_config: cfg })
+                });
+                if (r.ok) {
+                    const msg = window.hudhudI18n ? window.hudhudI18n.t('set.analytics_saved') : 'PostHog analytics configuration saved!';
+                    if (window.hudhudToast) hudhudToast.success(msg);
+                    if (statusEl) { statusEl.textContent = '✅ Saved'; statusEl.style.color = '#059669'; }
+                } else {
+                    const d = await r.json().catch(() => ({}));
+                    if (window.hudhudToast) hudhudToast.error(d.detail || 'Failed to save configuration');
+                    if (statusEl) { statusEl.textContent = '❌ Failed'; statusEl.style.color = '#dc2626'; }
+                }
+            } catch (e) {
+                if (window.hudhudToast) hudhudToast.error('Network error saving configuration');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+                if (statusEl) setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        }
+
+        async function refreshAllStatusWithFeedback(btn) {
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span style="display:inline-block; animation:spin 1s linear infinite;">🔄</span> Refreshing...';
+            }
+            try {
+                await Promise.all([
+                    fillHubUrls(),
+                    loadSettingsStatus(),
+                    loadAiPause(),
+                    loadAiTelemetry(),
+                    loadProviders(),
+                    loadSystemHealth(),
+                    loadBillingCatalog(),
+                    loadAnalytics()
+                ]);
+                const msg = window.hudhudI18n ? window.hudhudI18n.t('set.all_refreshed') : 'All system statuses refreshed successfully!';
+                if (window.hudhudToast) hudhudToast.success(msg);
+            } catch (e) {
+                if (window.hudhudToast) hudhudToast.error('Error refreshing statuses');
+            } finally {
+                if (btn) {
+                    btn.innerHTML = '✓ Refreshed!';
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = origText;
+                    }, 1200);
+                }
+            }
+        }
+
+        // Aliases for global & backwards compatibility
+        window.loadSystemHealth = loadSystemHealth;
+        window.checkSystemHealth = checkHealthWithFeedback;
+        window.refreshAllStatus = refreshAllStatusWithFeedback;
+        window.loadAnalytics = loadAnalytics;
+        window.saveAnalytics = saveAnalytics;
+
         document.addEventListener('DOMContentLoaded', () => {
-            refreshAllStatus();
+            refreshAllStatusWithFeedback(null);
         });
     </script>
 </body>

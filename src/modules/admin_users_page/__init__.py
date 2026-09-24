@@ -121,11 +121,7 @@ td .btn{white-space:nowrap;}
                 <span class="crumb-sep">/</span>
                 <span class="crumb-current">Admin Console — Users & Site</span>
             </div>
-            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
-                <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
-                    <span data-i18n="lang.switch_btn">🌐 العربية</span>
-                </button>
-            </div>
+            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;"></div>
         </header>
 
         <div class="app-content">

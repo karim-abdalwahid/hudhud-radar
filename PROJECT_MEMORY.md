@@ -2464,4 +2464,41 @@ The owner submitted 5 screenshots and 6 numbered action points:
   - Ran `pytest -q`: **382 passed, 1 warning in 57.73s**.
   - Zero regressions.
 
+## [Entry 067] 2026-09-24 — Topbar Language Deduplication, Health Cards CSS Restoration, Interactive Diagnostics Feedback & PostHog Relocation to Dev Console
+- **Timestamp**: 2026-09-24T07:25:00+03:00
+- **Actor**: Owner & AI Agent (Antigravity)
+- **Status**: ✅ COMPLETED & FULLY VERIFIED (382/382 PASSED)
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-24_session.md`
+
+### 1. Context & Owner Feedback
+The owner flagged 5 specific visual, operational, and architectural items:
+1. **Duplicate Language Button in Topbar (Image 1)**: Both "🌐 العربية" and the globe dropdown "🌐" appeared in the topbar on `/templates` and `/users`.
+2. **Identity Review Purpose (Image 2)**: Query regarding the exact utility of `/identity` (Identity Verification & Review Queue) and why all metrics show 0.
+3. **Card Styling Degradation (Images 3 & 4)**: The diagnostics and health matrix sections in `/settings` became unstyled flat vertical text instead of the clean cards layout.
+4. **Re-check Health Non-Interactivity (Image 5)**: `🔄 Re-check Health` and `🔄 Refresh All Status` had no loading feedback or confirmation, leading to uncertainty over whether they actually function.
+5. **PostHog Product Analytics Placement**: Clarified that PostHog was meant to be relocated into a clean section of the Developer Console (`/settings`), not removed from the platform.
+
+### 2. Implementation Summary
+1. **Topbar Language Button Deduplication**:
+   - Identified root cause: `saas.js` dynamically injects the official globe dropdown (`#hudhud-lang-globe`) into every `.app-topbar`. Concurrently, hardcoded `<button class="lang-switcher-btn">` existed in templates.
+   - Removed redundant button from `src/modules/templates_manager/__init__.py`, `src/modules/admin_users_page/__init__.py`, and `src/templates/settings.html`.
+   - Result: All topbars across the entire platform now feature exactly one unified language selector.
+2. **Card Styling Restoration in `/settings`**:
+   - Re-introduced `.health-grid`, `.health-card`, `.health-card-label`, and `.health-card-val` in `<style>`.
+   - Restored glassmorphic card borders, subtle box shadows, rounded corners, and responsive auto-fit grid columns across Tabs 1 and 3.
+3. **Interactive Diagnostics & Latency Feedback**:
+   - Updated `checkHealthWithFeedback(btn)` and `refreshAllStatusWithFeedback(btn)`.
+   - Clicking either button now displays an active spinning indicator (`⏳ Checking...` / `⏳ Refreshing...`), temporarily disables the button, and on completion displays a toast notification with the real-time Supabase database latency in milliseconds.
+4. **PostHog Relocation into Developer Console (`/settings`)**:
+   - Added a dedicated "Product Analytics & Telemetry (PostHog)" panel in Tab 3 of `src/templates/settings.html`.
+   - Wired inputs (`ph-enabled`, `ph-key`, `ph-host`) directly to `/api/admin/site-settings` (loading on startup and saving via `saveAnalytics(btn)` with toast feedback).
+   - Added all bilingual translation keys in `src/templates/static/i18n.js` (EN + AR).
+5. **Identity Resolution Architecture Clarification**:
+   - Documented the cross-platform deduplication engine (Zero-Guessing policy) preventing CRM lead contamination between Facebook, Instagram, and Threads.
+
+### 3. Verification & Test Proof
+- `scratch/test_points_verification.py`: 100% PASS across all 5 checks, verifying PostHog in `/settings`, absence of duplicate language buttons, presence of `.health-card` styles, and persistence of `analytics_config` via `PUT /api/admin/site-settings`.
+- `pytest -q`: 382 passed, 1 warning (100% baseline maintained).
+
+
 
