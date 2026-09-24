@@ -228,11 +228,16 @@ class AgentOrchestrator:
                     user_id=owner_user_id,
                 )
             else:
+                # Instagram Messaging API (/me/messages) requires a Facebook Page
+                # Access Token, NOT the Instagram User Token from the child app.
+                ig_send_token = connection_service.get_send_token_for_instagram(
+                    owner_user_id, recipient_id
+                ) or page_token
                 send_result = await self.client.send_instagram_message(
                     recipient_id=sender_id,
                     message_text=reply_text,
                     last_interaction_time=last_interaction,
-                    access_token=page_token,
+                    access_token=ig_send_token,
                     user_id=owner_user_id,
                 )
 

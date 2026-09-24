@@ -194,6 +194,45 @@ class ConnectionService:
             logger.warning("account token lookup failed → None (fail-closed): %s", e)
             return None
 
+    def get_send_token_for_instagram(self, user_id: str, ig_account_id: str) -> Optional[str]:
+        """Return the Facebook Page Access Token to use when SENDING Instagram DMs.
+
+        The Instagram Messaging API (/me/messages) requires a Facebook Page
+        Access Token — NOT the Instagram User Access Token from the child app.
+        We find the Facebook connection whose metadata.linked_ig_id matches
+        the IG business account and return its token.
+        Falls back to the IG User Token if no linked Facebook connection exists.
+        """
+        try:
+            # Look for a Facebook connection linked to this IG account
+            if supabase_db.is_connected and supabase_db.client:
+                linked = supabase_db.client.table("platform_connections").select("*") \
+                    .eq("user_id", str(user_id)) \
+                    .eq("platform", "facebook") \
+                    .eq("status", "active") \
+                    .contains("metadata", {"linked_ig_id": str(ig_account_id)}) \
+                    .execute().data or []
+            else:
+                linked = [
+                    r for r in (supabase_db.select("platform_connections", {
+                        "user_id": user_id, "platform": "facebook", "status": "active"
+                    }) or [])
+                    if str((r.get("metadata") or {}).get("linked_ig_id") or "") == str(ig_account_id)
+                ]
+            if linked:
+                row = linked[0]
+                exp = row.get("token_expires_at")
+                if not exp or exp > datetime.now(timezone.utc).isoformat():
+                    fb_token = decrypt_token(row.get("access_token_encrypted") or "")
+                    if fb_token:
+                        logger.debug("IG send: using linked Facebook Page token for IG account %s", ig_account_id)
+                        return fb_token
+        except Exception as e:
+            logger.warning("IG send token lookup via FB link failed: %s", e)
+        # Fallback: use the direct IG user token
+        logger.debug("IG send: no linked FB token found, falling back to IG user token for %s", ig_account_id)
+        return self.get_active_token_for_account(user_id, "instagram", ig_account_id)
+
     def get_publish_credentials(self, user_id: str, platform: str) -> Optional[Dict[str, str]]:
         """Return one entitled user's exact publishing credentials.
 
