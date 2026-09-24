@@ -29,7 +29,7 @@ FB_SCOPES = ("pages_show_list,pages_messaging,pages_manage_metadata,pages_read_e
              "pages_manage_engagement,instagram_manage_engagement")
 IG_SCOPES = ("instagram_business_basic,instagram_business_manage_insights,"
              "instagram_business_content_publish,instagram_business_manage_comments,"
-             "instagram_business_manage_messages,instagram_manage_engagement")
+             "instagram_business_manage_messages")
 
 
 # --------------------------------------------------------------------------
