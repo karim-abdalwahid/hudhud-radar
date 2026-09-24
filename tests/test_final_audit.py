@@ -13,9 +13,9 @@ def test_automations_save_prunes_removed_rows():
 
     db = FakeDB()
     w1, w2 = Workflow(name="A"), Workflow(name="B")
-    db_save_workflows(db, {w1.id: w1, w2.id: w2})
+    db_save_workflows(db, {w1.id: w1, w2.id: w2}, owner_user_id="user-1")
     assert len(db.select("automations_workflows")) == 2
-    db_save_workflows(db, {w1.id: w1})  # w2 deleted in memory
+    db_save_workflows(db, {w1.id: w1}, owner_user_id="user-1")  # w2 deleted in memory
     assert len(db.select("automations_workflows")) == 1
 
 

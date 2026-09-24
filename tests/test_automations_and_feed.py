@@ -4,22 +4,23 @@ Automations API now requires authentication — the shared `client` fixture
 (defined in tests/conftest.py) logs in as an admin.
 """
 import pytest
-from src.automations.service import automations_service
 
 
-def test_automations_crud_and_simulation(client):
+def test_automations_crud_and_simulation(client, monkeypatch):
     """Verifies complete CRUD operations and step simulation for visual automations."""
+    # The Supabase wrapper intentionally reports disconnected in TESTING.
+    # Mark its isolated in-memory store as available for this route-level
+    # persistence test; it still has no client and never reaches Supabase.
+    from src.core.supabase_client import supabase_db
+    monkeypatch.setattr(supabase_db, "is_connected", True)
     # 1. List automations
     res = client.get("/api/automations")
     assert res.status_code == 200
     data = res.json()
     assert data["status"] == "success"
-    assert len(data["workflows"]) >= 3
-
-    # Verify standard workflows exist
-    wf_names = [w["name"] for w in data["workflows"]]
-    assert any("Instagram Reel" in name for name in wf_names)
-    assert any("Facebook" in name for name in wf_names)
+    # New tenants must not inherit the old, shared workflow catalogue.  They
+    # begin with an empty private workspace and create their own workflows.
+    assert data["workflows"] == []
 
     # 2. Create new automation
     new_wf_payload = {
@@ -90,54 +91,12 @@ def test_automations_crud_and_simulation(client):
     assert del_res.json()["status"] == "success"
 
 
-def test_meta_feed_filtering_and_metrics(client):
-    """Verifies live Meta feed post_type filtering and engagement metrics."""
-    # 1. Fetch all posts
+def test_global_meta_feed_is_disabled_for_tenant_safety(client):
+    """The old shared feed cache must not be exposed; per-tenant feed returns safe isolated posts."""
     res = client.get("/api/meta/posts?platform=all&post_type=all&limit=100")
     assert res.status_code == 200
-    data = res.json()
-    assert data["status"] == "success"
-    posts = data["posts"]
-    assert len(posts) > 0
-
-    # Verify engagement metrics structure on cards
-    first = posts[0]
-    assert "likes_count" in first
-    assert "comments_count" in first
-    assert "shares_count" in first
-    assert "views_count" in first
-    assert "post_type" in first
-    assert "platform" in first
-    assert first["post_type"] in ["reel", "post"]
-    assert first["platform"] in ["facebook", "instagram"]
-
-    # 2. Filter by post_type=reel
-    res_reels = client.get("/api/meta/posts?post_type=reel&limit=50")
-    assert res_reels.status_code == 200
-    reels = res_reels.json()["posts"]
-    for r in reels:
-        assert r["post_type"] == "reel"
-
-    # 3. Filter by post_type=post
-    res_posts = client.get("/api/meta/posts?post_type=post&limit=50")
-    assert res_posts.status_code == 200
-    normal_posts = res_posts.json()["posts"]
-    for p in normal_posts:
-        assert p["post_type"] == "post"
-
-    # 4. Filter by platform=facebook
-    res_fb = client.get("/api/meta/posts?platform=facebook&limit=50")
-    assert res_fb.status_code == 200
-    fb_items = res_fb.json()["posts"]
-    for fb in fb_items:
-        assert fb["platform"] == "facebook"
-
-    # 5. Filter by platform=instagram
-    res_ig = client.get("/api/meta/posts?platform=instagram&limit=50")
-    assert res_ig.status_code == 200
-    ig_items = res_ig.json()["posts"]
-    for ig in ig_items:
-        assert ig["platform"] == "instagram"
+    assert res.json()["status"] == "success"
+    assert res.json()["posts"] == []
 
 
 def test_logo_unification_and_automations_page(client):
@@ -229,6 +188,8 @@ def test_webhook_endpoints_and_challenge_verification(client):
     )
     assert post_res.status_code == 200
     assert post_res.json()["status"] == "received"
-    assert post_res.json()["events_queued"] >= 1
+    # A valid signature is not sufficient to handle a customer event: the
+    # recipient business account must map to exactly one tenant first.
+    assert post_res.json()["events_queued"] == 0
 
 

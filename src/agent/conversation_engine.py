@@ -42,14 +42,22 @@ class ConversationEngine:
         lead_data: Dict[str, Any],
         incoming_message: str,
         conversation_history: list = None
-    ) -> Tuple[str, bool]:
+    ) -> Tuple[str, bool, bool]:
         """
         Generates a human-like reply based on the knowledge base and conversation context.
-        Returns: (reply_text, is_converted_lead)
+        Returns: (reply_text, is_converted_lead, used_ai)
+
+        `used_ai` is True only when an external Gemini call actually produced
+        the reply — never for the canned conversion acknowledgement or the
+        offline heuristic fallback. The orchestrator uses this to decide
+        whether the reply is billable (usage_service.record_usage), matching
+        the documented policy: failures and local fallbacks cost nothing,
+        because no Gemini call was made for them.
         """
         extracted = self.extract_contact_info(incoming_message)
         is_converted = bool(extracted["email"] or extracted["phone"])
         lead_name = lead_data.get("full_name") or lead_data.get("username") or "صديقنا"
+        owner_user_id = lead_data.get("user_id")
 
         # Case 1: Lead shared their contact details (Conversion Completed!)
         if is_converted:
@@ -57,14 +65,14 @@ class ConversationEngine:
                 f"أهلاً بك يا {lead_name}، شكراً جزيلاً لمشاركتك وسيلة التواصل! "
                 f"قام فريقنا بتسجيل بياناتك بنجاح، وسيتواصل معك مستشارنا المختص في أقرب وقت لتزويدك بكافة التفاصيل والبدء معاً."
             )
-            return reply, True
+            return reply, True, False
 
         # Case 2: Use Gemini LLM with dynamic RAG context
         if settings.LLM_PROVIDER == "gemini" and settings.GEMINI_API_KEY and not settings.GEMINI_API_KEY.startswith("your-"):
             try:
                 llm_reply = await self._call_gemini_api(lead_data, incoming_message, conversation_history)
                 if llm_reply:
-                    return llm_reply, False
+                    return llm_reply, False, True
             except Exception as e:
                 logger.error(f"Error invoking Gemini API: {e}. Falling back to knowledge-base heuristic.")
 
@@ -77,7 +85,7 @@ class ConversationEngine:
                 f"أهلاً بك يا {lead_name}! شرفتنا بتفاعلك 🚀 "
                 f"حابب نعرف أكتر عن اللي محتاجه ونرسل لك التفاصيل المناسبة. "
                 f"ممكن تشاركنا رقم هاتفك أو بريدك الإلكتروني للمتابعة معك فوراً؟"
-            ), False
+            ), False, False
 
         # Trigger 2: Pricing / Cost inquiry
         if any(w in msg_lower for w in ["سعر", "اسعار", "أسعار", "بكم", "بكام", "كام", "تكلفة", "اشتراك", "اشتراكات", "باقة", "باقات", "عروض", "cost", "price"]):
@@ -85,21 +93,21 @@ class ConversationEngine:
                 f"أهلاً بك يا {lead_name}! شكراً لاهتمامك. "
                 f"التفاصيل والأسعار بتختلف حسب احتياجك — عشان نرسل لك العرض الأنسب بالظبط، "
                 f"ما هي وسيلة التواصل الأنسب لك (رقم هاتف أو واتساب)؟"
-            ), False
+            ), False, False
 
         # Trigger 3: Services inquiry
         if any(w in msg_lower for w in ["خدمات", "ايش تقدمون", "ماذا تقدمون", "خدمتكم", "services", "بتعملوا ايه"]):
             return (
                 f"أهلاً بك {lead_name}! يسعدنا توضيح خدماتنا — حسب قاعدة معرفتنا الحالية:\n"
-                f"{self.kb.get_sales_closing_context()[:600] or 'أخبرنا باحتياجك بالتفصيل وسنرد عليك بكل التفاصيل.'}\n"
+                f"{self.kb.get_sales_closing_context(user_id=owner_user_id)[:600] or 'أخبرنا باحتياجك بالتفصيل وسنرد عليك بكل التفاصيل.'}\n"
                 f"ما هو الهدف الأهم لحسابك حالياً؟"
-            ), False
+            ), False, False
 
         # Default friendly response adhering to brand tone & inviting consultation
         return (
             f"مرحباً بك {lead_name}! يسعدنا تواصلك معنا. "
             f"كيف يمكننا مساعدتك اليوم؟"
-        ), False
+        ), False, False
 
     async def _call_gemini_api(self, lead_data: Dict[str, Any], message: str, history: list) -> Optional[str]:
         """Calls Google Gemini API with multi-turn conversation memory + RAG context."""
@@ -110,8 +118,9 @@ class ConversationEngine:
         }
 
         # Dynamic RAG context
-        rag_context = self.kb.search_relevant_chunks(message, top_k=3)
-        sales_tactics = self.kb.get_sales_closing_context()
+        owner_user_id = lead_data.get("user_id")
+        rag_context = self.kb.search_relevant_chunks(message, top_k=3, user_id=owner_user_id)
+        sales_tactics = self.kb.get_sales_closing_context(user_id=owner_user_id)
 
         system_prompt = (
             "أنت المساعد الذكي الرسمي المسؤول عن إدارة محادثات العملاء لحساب التواصل الاجتماعي المتصل بهذه المنصة.\n"

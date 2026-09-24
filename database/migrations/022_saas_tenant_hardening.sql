@@ -1,0 +1,13 @@
+-- Conceptual migration mirror. The executable production migration is:
+-- supabase/migrations/20260916190000_harden_backend_and_remove_unowned_legacy_data.sql
+--
+-- It performs the owner-approved deletion of legacy tenantless CRM/content/
+-- metrics/log/payment rows, adds campaign ownership, tenant-aware metric
+-- uniqueness, cascade-safe mandatory ownership, and a backend-only Data API.
+--
+-- The approved cleanup removes every existing NULL-owner row, including
+-- anonymous site traffic. The column remains nullable for future public
+-- visitors, which are not customer resources. Payment events, in contrast,
+-- are now only written after a verified user mapping and become non-null.
+
+-- See the Supabase migration for the exact transactional SQL and policy list.

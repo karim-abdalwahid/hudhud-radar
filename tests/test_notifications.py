@@ -154,3 +154,49 @@ def test_bell_ui_on_dashboard(client: TestClient):
     # anonymous = gated
     anon = TestClient(client.app)
     assert anon.get("/api/notifications").status_code == 401
+
+
+def test_notifications_bilingual_localization(client_as_user: TestClient, monkeypatch):
+    """Verifies that Arabic notifications are dynamically localized to English when requested."""
+    from src.modules.notifications import service as nsvc
+    from src.modules.notifications.service import localize_notification
+
+    # 1. Direct unit test of localize_notification
+    raw_welcome = {
+        "id": "1",
+        "title": "🎉 أهلاً بك في هدهد، Kareem Abdalwahid!",
+        "body": "حسابك جاهز الآن. الخطوة التالية: اربط صفحتك من الإعدادات وسيبدأ الوكيل الذكي بالرد على عملائك فوراً.",
+        "meta": {"template": "welcome_signup", "user_name": "Kareem Abdalwahid"},
+    }
+    loc_en = localize_notification(raw_welcome, "en")
+    assert "Welcome to Hudhud, Kareem Abdalwahid!" in loc_en["title"]
+    assert "Your account is ready" in loc_en["body"]
+
+    raw_plan = {
+        "id": "2",
+        "title": "✅ تم تفعيل باقة الشركات (Scale Agency)",
+        "body": "المنصات المشمولة في خطتك: facebook, instagram, threads. رصيد الردود تم تحديثه.",
+        "meta": {"job": "plan_assigned", "plan": "scale"},
+    }
+    loc_plan_en = localize_notification(raw_plan, "en")
+    assert "Plan activated" in loc_plan_en["title"]
+    assert "facebook, instagram, threads" in loc_plan_en["body"]
+
+    raw_credits = {
+        "id": "3",
+        "title": "⚡ تم إضافة 500 رصيد ردود ذكية",
+        "body": "تمت إضافة الرصيد إلى حسابك بنجاح. رصيدك الإجمالي الآن: 1500 نقطة.",
+        "meta": {"job": "credits_grant", "amount": 500},
+    }
+    loc_cred_en = localize_notification(raw_credits, "en")
+    assert "Added 500 AI credits" in loc_cred_en["title"]
+    assert "1500 points" in loc_cred_en["body"]
+
+    # 2. API integration test with ?lang=en query param
+    monkeypatch.setattr(nsvc.supabase_db, "select", lambda table, filters=None: [raw_welcome, raw_plan])
+    res_en = client_as_user.get("/api/notifications?lang=en")
+    assert res_en.status_code == 200
+    data_en = res_en.json()["notifications"]
+    assert "Welcome to Hudhud" in data_en[0]["title"]
+    assert "Plan activated" in data_en[1]["title"]
+

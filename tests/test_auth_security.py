@@ -143,15 +143,16 @@ def test_public_routes_open_anonymous(anon_client):
     assert anon_client.get("/data-deletion").status_code == 200
 
 
-def test_admin_api_blocked_for_non_admin(anon_client, admin_creds):
+def test_tenant_meta_config_requires_a_real_connection_payload(anon_client, admin_creds):
     # Register a plain user
     import uuid
     email = f"plain_{uuid.uuid4().hex[:6]}@hudhud.test"
     anon_client.post("/auth/register", json={"email": email, "password": "StrongPass#1", "terms_accepted": True})
 
-    # Try an admin-only mutation
+    # Manual connection setup is tenant-scoped, so a regular user may reach
+    # it, but cannot create a connection without the required page token.
     res = anon_client.post("/api/meta/configure", json={"page_id": "123456"})
-    assert res.status_code == 403
+    assert res.status_code == 400
 
     # Try admin-only page
     page = anon_client.get("/settings", follow_redirects=False)
@@ -167,6 +168,9 @@ def test_event_dedup_claim_logic():
     assert d.claim("evt-1", "message") is False  # duplicate blocked
     assert d.claim("evt-2", "comment") is True
     assert d.claim("", "message") is False  # empty keys never claimed
+    assert d.claim("same-event", "message", scope="tenant-a") is True
+    assert d.claim("same-event", "message", scope="tenant-b") is True
+    assert d.claim("same-event", "message", scope="tenant-a") is False
 
 
 def test_event_dedup_memory_limit():
@@ -194,8 +198,11 @@ def test_webhook_duplicate_payload_processed_once(client, monkeypatch):
         return {}
     orig_orch = orch_mod.agent_orchestrator.process_incoming_message_event
     orig_auto = auto_mod.automations_service.process_comment_event
+    from src.modules.connections.service import connection_service
+    orig_owner = connection_service.owner_for_account
     orch_mod.agent_orchestrator.process_incoming_message_event = _noop
     auto_mod.automations_service.process_comment_event = lambda ev: None
+    connection_service.owner_for_account = lambda platform, account_id: "tenant-webhook"
     try:
         payload = {
             "object": "instagram",
@@ -226,6 +233,7 @@ def test_webhook_duplicate_payload_processed_once(client, monkeypatch):
     finally:
         orch_mod.agent_orchestrator.process_incoming_message_event = orig_orch
         auto_mod.automations_service.process_comment_event = orig_auto
+        connection_service.owner_for_account = orig_owner
 
     assert queued_first == 1
     assert queued_second == 0  # duplicate suppressed

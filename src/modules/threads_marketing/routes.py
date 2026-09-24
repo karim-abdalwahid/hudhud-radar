@@ -31,6 +31,13 @@ def _session_user_id(request: Request) -> Optional[str]:
     session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
     return (session or {}).get("sub")
 
+
+def _require_session_user_id(request: Request) -> str:
+    user_id = _session_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="authentication required")
+    return user_id
+
 # --------------------------------------------------------------------
 # Extended Meta APIs: Threads & Marketing (spec v2.1 scopes)
 # --------------------------------------------------------------------
@@ -40,15 +47,18 @@ class ThreadsPublishPayload(BaseModel):
 
 
 @router.get("/api/threads/status", tags=["Threads"])
-async def threads_connection_status():
+async def threads_connection_status(request: Request):
     """Returns Threads OAuth connection status (app configured + token state)."""
-    return threads_oauth_manager.get_status()
+    return threads_oauth_manager.get_status(_require_session_user_id(request))
 
 
 @router.get("/api/threads/oauth/authorize", tags=["Threads"])
-async def threads_oauth_authorize():
-    """Builds the Threads OAuth authorization URL (admin clicks it to connect)."""
-    result = threads_oauth_manager.build_authorize_url()
+async def threads_oauth_authorize(request: Request):
+    """Build the signed-in, entitled customer's Threads OAuth URL."""
+    user_id = _require_session_user_id(request)
+    from src.modules.connections.service import connection_service
+    connection_service.assert_entitled(user_id, "threads")
+    result = threads_oauth_manager.build_authorize_url(user_id)
     if result.get("status") == "error":
         raise HTTPException(status_code=400, detail=result["detail"])
     return result
@@ -60,33 +70,35 @@ async def threads_oauth_callback(request: Request, code: Optional[str] = None, s
     OAuth redirect target. Validates the CSRF state, exchanges the code for a
     60-day token, persists it (per-user when a session rides along — the
     normal path; legacy global for the admin flow), then redirects to
-    /settings with a result flag.
+    /account with a result flag.
     """
-    if not code or not threads_oauth_manager.validate_state(state):
-        return RedirectResponse(url="/settings?threads=error", status_code=303)
-    # session-aware: logged-in user → per-user connection (Phase 9.7)
-    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
-    user_id = (session or {}).get("sub")
+    user_id = _session_user_id(request)
+    if not user_id:
+        return RedirectResponse(url="/login?threads=expired_session", status_code=303)
+    if not code or not threads_oauth_manager.validate_state(state, user_id):
+        return RedirectResponse(url="/account?threads=error", status_code=303)
     result = await threads_oauth_manager.exchange_code(code, user_id=user_id)
     if result.get("status") != "success":
-        return RedirectResponse(url="/settings?threads=error", status_code=303)
-    return RedirectResponse(url=f"/settings?threads=connected&username={result.get('username', '')}", status_code=303)
+        return RedirectResponse(url="/account?threads=error", status_code=303)
+    return RedirectResponse(url="/account?threads=connected", status_code=303)
 
 
 @router.post("/api/threads/oauth/refresh", tags=["Threads"])
-async def threads_oauth_refresh():
+async def threads_oauth_refresh(request: Request):
     """Refreshes the 60-day Threads token (safe to call periodically)."""
-    result = await threads_oauth_manager.refresh_token()
+    result = await threads_oauth_manager.refresh_token(user_id=_session_user_id(request))
     if result.get("status") == "error":
         raise HTTPException(status_code=400, detail=result["detail"])
     return result
 
 
 @router.post("/api/threads/disconnect", tags=["Threads"])
-async def threads_disconnect():
+async def threads_disconnect(request: Request):
     """Removes stored Threads credentials."""
-    return threads_oauth_manager.disconnect()
+    from src.modules.connections.service import connection_service
+    if not connection_service.revoke(_require_session_user_id(request), "threads"):
+        raise HTTPException(status_code=500, detail="disconnect failed")
+    return {"status": "success", "platform": "threads", "connected": False}
 
 
 @router.post("/api/threads/publish", tags=["Threads"])
@@ -131,14 +143,8 @@ async def get_threads_insights(request: Request = None,
 async def reply_to_threads_post(thread_id: str, payload: ThreadsPublishPayload,
                                 request: Request = None):
     """Replies to a Threads post/reply on behalf of the connected account
-    (threads_manage_replies write path). Admin-only; requires the session user's
-    per-user connection (or the legacy token fallback)."""
+    (threads_manage_replies write path) for the session user's connected account."""
     session_user = _session_user_id(request) if request else None
-    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "") if request else None
-    if not session or session.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="صلاحيات المدير مطلوبة")
-
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="نص الرد فارغ")
 
@@ -179,12 +185,12 @@ async def sync_threads_replies(request: Request = None,
 
 
 @router.post("/api/marketing/sync-leads", tags=["Marketing API"])
-async def sync_marketing_leads(form_id: Optional[str] = None):
+async def sync_marketing_leads(request: Request, form_id: Optional[str] = None):
     """Imports Meta Lead Ads leads into the CRM with full provenance."""
-    return await marketing_leads_sync.sync_lead_forms(form_id)
+    return await marketing_leads_sync.sync_lead_forms(_session_user_id(request), form_id)
 
 
 @router.post("/api/marketing/sync-campaigns", tags=["Marketing API"])
-async def sync_marketing_campaigns():
+async def sync_marketing_campaigns(request: Request):
     """Pulls ad campaign performance metrics into the campaigns table."""
-    return await marketing_leads_sync.sync_campaign_insights()
+    return await marketing_leads_sync.sync_campaign_insights(_session_user_id(request))

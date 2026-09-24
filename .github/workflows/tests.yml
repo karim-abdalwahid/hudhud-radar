@@ -1,0 +1,35 @@
+name: Test suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: pytest (Python 3.11)
+    runs-on: ubuntu-latest
+    env:
+      # The suite's conftest also enforces this before application imports.
+      # No production credential is available to CI or needed by these tests.
+      TESTING: "true"
+      APP_ENV: test
+      SECRET_KEY: ci-test-secret-key-not-for-production-2026
+      META_APP_SECRET: ci-test-meta-app-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt pytest pytest-asyncio
+
+      - name: Run isolated test suite
+        run: python -m pytest -q

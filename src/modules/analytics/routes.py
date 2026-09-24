@@ -23,22 +23,30 @@ from src.modules.context import (  # explicit for readability
 
 router = APIRouter()
 
+
+def _session_user_id(request: Request) -> str:
+    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    if not session or not session.get("sub"):
+        raise HTTPException(status_code=401, detail="authentication required")
+    return str(session["sub"])
+
 # --------------------------------------------------------------------
 # 5. Analytics & Performance Reports
 # --------------------------------------------------------------------
 @router.get("/api/analytics/summary", tags=["Analytics"])
-async def get_analytics_summary():
+async def get_analytics_summary(request: Request):
     """Returns granular analytics on operations, success/failure rate, and root causes."""
     return {
-        "operations": statistics_engine.get_operations_summary(),
-        "leads_and_conversions": statistics_engine.get_lead_conversion_metrics()
+        "operations": statistics_engine.get_operations_summary(_session_user_id(request)),
+        "leads_and_conversions": statistics_engine.get_lead_conversion_metrics(_session_user_id(request))
     }
 
 
 @router.get("/api/reports/page-performance", tags=["Reports"])
-async def get_page_performance_report():
+async def get_page_performance_report(request: Request):
     """Returns rendered page performance report in Markdown."""
-    md = report_generator.generate_page_performance_report_md()
+    md = report_generator.generate_page_performance_report_md(user_id=_session_user_id(request))
     return {"report_markdown": md}
 
 
@@ -63,7 +71,7 @@ async def get_product_analytics_config():
 
 
 @router.get("/api/reports/activity-execution", tags=["Reports"])
-async def get_activity_execution_report():
+async def get_activity_execution_report(request: Request):
     """Returns rendered activity execution and failure root-cause report in Markdown."""
-    md = report_generator.generate_activity_execution_report_md()
+    md = report_generator.generate_activity_execution_report_md(user_id=_session_user_id(request))
     return {"report_markdown": md}

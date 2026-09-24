@@ -73,6 +73,20 @@ def register(app: FastAPI) -> None:
         return {"status": "success",
                 **entitlement_service.subscription_status(session["sub"])}
 
+    @app.get("/api/billing/usage", tags=["Billing"])
+    async def my_usage(request: Request):
+        """My AI-credit balance and a 30-day consumption breakdown — powers
+        the usage card on /account."""
+        session = _me(request)
+        from src.modules.billing.usage import usage_service
+        data = usage_service.summary(session["sub"])
+        return {
+            "status": "success",
+            **data,
+            "credits": data.get("ai_credits", 0),
+            "balance": data.get("ai_credits", 0),
+        }
+
     @app.get("/api/admin/billing/catalog", tags=["Billing"])
     async def admin_catalog(request: Request):
         _require_admin(request)
@@ -135,14 +149,9 @@ def register(app: FastAPI) -> None:
         if not event_id or not event_deduplicator.claim(event_id, f"payment:{provider}"):
             return {"status": "duplicate_ignored"}
 
-        # Audit log FIRST (idempotent record even if later steps fail)
-        supabase_db.insert("payment_events", {
-            "provider": provider, "event_id": event["event_id"] or "unknown",
-            "event_type": event["event_type"], "user_id": None,
-            "payload": event.get("raw", {}),
-        })
-
-        # Resolve local user by email (Google/Email accounts share the table)
+        # Resolve local user before persistence.  A gateway event without a
+        # verified Hudhud owner is operationally logged, but is never stored
+        # as a tenantless payment row.
         user_email = (event.get("user_email") or "").strip().lower()
         target_user = None
         if user_email:
@@ -152,24 +161,83 @@ def register(app: FastAPI) -> None:
             except Exception:
                 target_user = None
 
+        if target_user and target_user.get("id"):
+            supabase_db.insert("payment_events", {
+                "provider": provider, "event_id": event["event_id"] or "unknown",
+                "event_type": event["event_type"], "user_id": target_user["id"],
+                "payload": event.get("raw", {}),
+            })
+        else:
+            logger.warning(
+                "%s payment event %s has no matching Hudhud user; no tenant record was created",
+                provider, event.get("event_id") or "unknown",
+            )
+
         # Apply payment truth
         from src.modules.billing.services import entitlement_service
         kind = event.get("kind")
         if kind == "subscription_activated" and target_user:
+            is_trial = bool(event.get("is_trial"))
             platforms = event.get("platforms") or []
-            if platforms:
-                entitlement_service.sync_from_platforms(target_user["id"], platforms,
-                                                        source="subscription")
-            entitlement_service.upsert_subscription(
-                target_user["id"], status="active",
-                payment_provider=provider,
-                provider_subscription_id=event.get("subscription_ref"))
+            upstream_status = str(event.get("subscription_status") or "").lower()
+            if is_trial and upstream_status not in ("active", "past_due"):
+                applied = entitlement_service.start_trial(
+                    target_user["id"], payment_provider=provider,
+                    provider_subscription_id=event.get("subscription_ref"),
+                )
+                if not applied:
+                    logger.warning("Trial webhook ignored for user %s: trial was already used", target_user["id"])
+            else:
+                applied = True
+                # Trial products represent all three channels.  At conversion
+                # Polar may still identify the original trial product rather
+                # than repeat our checkout metadata, so retain all trial
+                # capabilities while changing their local source to paid.
+                if is_trial and not platforms:
+                    from src.modules.billing.services import TRIAL_ENTITLEMENTS
+                    platforms = [item.split(":", 1)[1] for item in TRIAL_ENTITLEMENTS]
+                # For renewals where event metadata lacks platforms, retain current connected platforms
+                if not platforms:
+                    platforms = entitlement_service.connected_platforms(target_user["id"])
+                if platforms:
+                    entitlement_service.sync_from_platforms(target_user["id"], platforms,
+                                                            source="subscription")
+                sub_data = {
+                    "status": "active",
+                    "payment_provider": provider,
+                    "provider_subscription_id": event.get("subscription_ref"),
+                }
+                if event.get("current_period_end"):
+                    sub_data["current_period_end"] = event.get("current_period_end")
+                entitlement_service.upsert_subscription(target_user["id"], **sub_data)
+                # Paid activation funds the wallet. ensure_minimum_credits is
+                # idempotent, so a redelivered webhook (a NEW event_id is
+                # still deduped above by event_deduplicator; this is a second,
+                # cheaper line of defense) cannot stack unlimited free credit.
+                try:
+                    from src.modules.billing.usage import usage_service
+                    usage_service.grant_platform_credits(target_user["id"], len(platforms) or 1)
+                except Exception as e:
+                    logger.error(f"platform credit grant failed for {target_user['id']}: {e}")
             try:
-                from src.modules.notifications.service import notification_service
-                notification_service.create(target_user["id"],
-                    "✅ تم تفعيل اشتراكك",
-                    f"المنصات المفعلة: {', '.join(platforms) if platforms else 'أصبحت نشطة'}",
-                    "success", {"job": "payment"})
+                if applied:
+                    from src.modules.notifications.service import notification_service
+                    trial_started = is_trial and upstream_status not in ("active", "past_due")
+                    title_ar = "✅ بدأت تجربتك المجانية" if trial_started else "✅ تم تفعيل اشتراكك"
+                    detail_ar = ("كل المنصات متاحة لمدة 3 أيام"
+                              if trial_started else f"المنصات المفعلة: {', '.join(platforms) if platforms else 'أصبحت نشطة'}")
+                    title_en = "✅ Your free trial has started" if trial_started else "✅ Subscription activated"
+                    detail_en = ("All platforms available for 3 days"
+                              if trial_started else f"Active platforms: {', '.join(platforms) if platforms else 'Now active'}")
+                    notification_service.create(target_user["id"], title_ar, detail_ar,
+                                                "success", {
+                                                    "job": "payment",
+                                                    "trial": trial_started,
+                                                    "title_ar": title_ar,
+                                                    "body_ar": detail_ar,
+                                                    "title_en": title_en,
+                                                    "body_en": detail_en,
+                                                })
             except Exception:
                 pass
         elif kind == "subscription_canceled" and target_user:
@@ -178,10 +246,20 @@ def register(app: FastAPI) -> None:
                                                     source="subscription")
             try:
                 from src.modules.notifications.service import notification_service
+                title_ar = "⚠️ تم إلغاء اشتراكك"
+                body_ar = "المنصات المتوقفة — فعّل اشتراكاً لاستئناف الخدمة"
+                title_en = "⚠️ Subscription canceled"
+                body_en = "Channels paused — activate a plan to resume automated service"
                 notification_service.create(target_user["id"],
-                    "⚠️ تم إلغاء اشتراكك",
-                    "المنصات المتوقفة — فعّل اشتراكاً لاستئناف الخدمة",
-                    "warning", {"job": "payment"})
+                    title_ar,
+                    body_ar,
+                    "warning", {
+                        "job": "payment",
+                        "title_ar": title_ar,
+                        "body_ar": body_ar,
+                        "title_en": title_en,
+                        "body_en": body_en,
+                    })
             except Exception:
                 pass
 
@@ -283,6 +361,12 @@ def register(app: FastAPI) -> None:
     async def start_trial_checkout(request: Request):
         """3-day all-platforms trial — requires card capture via the gateway."""
         session = _me(request)
+        from src.modules.billing.services import entitlement_service
+        if not entitlement_service.can_start_trial(session["sub"]):
+            raise HTTPException(
+                status_code=409,
+                detail="لقد استخدمت التجربة المجانية أو لديك اشتراك نشط بالفعل",
+            )
         user = {"id": session["sub"], "email": session["email"]}
         from src.payments.registry import active_gateway
         gateway = active_gateway()

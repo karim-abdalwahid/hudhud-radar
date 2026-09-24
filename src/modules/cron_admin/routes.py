@@ -60,10 +60,16 @@ async def cron_scheduler_tick(request: Request):
 
 @router.get("/api/cron/insights-sync", tags=["Cron"])
 async def cron_insights_sync(request: Request):
-    """Cron trigger for daily Meta Insights sync (Facebook + Instagram metrics)."""
+    """Cron trigger for each customer's daily Meta Insights sync."""
     _verify_cron_secret(request)
     try:
-        result = await meta_insights_sync.sync_recent_metrics(days=7)
+        rows = supabase_db.select("platform_connections", {"status": "active"}) or []
+        owner_ids = sorted({str(row.get("user_id")) for row in rows if row.get("user_id")})
+        outcomes = []
+        for owner_id in owner_ids:
+            outcomes.append({"user_id": owner_id,
+                             "result": await meta_insights_sync.sync_recent_metrics(owner_id, days=7)})
+        result = {"status": "success", "tenants_checked": len(owner_ids), "outcomes": outcomes}
     except Exception as e:
         logger.error(f"insights sync cron failed (reported 200): {e}")
         return {"status": "partial", "error": str(e)[:200]}
@@ -103,6 +109,12 @@ async def cron_threads_token_refresh(request: Request):
         _notify_admin("🔄 تحديث توكن Threads",
                       f"تم تحديث {len(result['refreshed'])} توكن(ات) قبل انتهائها",
                       "success", {"job": "threads_token_refresh", **result})
+    # Run daily billing reconciliation alongside token maintenance
+    try:
+        from src.modules.billing.services import entitlement_service
+        result["billing_reconciliation"] = entitlement_service.reconcile_active_subscriptions()
+    except Exception as e:
+        logger.warning(f"daily billing reconciliation inline error: {e}")
     return result
 
 
@@ -122,3 +134,16 @@ async def cron_instagram_token_refresh(request: Request):
                       f"تم تحديث {len(result['refreshed'])} توكن(ات) قبل انتهائها",
                       "success", {"job": "instagram_token_refresh", **result})
     return result
+
+
+@router.get("/api/cron/billing-reconciliation", tags=["Cron"])
+async def cron_billing_reconciliation(request: Request):
+    """Daily safety net: reconciles active subscriptions against payment gateway
+    to ensure renewals grant monthly credits even if webhooks failed."""
+    _verify_cron_secret(request)
+    try:
+        from src.modules.billing.services import entitlement_service
+        return entitlement_service.reconcile_active_subscriptions()
+    except Exception as e:
+        logger.error(f"billing reconciliation cron failed: {e}")
+        return {"status": "error", "error": str(e)[:200]}

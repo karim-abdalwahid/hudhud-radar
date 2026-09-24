@@ -2,6 +2,8 @@
 Supabase PostgreSQL Client Wrapper with development/in-memory fallback mode.
 """
 from typing import Optional, Dict, Any, List
+import base64
+import json
 import uuid
 from datetime import datetime, timezone
 from src.config import settings
@@ -26,7 +28,8 @@ class InMemoryDatabase:
             "activity_logs": [],
             "page_performance_metrics": [],
             "campaigns": [],
-            "content_posts": []
+            "content_posts": [],
+            "app_settings": [],
         }
 
     def insert(self, table: str, row: Dict[str, Any]) -> Dict[str, Any]:
@@ -85,6 +88,18 @@ class SupabaseManager:
 
     def _initialize(self):
         service_key = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY
+        if settings.TESTING:
+            logger.info("TESTING mode enabled. Using isolated in-memory database.")
+            return
+        if service_key and not self._is_service_role_key(service_key):
+            message = (
+                "SUPABASE_SERVICE_ROLE_KEY is not a service-role key. "
+                "Use the server-side service_role/secret key; never use the anon key here."
+            )
+            if settings.APP_ENV.lower() == "production":
+                raise DatabaseConnectionError(message)
+            logger.warning(message + " Using in-memory database.")
+            return
         if SUPABASE_AVAILABLE and settings.SUPABASE_URL and service_key:
             try:
                 self.client = create_client(settings.SUPABASE_URL, service_key)
@@ -102,6 +117,19 @@ class SupabaseManager:
             else:
                 logger.info("Supabase credentials not fully configured. Using local in-memory store for development/testing.")
             self.is_connected = False
+
+    @staticmethod
+    def _is_service_role_key(key: str) -> bool:
+        """Accept modern secret keys and legacy JWT keys carrying the service_role claim."""
+        if key.startswith("sb_secret_"):
+            return True
+        try:
+            payload_segment = key.split(".")[1]
+            payload_segment += "=" * (-len(payload_segment) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(payload_segment))
+            return payload.get("role") == "service_role"
+        except (IndexError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            return False
 
     def _reject_production_memory_write(self, table: str, op: str):
         """ZERO-FABRICATION: in production without Supabase, writes to the

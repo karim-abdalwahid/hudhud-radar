@@ -7,7 +7,8 @@ Serves every dashboard page template with:
     hardcode the domain (single source of truth: settings.APP_BASE_URL).
 
 Migrated verbatim from main.py (WS0.3). Page access stays enforced by the
-central middleware + ADMIN_PAGE_PATHS (settings/identity/analytics).
+central middleware + ADMIN_PAGE_PATHS (settings/identity); analytics is a
+tenant-scoped customer report surface.
 """
 from typing import Optional
 
@@ -223,9 +224,9 @@ module_registry.register_module(
         NavEntry(href="/knowledge", label_key="nav.knowledge", icon="🧠",
                  section="nav.workspaces", order=5),
         NavEntry(href="/identity", label_key="nav.identity", icon="🔍",
-                 section="nav.workspaces", order=6, admin_only=True),
+                 section="nav.workspaces", order=6),
         NavEntry(href="/analytics", label_key="nav.analytics", icon="📈",
-                 section="nav.analytics_system", order=1, admin_only=True),
+                 section="nav.analytics_system", order=1),
         NavEntry(href="/settings", label_key="nav.settings", icon="⚙️",
                  section="nav.analytics_system", order=2, admin_only=True),
     ],

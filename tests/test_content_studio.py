@@ -44,7 +44,7 @@ async def test_generate_post_aida_framework():
         platform=ContentPlatform.BOTH,
         cta_keyword="ابدأ",
     )
-    result = await content_engine.generate_content(req)
+    result = await content_engine.generate_content(req, user_id="tenant-content-engine")
     assert result is not None
     assert result.post_type == PostType.POST
     assert len(result.generated_text) > 50
@@ -62,7 +62,7 @@ async def test_generate_reel_script_structure():
         platform=ContentPlatform.INSTAGRAM,
         cta_keyword="متجر",
     )
-    result = await content_engine.generate_content(req)
+    result = await content_engine.generate_content(req, user_id="tenant-content-engine")
     assert result is not None
     assert result.post_type == PostType.REEL
     assert result.script_breakdown is not None
@@ -80,7 +80,7 @@ async def test_generate_story_sequence():
         platform=ContentPlatform.BOTH,
         cta_keyword="إعلان",
     )
-    result = await content_engine.generate_content(req)
+    result = await content_engine.generate_content(req, user_id="tenant-content-engine")
     assert result is not None
     assert result.post_type == PostType.STORY
     assert result.script_breakdown is not None
@@ -101,7 +101,7 @@ def test_content_post_lifecycle(content_service):
         creation_mode=CreationMode.MANUAL,
     )
     # 1. Create
-    created = content_service.create_post(post_in)
+    created = content_service.create_post(post_in, user_id="tenant-content")
     assert created.id is not None
     assert created.status == ContentStatus.DRAFT
     assert created.content_text == post_in.content_text
@@ -186,7 +186,7 @@ async def test_scheduler_executes_due_posts(content_service):
         status=ContentStatus.SCHEDULED,
         scheduled_for=past_time,
     )
-    post = content_service.create_post(post_in)
+    post = content_service.create_post(post_in, user_id="tenant-content")
 
     mock_publisher = MagicMock()
     mock_publisher.publish_content = AsyncMock(return_value={
@@ -212,8 +212,16 @@ async def test_scheduler_executes_due_posts(content_service):
 # -------------------------------------------------------------
 # 5. REST API Integration Tests
 # -------------------------------------------------------------
-def test_api_generate_content(test_client):
-    """Test POST /api/content/generate endpoint."""
+def test_api_generate_content(test_client, monkeypatch):
+    """Test POST /api/content/generate endpoint.
+
+    This test's admin fixture lives in auth's in-memory UserStore, which is a
+    separate store from supabase_db's in-memory "users" table (the one
+    ai_credits lives on) — pre-existing test-infra split, unrelated to this
+    test's purpose. Bypass the credit gate here; it has its own dedicated
+    coverage in tests/test_usage_credits.py.
+    """
+    monkeypatch.setattr("src.modules.billing.usage.usage_service.has_credits", lambda *a, **k: True)
     res = test_client.post("/api/content/generate", json={
         "topic": "كيف تنشئ إعلانات ناجحة",
         "post_type": "post",

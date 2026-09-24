@@ -24,24 +24,56 @@ class ContentEngine:
     def __init__(self):
         pass
 
-    async def generate_content(self, req: ContentGenerationRequest) -> ContentGenerationResponse:
+    async def generate_content(self, req: ContentGenerationRequest, user_id: str) -> ContentGenerationResponse:
         """
         Generates marketing copy, reel scripts, or story sequences based on the request.
-        Uses Gemini LLM if key is present, with a rich Egyptian marketing copywriter fallback.
+        Every production request has an owner id so the prompt can be grounded
+        in that tenant's knowledge base.  The caller must derive this id from
+        the verified session, never from JSON supplied by the browser.
         """
+        if not user_id:
+            raise ValueError("مالك المحتوى مطلوب")
+
+        knowledge_context = await self._tenant_knowledge_context(req, user_id)
+
         # Try Gemini LLM first if configured
         if settings.LLM_PROVIDER == "gemini" and settings.GEMINI_API_KEY and not settings.GEMINI_API_KEY.startswith("your-"):
             try:
-                llm_result = await self._generate_with_gemini(req)
+                llm_result = await self._generate_with_gemini(req, knowledge_context)
                 if llm_result:
                     return llm_result
             except Exception as e:
                 logger.error(f"Gemini content generation failed: {e}. Falling back to internal marketing engine.")
 
-        # Fallback to internal high-conversion Arabic marketing templates
+        # The fallback makes no tenant-specific factual claims, so an LLM
+        # outage cannot invent a customer's catalog, prices, or brand voice.
         return self._generate_fallback_content(req)
 
-    async def _generate_with_gemini(self, req: ContentGenerationRequest) -> Optional[ContentGenerationResponse]:
+    async def _tenant_knowledge_context(self, req: ContentGenerationRequest, user_id: str) -> str:
+        """Fetches only the requesting tenant's relevant business facts.
+
+        DBKnowledgeBase uses a synchronous Supabase/embedding client.  Moving
+        it to a worker keeps a slow vector request from blocking the ASGI event
+        loop while other tenants receive messages or upload files.
+        """
+        from src.knowledge.db_knowledge_base import db_knowledge_base
+
+        query = " ".join(
+            value.strip()
+            for value in (req.topic or "", req.target_audience or "", req.cta_keyword or "")
+            if value and value.strip()
+        )
+        relevant = await asyncio.to_thread(
+            db_knowledge_base.search_context, query or "المحتوى والخدمات", 4, user_id
+        )
+        sales = await asyncio.to_thread(db_knowledge_base.sales_context, user_id)
+        parts = [part.strip() for part in (relevant, sales) if part and part.strip()]
+        # Bound prompt size while retaining the query-specific evidence first.
+        return "\n\n".join(parts)[:7000]
+
+    async def _generate_with_gemini(
+        self, req: ContentGenerationRequest, knowledge_context: str
+    ) -> Optional[ContentGenerationResponse]:
         """Calls Google Gemini API to generate structured marketing copy."""
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.LLM_MODEL}:generateContent"
         headers = {
@@ -49,7 +81,7 @@ class ContentEngine:
             "X-goog-api-key": settings.GEMINI_API_KEY,
         }
 
-        prompt = self._build_gemini_prompt(req)
+        prompt = self._build_gemini_prompt(req, knowledge_context)
         payload = {
             "contents": [
                 {"role": "user", "parts": [{"text": prompt}]}
@@ -91,7 +123,7 @@ class ContentEngine:
             logger.warning(f"Gemini API returned code {resp.status_code if resp is not None else 'network'}: {resp.text[:300] if resp is not None else 'request error'}")
             return None
 
-    def _build_gemini_prompt(self, req: ContentGenerationRequest) -> str:
+    def _build_gemini_prompt(self, req: ContentGenerationRequest, knowledge_context: str) -> str:
         cta_word = req.cta_keyword or "ابدأ"
         audience = req.target_audience or "رواد أعمال، أصحاب مشاريع، صناع محتوى"
         
@@ -102,6 +134,21 @@ class ContentEngine:
             f"الجمهور المستهدف: {audience}.\n"
             f"كلمة الـ CTA المطلوبة للرد التلقائي: [{cta_word}].\n\n"
         )
+
+        if knowledge_context:
+            system_instruction += (
+                "مصدر الحقائق الوحيد الخاص بالنشاط التالي هو قاعدة معرفة مالك الحساب. "
+                "استخدم فقط الحقائق والأسعار والمنتجات والنبرة الموجودة فيه، ولا تخلط "
+                "أي معلومة من نشاط آخر ولا تخترع تفاصيل غير مذكورة:\n"
+                "--- بداية معرفة العميل ---\n"
+                f"{knowledge_context}\n"
+                "--- نهاية معرفة العميل ---\n\n"
+            )
+        else:
+            system_instruction += (
+                "لا توجد معرفة موثقة كافية لهذا الحساب حاليًا. اكتب قالبًا عامًا فقط، "
+                "ولا تنسب أي منتج أو سعر أو رقم أو عرض أو نتيجة إلى النشاط.\n\n"
+            )
 
         if req.post_type == PostType.REEL:
             system_instruction += (
@@ -193,9 +240,9 @@ class ContentEngine:
                 f"{hook}\n\n"
                 f"في الفيديو ده لخصتلك أهم 3 أسرار للنجاح في {topic} بدون تعقيد.\n\n"
                 f"💬 اكتب كلمة [{cta_word}] في التعليقات وهيصلك الدليل التطبيقي المجاني في رسائل الصفحة فوراً!\n\n"
-                f"#ريلز #تسويق_إلكتروني #إبدأ_ماركتينج #{topic.replace(' ', '_')} #بيزنس #ذكاء_اصطناعي"
+                f"#ريلز #تسويق_إلكتروني #{topic.replace(' ', '_')} #بيزنس #ذكاء_اصطناعي"
             )
-            hashtags = ["#ريلز", "#تسويق_إلكتروني", "#إبدأ_ماركتينج", "#صناع_محتوى", "#أرباح"]
+            hashtags = ["#ريلز", "#تسويق_إلكتروني", "#صناع_محتوى", "#بيزنس", "#ذكاء_اصطناعي"]
             return ContentGenerationResponse(
                 topic=topic,
                 post_type=PostType.REEL,

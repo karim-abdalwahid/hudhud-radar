@@ -40,9 +40,11 @@ def test_knowledge_base_crud(temp_kb):
     assert len(docs) == 1
     assert docs[0]["name"] == "test_policy"
 
-    # 4. Search relevant chunks (RAG)
+    # 4. The legacy file store is intentionally unavailable to SaaS reply
+    # paths because it has no tenant boundary. Production retrieval uses
+    # the user-scoped database implementation.
     relevant = temp_kb.search_relevant_chunks("policy customer")
-    assert "customer policy" in relevant
+    assert relevant == ""
 
     # 5. Delete document
     deleted = temp_kb.delete_document("test_policy.md")
@@ -92,9 +94,22 @@ async def test_document_processor_image_vision(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_meta_crawler_and_synthesizer(tmp_path):
+async def test_meta_crawler_and_synthesizer(tmp_path, monkeypatch):
     """Tests historical scraping aggregation and deterministic knowledge synthesis."""
-    crawler = MetaContentCrawler(access_token=None, page_id=None, instagram_id=None)
+    # Keep this deterministic: credentials belong to real tenants and tests
+    # must never reach a connected Meta account or a real Gemini project.
+    crawler = MetaContentCrawler(access_token="test-token", page_id="page-1", instagram_id="ig-1")
+    monkeypatch.setattr(crawler, "fetch_facebook_feed", AsyncMock(return_value=[{
+        "id": "fb-1", "platform": "facebook", "text": "خدمة إدارة المبيعات للشركات",
+        "created_time": "2026-01-01T00:00:00Z", "comments": ["بكام الخدمة؟"],
+    }]))
+    monkeypatch.setattr(crawler, "fetch_instagram_media", AsyncMock(return_value=[{
+        "id": "ig-1", "platform": "instagram", "media_type": "IMAGE",
+        "text": "احجز استشارتك التسويقية", "created_time": "2026-01-02T00:00:00Z",
+        "comments": ["محتاج تفاصيل"],
+    }]))
+    import src.knowledge.meta_crawler as crawler_module
+    monkeypatch.setattr(crawler_module.settings, "GEMINI_API_KEY", "")
     raw_data = await crawler.fetch_all_historical_content()
 
     assert raw_data["facebook_posts_count"] > 0
@@ -124,20 +139,23 @@ async def test_conversation_engine_sales_closing():
     lead_info = {"full_name": "أحمد محمود"}
 
     # 1. Test pricing question
-    reply, converted = await engine.generate_response(lead_info, "بكام باقة التسويق وإدارة الحسابات؟")
+    reply, converted, used_ai = await engine.generate_response(lead_info, "بكام باقة التسويق وإدارة الحسابات؟")
     assert not converted
+    assert used_ai is False  # heuristic fallback (no GEMINI_API_KEY in test env) — free, not billable
     # S-Purge: neutral helpful reply, no invented packages, asks for contact
     assert "تواصل" in reply or "رقم" in reply
 
     # 2. Test CTA keyword 'ابدأ'
-    reply_cta, converted_cta = await engine.generate_response(lead_info, "ابدأ")
+    reply_cta, converted_cta, used_ai_cta = await engine.generate_response(lead_info, "ابدأ")
     assert not converted_cta
+    assert used_ai_cta is False
     assert "أهلاً" in reply_cta or "تفاعلك" in reply_cta
     assert "رقم" in reply_cta
 
     # 3. Test conversion when customer provides phone
-    reply_conv, is_conv = await engine.generate_response(lead_info, "تمام رقمي هو 01012345678")
+    reply_conv, is_conv, used_ai_conv = await engine.generate_response(lead_info, "تمام رقمي هو 01012345678")
     assert is_conv is True
+    assert used_ai_conv is False  # canned conversion acknowledgement — never billable
     assert "شكراً جزيلاً لمشاركتك" in reply_conv
 
 
@@ -190,10 +208,10 @@ def test_fastapi_knowledge_endpoints(client, monkeypatch):
     })
     assert put_resp.status_code == 200
 
-    # 5. Sync from Meta
+    # 5. Multi-tenant social knowledge sync routes to TenantFeedService (200 OK)
     sync_resp = client.post("/api/knowledge/sync-meta")
     assert sync_resp.status_code == 200
-    assert sync_resp.json()["status"] == "success"
+    assert sync_resp.json()["status"] in ("success", "skipped")
 
     # 6. Upload file
     file_payload = {"file": ("uploaded_test.txt", b"Uploaded via REST multipart", "text/plain")}
@@ -234,3 +252,42 @@ def test_security_path_traversal_and_sanitization(temp_kb):
     # Test 3: Get document cannot read arbitrary files outside kb_dir
     assert temp_kb.get_document("../../../requirements.txt") is None
 
+
+
+def test_knowledge_credit_gates_and_limits(client, monkeypatch):
+    """Verifies that 0-credit tenants are blocked with 402, large files get 413, and valid requests meter credits."""
+    from src.modules.billing.usage import usage_service
+    import io
+
+    # 1. When user has NO credits -> upload blocked with 402 Payment Required
+    monkeypatch.setattr(usage_service, "has_credits", lambda uid, amt=1: False)
+    upload_resp = client.post(
+        "/api/knowledge/upload",
+        files={"file": ("test.txt", io.BytesIO(b"Hello knowledge"), "text/plain")},
+    )
+    assert upload_resp.status_code == 402
+    assert "رصيد" in upload_resp.json()["detail"]
+
+    # 2. When user has NO credits -> create document blocked with 402 Payment Required
+    create_resp = client.post(
+        "/api/knowledge/documents",
+        json={"filename": "no_credit.md", "content": "blocked content"},
+    )
+    assert create_resp.status_code == 402
+
+    # 3. When user has NO credits -> update document blocked with 402 Payment Required
+    put_resp = client.put(
+        "/api/knowledge/documents/no_credit.md",
+        json={"content": "updated content"},
+    )
+    assert put_resp.status_code == 402
+
+    # 4. Large file > 10MB -> 413 Payload Too Large
+    monkeypatch.setattr(usage_service, "has_credits", lambda uid, amt=1: True)
+    large_data = b"x" * (10 * 1024 * 1024 + 100)
+    large_resp = client.post(
+        "/api/knowledge/upload",
+        files={"file": ("large.txt", io.BytesIO(large_data), "text/plain")},
+    )
+    assert large_resp.status_code == 413
+    assert "10 ميجابايت" in large_resp.json()["detail"]

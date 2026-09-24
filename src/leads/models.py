@@ -38,6 +38,9 @@ class DataProvenance(BaseModel):
 
 
 class LeadBase(BaseModel):
+    # The HudhudRadar account that owns this conversation. Webhooks resolve it
+    # from the recipient business account before a lead is ever persisted.
+    user_id: Optional[str] = None
     source: PlatformSource = PlatformSource.OTHER
     full_name: Optional[str] = None
     username: Optional[str] = None
@@ -85,6 +88,7 @@ class LeadInDB(LeadBase):
 
 class MessageCreate(BaseModel):
     lead_id: str
+    user_id: Optional[str] = None
     platform: PlatformSource
     platform_message_id: Optional[str] = None
     sender_type: SenderType

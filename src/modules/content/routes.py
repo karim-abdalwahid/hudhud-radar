@@ -26,15 +26,36 @@ from src.modules.context import (  # explicit for readability
 
 router = APIRouter()
 
+
+def _session_user_id(request: Request) -> str:
+    from src.core.auth import SESSION_COOKIE_NAME, verify_session_token
+    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
+    if not session or not session.get("sub"):
+        raise HTTPException(status_code=401, detail="غير مصرح")
+    return str(session["sub"])
+
 # --------------------------------------------------------------------
 # 6. Content Studio (AI Generation, Publishing & Scheduling)
 # --------------------------------------------------------------------
 @router.post("/api/content/generate", response_model=ContentGenerationResponse, tags=["Content Studio"])
-async def generate_ai_content(payload: ContentGenerationRequest):
-    """Generates viral Facebook/Instagram copy, Reels scripts, or Story sequences using AI."""
+async def generate_ai_content(payload: ContentGenerationRequest, request: Request):
+    """Generates copy grounded only in the authenticated tenant's knowledge."""
+    user_id = _session_user_id(request)
+    from src.modules.billing.usage import usage_service, KIND_AI_GENERATE
+    if not usage_service.has_credits(user_id):
+        raise HTTPException(status_code=402, detail="رصيد الذكاء الاصطناعي غير كافٍ — اشحن رصيدك من صفحة حسابي للمتابعة")
     try:
-        res = await content_engine.generate_content(payload)
+        res = await content_engine.generate_content(payload, user_id=user_id)
+        # Bill only a real Gemini generation — the offline fallback content
+        # (model_used="HudhudRadar ... Engine") costs nothing, by policy.
+        if res.model_used.startswith("Gemini"):
+            usage_service.record_usage(
+                user_id, KIND_AI_GENERATE,
+                meta={"post_type": str(payload.post_type), "platform": str(payload.platform)},
+            )
         return res
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Error in content generation: {e}")
         raise HTTPException(status_code=500, detail=f"Content generation error: {str(e)}")
@@ -63,9 +84,7 @@ async def check_content_compliance(payload: ComplianceCheckRequest):
 @router.post("/api/content/posts", response_model=ContentPostResponse, tags=["Content Studio"])
 async def create_content_post(payload: ContentPostCreate, background_tasks: BackgroundTasks, request: Request):
     """Creates a draft, scheduled, or instant publishing post (owned by the session user — Wave 9.8)."""
-    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
-    user_id = (session or {}).get("sub")
+    user_id = _session_user_id(request)
     post = content_studio_service.create_post(payload, user_id=user_id)
     if payload.status == ContentStatus.PUBLISHING:
         # fresh row created as 'publishing' in this same request -> pre-claimed
@@ -82,9 +101,7 @@ async def list_content_posts(
     limit: int = Query(50, ge=1, le=100)
 ):
     """Lists the session user's saved, scheduled, and published posts."""
-    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
-    user_id = (session or {}).get("sub")
+    user_id = _session_user_id(request)
     return content_studio_service.list_posts(status=status, platform=platform, limit=limit, user_id=user_id)
 
 
@@ -96,25 +113,23 @@ async def alias_list_studio_posts(
     limit: int = Query(50, ge=1, le=100)
 ):
     """Alias for /api/content/posts for backward compatibility with frontend dashboard."""
-    from src.core.auth import verify_session_token, SESSION_COOKIE_NAME
-    session = verify_session_token(request.cookies.get(SESSION_COOKIE_NAME) or "")
-    user_id = (session or {}).get("sub")
+    user_id = _session_user_id(request)
     return content_studio_service.list_posts(status=status, platform=platform, limit=limit, user_id=user_id)
 
 
 @router.get("/api/content/posts/{post_id}", response_model=ContentPostResponse, tags=["Content Studio"])
-async def get_content_post(post_id: str):
+async def get_content_post(post_id: str, request: Request):
     """Fetches a specific post by ID."""
-    post = content_studio_service.get_post(post_id)
+    post = content_studio_service.get_post(post_id, user_id=_session_user_id(request))
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     return post
 
 
 @router.post("/api/content/posts/{post_id}/publish-now", tags=["Content Studio"])
-async def publish_post_now(post_id: str):
+async def publish_post_now(post_id: str, request: Request):
     """Instantly publishes a drafted or scheduled post."""
-    post = content_studio_service.get_post(post_id)
+    post = content_studio_service.get_post(post_id, user_id=_session_user_id(request))
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     result = await content_scheduler.publish_single_post(post)
@@ -122,7 +137,7 @@ async def publish_post_now(post_id: str):
 
 
 @router.delete("/api/content/posts/{post_id}", tags=["Content Studio"])
-async def delete_content_post(post_id: str):
+async def delete_content_post(post_id: str, request: Request):
     """
     Deletes a content post. Wave 9.8 (owner truth-audit): if the post was
     already published, its real Meta objects (meta_post_id) are deleted from
@@ -130,7 +145,8 @@ async def delete_content_post(post_id: str):
     reports honestly which deletions actually happened.
     """
     import json as _json
-    post = content_studio_service.get_post(post_id)
+    user_id = _session_user_id(request)
+    post = content_studio_service.get_post(post_id, user_id=user_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
@@ -141,15 +157,15 @@ async def delete_content_post(post_id: str):
             ids = _json.loads(raw_meta) if isinstance(raw_meta, str) else dict(raw_meta)
         except Exception:
             ids = {}
-        from src.meta_api.publishing import meta_publisher
+        publisher = content_scheduler.publisher_for_post(post)
         for platform, ext_id in (ids or {}).items():
             if not ext_id:
                 continue
-            res = await meta_publisher.delete_published(platform, str(ext_id))
+            res = await publisher.delete_published(platform, str(ext_id))
             (meta_deleted if res.get("ok") else meta_errors)[platform] = (
                 True if res.get("ok") else res.get("detail"))
 
-    success = content_studio_service.delete_post(post_id)
+    success = content_studio_service.delete_post(post_id, user_id=user_id)
     if not success:
         raise HTTPException(status_code=500, detail="Post row could not be removed")
     return {

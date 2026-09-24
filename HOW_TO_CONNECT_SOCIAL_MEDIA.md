@@ -80,7 +80,7 @@
 لكي يستقبل الوكيل رسائل الزبائن ويرد عليها فوراً:
 1. في لوحة مطوري فيسبوك (Developers Dashboard) تحت **Messenger** > **Webhooks**:
    - **Callback URL**: رابط السيرفر الخاص بك متبوعاً بـ `/webhooks/meta` (إذا كنت تشغل محلياً استخدم ngrok مثلاً: `https://your-domain.ngrok-free.app/webhooks/meta`).
-   - **Verify Token**: اكتب: `hudhud_radar_secret_verify_token_2026` (الموجود في ملف `.env`).
+   - **Verify Token**: اكتب: `<redacted-security-credential>` (الموجود في ملف `.env`).
 2. اشترك في أحداث: `messages`, `messaging_postbacks`.
 
 ---

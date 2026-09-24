@@ -100,17 +100,19 @@ class PolarGateway(PaymentProvider):
         return {"checkout_url": data.get("url"), "provider_ref": data.get("id")}
 
     def start_trial(self, user: Dict[str, Any], return_url: str) -> Dict[str, Any]:
-        """Trial = checkout over the TRIAL products (3-day free period configured
-        per product in the Polar dashboard, card required). Falls back to normal
-        products if trial mapping is absent."""
+        """Create a checkout over the dedicated trial products only.
+
+        A missing trial mapping must never fall through to a normal paid
+        checkout: the UI promises a free trial and silently charging the normal
+        products would violate that contract.
+        """
+        if not self._token():
+            raise RuntimeError("POLAR_ACCESS_TOKEN غير مضبوط")
         mapping = self._product_ids()
         trial_ids = [mapping.get(f"trial-{p}") for p in ("facebook", "instagram", "threads")]
-        trial_ids = [t for t in trial_ids if t]
-        if not trial_ids:
-            logger.warning("No trial product mapping — falling back to regular products")
-            return self.create_checkout(
-                user, {"platforms": ["facebook", "instagram", "threads"],
-                       "coupon_discount_usd": 0}, return_url)
+        if not all(trial_ids):
+            logger.error("Trial checkout blocked: one or more dedicated Polar trial products are missing")
+            raise RuntimeError("التجربة المجانية غير مهيأة بعد — تواصل مع الدعم")
         payload = {
             "products": trial_ids,
             "success_url": return_url,
@@ -159,8 +161,10 @@ class PolarGateway(PaymentProvider):
     def parse_event(self, headers: Dict[str, str], payload: Dict[str, Any]) -> Dict[str, Any]:
         event_type = payload.get("type", "")
         data = payload.get("data", {}) or {}
+        subscription = data.get("subscription") or {}
         meta = data.get("metadata") or {}
         user_email = (data.get("customer", {}) or {}).get("email") or meta.get("email")
+        is_trial = str(meta.get("trial") or "").strip().lower() == "true"
         platforms = meta.get("platforms") or []
         if isinstance(platforms, str):
             import json as _json
@@ -171,22 +175,32 @@ class PolarGateway(PaymentProvider):
         # checkout.created carries NO metadata — resolve platforms from the
         # product_id(s) via our product mapping (order/subscription events too)
         if not platforms:
-            def _resolve(obj: Any) -> List[str]:
+            def _resolve(obj: Any) -> tuple[List[str], bool]:
                 found = []
+                trial_product = False
                 mapping = self._product_ids()
                 pid = (obj or {}).get("product_id")
                 if pid:
                     for plat, prod_id in mapping.items():
-                        if prod_id == pid and not plat.startswith("trial-"):
-                            found.append(plat)
+                        if prod_id == pid:
+                            if plat.startswith("trial-"):
+                                trial_product = True
+                            else:
+                                found.append(plat)
                 for pp in (obj or {}).get("products", []) or []:
                     for plat, prod_id in mapping.items():
-                        if prod_id == pp.get("id") and not plat.startswith("trial-") and plat not in found:
-                            found.append(plat)
-                return found
-            platforms = _resolve(data) or _resolve(data.get("subscription") or {})
+                        if prod_id == pp.get("id"):
+                            if plat.startswith("trial-"):
+                                trial_product = True
+                            elif plat not in found:
+                                found.append(plat)
+                return found, trial_product
+            platforms, trial_product = _resolve(data)
+            if not platforms and not trial_product:
+                platforms, trial_product = _resolve(data.get("subscription") or {})
+            is_trial = is_trial or trial_product
         kind = "other"
-        if event_type in ("subscription.active", "subscription.created", "order.paid"):
+        if event_type in ("subscription.active", "subscription.created", "order.paid", "subscription.cycled"):
             kind = "subscription_activated"
         elif event_type in ("subscription.canceled", "subscription.revoked"):
             kind = "subscription_canceled"
@@ -198,9 +212,27 @@ class PolarGateway(PaymentProvider):
             "kind": kind,
             "user_email": user_email,
             "platforms": platforms,
+            "is_trial": is_trial,
+            "subscription_status": data.get("status") or subscription.get("status") or "",
             "subscription_ref": data.get("subscription_id") or data.get("id"),
+            "current_period_end": data.get("current_period_end") or subscription.get("current_period_end"),
             "raw": payload,
         }
+
+
+    def get_subscription(self, subscription_id: str):
+        """Queries Polar API for real-time subscription details (reconciliation fallback)."""
+        if not self._token() or not subscription_id:
+            return None
+        try:
+            with httpx.Client(timeout=15, follow_redirects=True) as c:
+                r = c.get(f"{self.api}/v1/subscriptions/{subscription_id}", headers=self._headers())
+                if r.status_code == 200:
+                    return r.json()
+                logger.warning(f"Polar get_subscription returned {r.status_code}: {r.text[:200]}")
+        except Exception as e:
+            logger.error(f"Polar get_subscription error for {subscription_id}: {e}")
+        return None
 
 
 polar_gateway = PolarGateway()

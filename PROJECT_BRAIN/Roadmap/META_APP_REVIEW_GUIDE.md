@@ -88,3 +88,37 @@ developers.facebook.com → تطبيقك → **App Review → Permissions and Fe
 - الـ Privacy Policy يجب أن تظهر **دون تسجيل دخول** — ✓ متوفر عندنا
 - لا تستخدم كلمة "WhatsApp" في أي واجهة قبل الحصول على WhatsApp Business Platform (مؤجل)
 - أي صلاحية تُرفض تعطيك سبباً محدداً — صحّح الفيديو حسب السبب وأعد التقديم (لا حد لعدد المحاولات)
+
+---
+
+## ملحق الحالة الفعلية — 2026-09-16
+
+- تم تقديم Meta App Review بواسطة المالك في **2026-09-12**، مع تسجيل فيديوهات
+  الأدلة ونجاح API test gates في `PROJECT_MEMORY.md`.
+- آخر حالة موثقة: **under review**. لا يعد هذا المستند بأن Advanced Access
+  مفعل قبل تحقق المالك من Meta Developer Dashboard.
+- قبل الإطلاق الخارجي/Embedded Signup: افحص الحالة والـpermissions الفعلية،
+  ثم نفذ smoke test لحساب عميل مصرح به. workaround الـTester في هذا الدليل
+  يبقى خياراً مؤقتاً فقط إن ظل مسموحاً من Meta.
+
+---
+
+## ملحق نتيجة المراجعة وخطة إعادة التقديم — 2026-09-22
+
+> هذا ملحق حالة وتصحيح تشغيلي، ولا يحذف النص التاريخي أعلاه. المرجع الحاكم
+> للفيديوهات الجديدة: `docs/APP_REVIEW/2026-09-22_META_RESUBMISSION_PLAN.md`.
+
+- نتيجة 2026-09-20: أغلب البنود رُفضت لأن الفيديو لا يثبت OAuth الكامل ثم
+  استعمال الميزة ثم النتيجة في Messenger/Instagram/Threads الأصلي. ليست نتيجة
+  تمنع use case الاجتماعي نفسه. `instagram_manage_contents` فقط رُفضت صراحة
+  باعتبارها ليست core functionality في المنتج المعروض.
+- لا تعِد تقديم `pages_utility_messaging` أو `pages_read_user_content` أو
+  `instagram_manage_contents` أو `instagram_manage_insights` أو
+  `threads_manage_mentions` أو `threads_manage_replies` في الحالة الحالية.
+  إما أنها غير متصلة بالـSaaS الحالي أو ليس لها مسار واجهة مرئي قابل للإثبات.
+- `Human Agent` وFacebook/Instagram engagement تحتاج محاذاة policy/scope
+  قبل إعادة التقديم. لا يصوّر Agent نجاحًا صوريًا ولا يصف AI-generated message
+  بأنه Human Agent.
+- استخدم UI إنجليزيًا، أصول اختبار يملكها المالك، حسابًا ثانيًا للرسائل/التعليقات
+  التجريبية، وفيديو بلا قفزات لكل workflow صالح. كل فيديو ينتهي بإثبات حي في
+  عميل Meta الأصلي.

@@ -70,7 +70,8 @@ def fake_billing(client, monkeypatch):
             ent[rid] = {"id": rid, **data}
             return ent[rid]
         if table == "user_subscriptions":
-            subs[data["user_id"]] = {**data}
+            rid = data.get("id") or f"sub-{data['user_id'][:8]}"
+            subs[data["user_id"]] = {"id": rid, **data}
             return subs[data["user_id"]]
         if table == "coupons":
             coupons[data["code"]] = {**data}
@@ -82,10 +83,17 @@ def fake_billing(client, monkeypatch):
             ent[rid].update(data)
             return ent[rid]
         if table == "user_subscriptions":
+            for sub in subs.values():
+                if sub.get("id") == rid or sub.get("user_id") == rid:
+                    sub.update(data)
+                    return sub
             return data
         if table == "platform_addons_catalog" and rid in cat:
             cat[rid].update(data)
             return cat[rid]
+        if table == "users" and rid in users:
+            users[rid].update(data)
+            return users[rid]
         return data
 
     def delete(table, rid):
@@ -157,6 +165,34 @@ def test_start_trial_grants_all_platforms_3_days(fake_billing):
     assert st["can_connect"] is True and st["status"] == "trialing"
 
 
+def test_trial_cannot_be_started_twice(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"t_once_{uuid.uuid4().hex[:6]}@hudhud.test")
+    assert svc.start_trial(u["id"]) is True
+    assert svc.has_used_trial(u["id"]) is True
+    assert svc.can_start_trial(u["id"]) is False
+    assert svc.start_trial(u["id"]) is False
+
+
+def test_paid_conversion_replaces_trial_expiry_with_paid_entitlements(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"t_convert_{uuid.uuid4().hex[:6]}@hudhud.test")
+    assert svc.start_trial(u["id"]) is True
+    svc.sync_from_platforms(u["id"], ["facebook", "instagram", "threads"],
+                            source="subscription", expires_at=None)
+    rows = [row for row in fake_billing["ent"].values() if row["user_id"] == u["id"]]
+    assert len(rows) == 3
+    assert {(row["source"], row["expires_at"]) for row in rows} == {("subscription", None)}
+
+
+def test_trial_checkout_rejects_user_with_recorded_trial(client: TestClient, fake_billing):
+    from src.modules.billing.services import entitlement_service
+    me = client.get("/auth/me").json()
+    assert entitlement_service.start_trial(me["user_id"]) is True
+    res = client.post("/api/billing/trial")
+    assert res.status_code == 409
+
+
 def test_trial_auto_expires(fake_billing):
     svc = EntitlementService()
     u = fake_billing["register_and_track"](f"t2_{uuid.uuid4().hex[:6]}@hudhud.test")
@@ -172,20 +208,20 @@ def test_trial_auto_expires(fake_billing):
 
 
 # ── Composable pricing ───────────────────────────────────────────────────
-def test_quote_single_platform_no_discount():
+def test_quote_single_platform_no_discount(fake_billing):
     q = PricingService().quote(["facebook"])
     assert q["subtotal_usd"] == 15.0 and q["multi_platform_discount_percent"] == 0
     assert q["total_usd"] == 15.0
 
 
-def test_quote_two_platforms_discount10():
+def test_quote_two_platforms_discount10(fake_billing):
     q = PricingService().quote(["facebook", "instagram"])
     assert q["subtotal_usd"] == 30.0
     assert q["multi_platform_discount_percent"] == 10
     assert q["total_usd"] == 27.0
 
 
-def test_quote_three_platforms_discount20():
+def test_quote_three_platforms_discount20(fake_billing):
     q = PricingService().quote(["facebook", "instagram", "threads"])
     assert q["subtotal_usd"] == 40.0
     assert q["multi_platform_discount_percent"] == 20
@@ -200,7 +236,7 @@ def test_quote_percent_coupon(fake_billing):
     assert q["total_usd"] == 24.3
 
 
-def test_quote_unknown_platform_skipped():
+def test_quote_unknown_platform_skipped(fake_billing):
     q = PricingService().quote(["facebook", "tiktok"])
     assert q["platforms"] == ["facebook"]
     assert q["total_usd"] == 15.0
@@ -211,7 +247,8 @@ def test_subscription_api_auth_gated(anon_client: TestClient):
     assert anon_client.get("/api/billing/subscription").status_code == 401
 
 
-def test_admin_catalog_gates(client: TestClient, client_as_user: TestClient, anon_client: TestClient):
+def test_admin_catalog_gates(client: TestClient, client_as_user: TestClient,
+                             anon_client: TestClient, fake_billing):
     assert anon_client.get("/api/admin/billing/catalog").status_code == 401
     assert client_as_user.get("/api/admin/billing/catalog").status_code == 403
     r = client.get("/api/admin/billing/catalog")
@@ -256,3 +293,37 @@ def test_site_settings_rejects_unknown_key(client: TestClient, fake_billing):
     r = client.put("/api/admin/site-settings", json={"evil_key": "x"})
     st = client.get("/api/admin/site-settings").json()["settings"]
     assert "evil_key" not in st
+
+
+def test_apply_plan_activates_subscription_and_platforms(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"p_grow_{uuid.uuid4().hex[:6]}@hudhud.test")
+    res = svc.apply_plan(u["id"], "growth")
+    assert res["status"] == "active"
+    assert res["plan"] == "growth"
+    assert "facebook" in res["platforms"]
+    assert "instagram" in res["platforms"]
+    assert "threads" in res["platforms"]
+    assert res["can_connect"] is True
+
+
+def test_apply_plan_free_cancels_and_revokes(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"p_free_{uuid.uuid4().hex[:6]}@hudhud.test")
+    svc.apply_plan(u["id"], "starter")
+    assert svc.subscription_status(u["id"])["status"] == "active"
+    res = svc.apply_plan(u["id"], "free")
+    assert res["status"] == "canceled"
+    assert res["platforms"] == []
+
+
+def test_auto_heal_existing_paid_user(fake_billing):
+    svc = EntitlementService()
+    u = fake_billing["register_and_track"](f"p_heal_{uuid.uuid4().hex[:6]}@hudhud.test")
+    fake_billing["users"][u["id"]]["plan"] = "scale"
+    res = svc.subscription_status(u["id"])
+    assert res["status"] == "active"
+    assert res["plan"] == "scale"
+    assert set(res["platforms"]) == {"facebook", "instagram", "threads"}
+    assert res["can_connect"] is True
+

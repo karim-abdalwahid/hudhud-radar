@@ -103,22 +103,59 @@ def register(app: FastAPI) -> None:
         users = supabase_db.select("users", {"id": user_id})
         if not users:
             raise HTTPException(status_code=404, detail="User not found")
-        current = users[0].get("ai_credits", 100)
-        updated = supabase_db.update("users", user_id, {"ai_credits": current + payload.amount})
-        return {"status": "success", "ai_credits": (updated or {}).get("ai_credits"),
-                "granted": payload.amount, "note": payload.note}
+        current = int(users[0].get("ai_credits") or 0)
+        new_total = current + payload.amount
+        updated = supabase_db.update("users", user_id, {"ai_credits": new_total})
+        try:
+            supabase_db.insert("usage_events", {
+                "user_id": user_id,
+                "kind": "admin_grant",
+                "amount": payload.amount,
+                "meta": {"note": payload.note or "Admin grant", "previous": current, "new": new_total},
+            })
+        except Exception as e:
+            logger.warning(f"usage_events insert failed for admin grant: {e}")
+        try:
+            from src.modules.notifications.service import notification_service
+            title_ar = f"⚡ تم إضافة {payload.amount} رصيد ردود ذكية"
+            body_ar = f"تمت إضافة الرصيد إلى حسابك بنجاح. رصيدك الإجمالي الآن: {new_total} نقطة."
+            title_en = f"⚡ Added {payload.amount} AI credits"
+            body_en = f"Credits successfully added to your account. Your new total: {new_total} points."
+            notification_service.create(
+                user_id,
+                title_ar,
+                body_ar,
+                "success",
+                {
+                    "job": "credits_grant",
+                    "amount": payload.amount,
+                    "title_ar": title_ar,
+                    "body_ar": body_ar,
+                    "title_en": title_en,
+                    "body_en": body_en,
+                },
+            )
+        except Exception:
+            pass
+        return {
+            "status": "success",
+            "ai_credits": (updated or {}).get("ai_credits", new_total),
+            "granted": payload.amount,
+            "note": payload.note,
+        }
 
     @app.post("/api/admin/users/{user_id}/plan", tags=["Admin Console"])
     async def set_plan(user_id: str, payload: PlanPayload, request: Request):
         _require_admin(request)
         if payload.plan not in ("free", "starter", "growth", "scale"):
             raise HTTPException(status_code=400, detail="خطة غير معروفة")
-        from datetime import datetime, timezone
-        updated = supabase_db.update("users", user_id, {
+        from src.modules.billing.services import entitlement_service
+        sub_status = entitlement_service.apply_plan(user_id, payload.plan)
+        return {
+            "status": "success",
             "plan": payload.plan,
-            "plan_updated_at": datetime.now(timezone.utc).isoformat(),
-        })
-        return {"status": "success", "plan": (updated or {}).get("plan")}
+            "subscription": sub_status,
+        }
 
     @app.get("/api/admin/overview", tags=["Admin Console"])
     async def admin_overview(request: Request):
@@ -158,6 +195,80 @@ def register(app: FastAPI) -> None:
         return {"status": "success", "total": len(rows),
                 "recent": rows[:min(max(limit, 1), 300)],
                 "by_path": dict(sorted(by_path.items(), key=lambda kv: -kv[1])[:20])}
+
+    @app.get("/api/admin/system/health", tags=["Admin Console"])
+    async def system_health(request: Request):
+        _require_admin(request)
+        import time
+        from src.config import settings
+        t0 = time.time()
+        db_connected = False
+        db_latency_ms = None
+        try:
+            supabase_db.select("app_settings")
+            db_connected = True
+            db_latency_ms = round((time.time() - t0) * 1000, 1)
+        except Exception as e:
+            logger.warning(f"Health check DB ping failed: {e}")
+            db_connected = bool(supabase_db.is_connected)
+
+        return {
+            "status": "success",
+            "database": {
+                "connected": db_connected,
+                "latency_ms": db_latency_ms,
+                "mode": "supabase_cloud" if db_connected else "local_fallback"
+            },
+            "environment": {
+                "meta_app_id_configured": bool(settings.META_APP_ID),
+                "meta_app_secret_configured": bool(settings.META_APP_SECRET),
+                "threads_app_id_configured": bool(settings.THREADS_APP_ID),
+                "threads_app_secret_configured": bool(settings.THREADS_APP_SECRET),
+                "gemini_api_key_configured": bool(settings.GEMINI_API_KEY),
+                "polar_configured": bool(getattr(settings, "POLAR_ACCESS_TOKEN", None)),
+                "cron_secret_configured": bool(getattr(settings, "CRON_SECRET", None)),
+            },
+            "webhook": {
+                "path": "/api/webhook/meta",
+                "hmac_sha256_enforced": True,
+                "subscribed_fields": ["messages", "messaging_postbacks", "feed", "mention"],
+                "window_policy": "24h Strict Enforcement"
+            }
+        }
+
+    @app.post("/api/admin/cron/trigger/{job_name}", tags=["Admin Console"])
+    async def trigger_cron_job(job_name: str, request: Request):
+        _require_admin(request)
+        job = job_name.lower().strip()
+        from src.modules.context import (
+            content_scheduler, meta_insights_sync, threads_oauth_manager
+        )
+        from src.modules.billing.services import entitlement_service
+
+        try:
+            if job == "scheduler":
+                res = await content_scheduler.check_and_publish_due_posts()
+                return {"status": "success", "job": job, "message": f"تم فحص المنشورات المجدولة (تمت معالجة {len(res)})"}
+            elif job == "threads_refresh":
+                res = await threads_oauth_manager.refresh_if_expiring()
+                refreshed_cnt = len(res.get("refreshed", []))
+                return {"status": "success", "job": job, "message": f"تم فحص توكنات ثريدز (تجديد {refreshed_cnt})"}
+            elif job == "billing_reconcile":
+                res = entitlement_service.reconcile_active_subscriptions()
+                return {"status": "success", "job": job, "message": f"تمت مطابقة اشتراكات Polar بنجاح ({len(res.get('outcomes', []))} حساب)"}
+            elif job == "insights":
+                rows = supabase_db.select("platform_connections", {"status": "active"}) or []
+                owner_ids = sorted({str(r.get("user_id")) for r in rows if r.get("user_id")})
+                for oid in owner_ids:
+                    await meta_insights_sync.sync_recent_metrics(oid, days=7)
+                return {"status": "success", "job": job, "message": f"تمت مزامنة إحصائيات ميتا لـ {len(owner_ids)} حساب"}
+            else:
+                raise HTTPException(status_code=400, detail=f"مهمة غير معروفة: {job_name}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Admin trigger cron failed for {job}: {e}")
+            return {"status": "error", "job": job, "detail": str(e)[:200]}
 
 
 module_registry.register_module(

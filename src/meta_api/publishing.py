@@ -24,8 +24,14 @@ class MetaPublisher:
         access_token: Optional[str] = None,
         page_id: Optional[str] = None,
         instagram_id: Optional[str] = None,
+        facebook_access_token: Optional[str] = None,
+        instagram_access_token: Optional[str] = None,
     ):
-        self.access_token = access_token or settings.META_PAGE_ACCESS_TOKEN
+        # The legacy single token is retained only for local/dev callers. The
+        # SaaS scheduler passes both tenant-bound credentials explicitly.
+        self.facebook_access_token = facebook_access_token or access_token or settings.META_PAGE_ACCESS_TOKEN
+        self.instagram_access_token = instagram_access_token or access_token or settings.META_PAGE_ACCESS_TOKEN
+        self.access_token = self.facebook_access_token
         self.page_id = page_id or settings.META_PAGE_ID
         self.instagram_id = instagram_id or settings.META_INSTAGRAM_ACCOUNT_ID
 
@@ -38,7 +44,7 @@ class MetaPublisher:
         url = f"{self.BASE_URL}/{self.page_id}/feed"
         payload = {
             "message": message,
-            "access_token": self.access_token,
+            "access_token": self.facebook_access_token,
         }
         if link:
             payload["link"] = link
@@ -62,7 +68,7 @@ class MetaPublisher:
         payload = {
             "url": image_url,
             "message": caption,
-            "access_token": self.access_token,
+            "access_token": self.facebook_access_token,
         }
 
         async with httpx.AsyncClient(timeout=45.0) as client:
@@ -96,7 +102,7 @@ class MetaPublisher:
         rate_limiter.check_and_acquire("instagram")
         url = f"{self.BASE_URL}/{self.instagram_id}/media"
         payload = {
-            "access_token": self.access_token,
+            "access_token": self.instagram_access_token,
         }
 
         if media_type == "REELS":
@@ -133,7 +139,7 @@ class MetaPublisher:
         url = f"{self.BASE_URL}/{container_id}"
         params = {
             "fields": "status_code,status",
-            "access_token": self.access_token,
+            "access_token": self.instagram_access_token,
         }
 
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -159,7 +165,7 @@ class MetaPublisher:
         url = f"{self.BASE_URL}/{self.instagram_id}/media_publish"
         payload = {
             "creation_id": container_id,
-            "access_token": self.access_token,
+            "access_token": self.instagram_access_token,
         }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -250,12 +256,13 @@ class MetaPublisher:
         target = "facebook" if platform in ("facebook", "both") else platform
         if not external_id:
             return {"ok": False, "detail": "no external id"}
-        if not self.access_token or self.access_token.startswith("your-"):
+        token = self.facebook_access_token if target == "facebook" else self.instagram_access_token
+        if not token or token.startswith("your-"):
             return {"ok": False, "detail": "Meta token not configured (fail-closed)"}
         url = f"{self.BASE_URL}/{external_id}"
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                resp = await client.delete(url, params={"access_token": self.access_token})
+                resp = await client.delete(url, params={"access_token": token})
             if resp.status_code == 200:
                 logger.info(f"Deleted published {platform} object {external_id} on Meta")
                 return {"ok": True}

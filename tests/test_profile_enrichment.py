@@ -67,15 +67,24 @@ async def test_orchestrator_fetches_real_profile_before_extraction(monkeypatch):
     monkeypatch.setattr(orch.resolver, "resolve_and_save_lead", MagicMock(
         return_value=({"id": "lead_1", "human_takeover": True}, True, None)
     ))
-    # Under takeover the inbound message is still STORED (inbox liveness);
+# Under takeover the inbound message is still STORED (inbox liveness);
     # route that into a spy instead of the live Supabase messages table.
     stored_inbox_msgs = []
     monkeypatch.setattr(orch.lead_svc, "add_message",
                         MagicMock(side_effect=lambda m: stored_inbox_msgs.append(m)))
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.owner_for_account",
+        lambda *_: "owner_1",
+    )
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.get_active_token_for_account",
+        lambda *_: "tenant-page-token",
+    )
 
     event = {
         "platform": PlatformSource.FACEBOOK,
         "sender_id": "psid_real",
+        "recipient_id": "page_1",
         "message_id": "mid_x",
         "text": "hello",
         "raw_event": {},
@@ -110,10 +119,19 @@ async def test_orchestrator_survives_profile_fetch_failure(monkeypatch):
     stored = []
     monkeypatch.setattr(orch.lead_svc, "add_message",
                         MagicMock(side_effect=lambda m: stored.append(m)))
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.owner_for_account",
+        lambda *_: "owner_1",
+    )
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.get_active_token_for_account",
+        lambda *_: "tenant-page-token",
+    )
 
     event = {
         "platform": PlatformSource.FACEBOOK,
         "sender_id": "psid_offline",
+        "recipient_id": "page_1",
         "message_id": "mid_y",
         "text": "hi",
         "raw_event": {},
@@ -130,6 +148,8 @@ async def test_orchestrator_survives_profile_fetch_failure(monkeypatch):
 def test_inbox_thread_includes_avatar():
     """/api/inbox/conversations must expose the lead's avatar for UI rendering."""
     from unittest.mock import patch
+    from starlette.requests import Request
+    from src.core.auth import SESSION_COOKIE_NAME, create_session_token
     from src.core.supabase_client import InMemoryDatabase
     import src.modules.inbox_onboarding as inbox_mod
 
@@ -139,9 +159,11 @@ def test_inbox_thread_includes_avatar():
         "full_name": "Mohamed Hassan",
         "avatar_url": "https://platform-lookaside.fbsbx.com/mohamed.jpg",
         "facebook_account_id": "psid_real",
+        "user_id": "tenant-profile",
     })
     db.insert("messages", {
         "lead_id": lead["id"],
+        "user_id": "tenant-profile",
         "sender_type": "lead",
         "content": "hello",
         "sent_at": "2026-09-10T22:00:00+00:00",
@@ -149,9 +171,13 @@ def test_inbox_thread_includes_avatar():
 
     with patch.object(inbox_mod, "supabase_db", db), \
          patch.object(inbox_mod.lead_service, "get_messages_for_lead",
-                      return_value=db.select("messages", {"lead_id": lead["id"]})):
+                      return_value=db.select("messages", {"lead_id": lead["id"], "user_id": "tenant-profile"})):
         import asyncio
-        resp = asyncio.run(inbox_mod.get_inbox_conversations())
+        token = create_session_token("tenant-profile", "user", "profile@example.test")
+        request = Request({"type": "http", "headers": [
+            (b"cookie", f"{SESSION_COOKIE_NAME}={token}".encode())
+        ]})
+        resp = asyncio.run(inbox_mod.get_inbox_conversations(request))
 
     convs = resp["conversations"]
     assert len(convs) == 1
@@ -163,20 +189,30 @@ def test_inbox_threads_sorted_by_last_message_desc():
     """AUDIT-2026-09-15 Fix: threads order by their TRUE last message (any
     sender) descending — the most recent conversation appears first."""
     from unittest.mock import patch
+    from starlette.requests import Request
+    from src.core.auth import SESSION_COOKIE_NAME, create_session_token
     from src.core.supabase_client import InMemoryDatabase
     import src.modules.inbox_onboarding as inbox_mod
 
     db = InMemoryDatabase()
-    lead_a = db.insert("leads", {"id": "lead_a", "source": "facebook", "full_name": "A"})
-    lead_b = db.insert("leads", {"id": "lead_b", "source": "instagram", "full_name": "B"})
+    lead_a = db.insert("leads", {"id": "lead_a", "source": "facebook", "full_name": "A",
+                                 "user_id": "tenant-profile"})
+    lead_b = db.insert("leads", {"id": "lead_b", "source": "instagram", "full_name": "B",
+                                 "user_id": "tenant-profile"})
     db.insert("messages", {"lead_id": "lead_a", "sender_type": "lead", "content": "old",
+                           "user_id": "tenant-profile",
                            "sent_at": "2026-09-10T10:00:00+00:00"})
     db.insert("messages", {"lead_id": "lead_b", "sender_type": "lead", "content": "fresh",
+                           "user_id": "tenant-profile",
                            "sent_at": "2026-09-11T10:00:00+00:00"})
 
     with patch.object(inbox_mod, "supabase_db", db):
         import asyncio
-        resp = asyncio.run(inbox_mod.get_inbox_conversations())
+        token = create_session_token("tenant-profile", "user", "profile@example.test")
+        request = Request({"type": "http", "headers": [
+            (b"cookie", f"{SESSION_COOKIE_NAME}={token}".encode())
+        ]})
+        resp = asyncio.run(inbox_mod.get_inbox_conversations(request))
 
     assert [c["lead_id"] for c in resp["conversations"]] == ["lead_b", "lead_a"]
 
@@ -185,14 +221,21 @@ def test_inbox_skips_leads_without_messages():
     """Zero-fabrication: a lead with NO messages must not appear —
     even if it is in the leads table."""
     from unittest.mock import patch
+    from starlette.requests import Request
+    from src.core.auth import SESSION_COOKIE_NAME, create_session_token
     from src.core.supabase_client import InMemoryDatabase
     import src.modules.inbox_onboarding as inbox_mod
 
     db = InMemoryDatabase()
-    db.insert("leads", {"id": "lead_empty", "source": "facebook", "full_name": "No Chat"})
+    db.insert("leads", {"id": "lead_empty", "source": "facebook", "full_name": "No Chat",
+                        "user_id": "tenant-profile"})
 
     with patch.object(inbox_mod, "supabase_db", db):
         import asyncio
-        resp = asyncio.run(inbox_mod.get_inbox_conversations())
+        token = create_session_token("tenant-profile", "user", "profile@example.test")
+        request = Request({"type": "http", "headers": [
+            (b"cookie", f"{SESSION_COOKIE_NAME}={token}".encode())
+        ]})
+        resp = asyncio.run(inbox_mod.get_inbox_conversations(request))
 
     assert resp["conversations"] == []

@@ -105,10 +105,18 @@ async def test_orchestrator_stores_message_but_skips_reply_when_paused(monkeypat
     from unittest.mock import AsyncMock, MagicMock
     monkeypatch.setattr(orch.client, "get_profile", AsyncMock(return_value={}))
 
-    lead_row = {"id": "lead_p", "human_takeover": False, "user_id": None,
+    lead_row = {"id": "lead_p", "human_takeover": False, "user_id": "owner_1",
                 "facebook_account_id": "psid_1"}
     monkeypatch.setattr(orch.resolver, "resolve_and_save_lead",
                         MagicMock(return_value=(lead_row, True, None)))
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.owner_for_account",
+        lambda *_: "owner_1",
+    )
+    monkeypatch.setattr(
+        "src.modules.connections.service.connection_service.get_active_token_for_account",
+        lambda *_: "tenant-page-token",
+    )
     stored = []
     monkeypatch.setattr(orch.lead_svc, "add_message",
                         MagicMock(side_effect=lambda m: stored.append(m)))
@@ -116,7 +124,7 @@ async def test_orchestrator_stores_message_but_skips_reply_when_paused(monkeypat
     monkeypatch.setattr("src.ai.pause.is_ai_paused", lambda uid: True)
 
     event = {"platform": PlatformSource.FACEBOOK, "sender_id": "psid_1",
-             "message_id": "m_pause", "text": "hi", "raw_event": {}}
+             "recipient_id": "page_1", "message_id": "m_pause", "text": "hi", "raw_event": {}}
     result = await orch.process_incoming_message_event(event)
 
     assert result.get("ai_paused") is True

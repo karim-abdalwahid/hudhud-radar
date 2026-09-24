@@ -64,3 +64,28 @@ graph TD
 8. **Analytics & Performance Engine (`src/analytics/` & `src/reporting/`)**:
    - تحليل النجاح، أسباب الفشل، إحصاءات الصفحة، ومعدلات التحويل.
 
+---
+
+## ملحق الحالة التشغيلية — SaaS tenant boundary (2026-09-16)
+
+المخطط أعلاه يشرح الطبقات التاريخية. في الإنتاج متعدد العملاء، تسبق كل طبقة
+بيانات خطوة ملكية إلزامية:
+
+```text
+Meta / Instagram / Threads event
+  → signature verification
+  → ConnectionService resolves recipient account to one active user_id
+  → tenant-scoped lead/message/identity/RAG/content/automation service
+  → exact tenant token + entitlement gate for outbound Graph call
+  → tenant-scoped audit/metrics/reporting
+```
+
+- `platform_connections` و`ConnectionService` هما جسر الحساب الخارجي إلى
+  المستأجر، وليس `.env` أو `app_settings` العام.
+- الوحدات الفعلية المعنية تشمل `src/modules/webhooks/`،
+  `src/modules/connections/service.py`، `src/agent/`، وطبقات CRM/content/
+  analytics. أسماء المسارات الأقدم في الرسم لا تنشئ مسار وصول عاماً.
+- لا يسمح التصميم برد آلي أو retrieval أو publish عند غياب owner/connection
+  صالح. هذه حماية تجارية وأمنية، وليست مجرد تحسين لواجهة المستخدم.
+- المرجع التفصيلي للجداول والعقود: [[SaaS_Tenant_Data_Contract]].
+

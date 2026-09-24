@@ -63,6 +63,13 @@ def test_analytics_compliance_and_agent_rate_start_honest():
         assert m.group(1).strip() in ("—", "-", ""), f"{kpi_id} must start empty/honest, got {m.group(1)!r}"
 
 
+def test_onboarding_trial_button_starts_verified_checkout_not_a_success_page():
+    src = (TEMPLATES / "onboarding.html").read_text(encoding="utf-8")
+    assert "billing/success?trial=1" not in src
+    assert "async function startTrial()" in src
+    assert "fetch('/api/billing/trial', { method: 'POST' })" in src
+
+
 def test_identity_thresholds_rendered_from_backend_not_hardcoded():
     src = (TEMPLATES / "identity.html").read_text(encoding="utf-8")
     assert "≥ 70% Confidence" not in src  # actual prod threshold is 60% — drift caught

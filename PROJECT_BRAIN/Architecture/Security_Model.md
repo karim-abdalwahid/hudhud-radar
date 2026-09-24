@@ -28,3 +28,23 @@
 ### 5. مكافحة الرسائل غير المرغوبة (Anti-Spam & Rate Limits)
 - تطبيق محددات معدل إرسال الرسائل (Max Requests per Minute) لمنع إيقاف الحساب من قبل خوارزميات مكافحة السبام في Meta.
 - التحقق الصارم من قاعدة نافذة الـ 24 ساعة لرسائل Messenger و Instagram Direct.
+
+---
+
+## ملحق أمني — دفاع SaaS متعدد الطبقات (2026-09-16)
+
+1. **ملكية قبل البيانات:** لا يكفي أن يكون webhook صحيح التوقيع؛ يجب أن يحل
+   recipient account إلى owner واحد active قبل أي قراءة/كتابة/رد.
+2. **توكنات العملاء:** لا تخزن كنص عام في `.env` أو `app_settings`. تخزن مشفرة
+   في `platform_connections`، وتسترجع فقط عبر ConnectionService والـentitlement
+   للحساب والمالك نفسيهما. أسرار التطبيق وحدها تبقى environment-only.
+3. **RAG:** `user_id` مطلوب في البحث والـRPC؛ unscoped retrieval يعيد no context
+   أو يرفض. هذا خط دفاع مستقل عن صحة كود route.
+4. **قاعدة البيانات:** Data API backend-only؛ `anon` و`authenticated` لا يملكان
+   grants لجداول التطبيق أو RPCs الحساسة. `service_role` على الخادم فقط ويتجاوز
+   RLS، لذلك تظل فلاتر `user_id` وfail-closed في طبقة الخدمة إلزامية.
+5. **القيود البنيوية:** ownership required للموارد العميلية، active external
+   account لا يرتبط بأكثر من tenant، وmetric uniqueness tenant-aware. علاقات
+   الحذف cascade-safe حتى لا تنشأ بيانات بلا مالك.
+6. **التحقق المستمر:** regression tests للعزل + smoke test حي لمستأجرين عند
+   توفر حسابات مصرح بها. لا يسجل token أو محتوى معرفة حساس في الأدلة.

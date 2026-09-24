@@ -95,7 +95,7 @@
 
         /* Container */
         .wizard-container {
-            max-width: 780px;
+            max-width: 860px;
             width: 100%;
             margin: 0 auto;
             padding: 40px 20px 80px;
@@ -269,56 +269,95 @@
             border-color: var(--primary);
         }
 
-        /* Step 3: Platform Cards (Exact SendRad Style) */
+        /* Step 3: Platform Cards - Scalable, Responsive & Perfectly Aligned */
         .platforms-deck {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
             margin-bottom: 32px;
+            align-items: stretch;
         }
         .platform-tile {
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            padding: 24px 18px;
+            padding: 24px 20px 20px;
             text-align: center;
             background: #ffffff;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            height: 100%;
+            position: relative;
             box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-            transition: all 0.2s;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
         .platform-tile:hover {
             border-color: var(--border-hover);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06);
             transform: translateY(-2px);
         }
+        .platform-badge-soon {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid #e2e8f0;
+            letter-spacing: 0.2px;
+        }
+        [dir="rtl"] .platform-badge-soon {
+            right: auto;
+            left: 14px;
+        }
         .platform-icon-circle {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
             background: #f8fafc;
             border: 1px solid var(--border);
+            margin-bottom: 14px;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+        .platform-tile:hover .platform-icon-circle {
+            transform: scale(1.05);
+        }
+        .platform-icon-circle svg {
+            width: 30px;
+            height: 30px;
         }
         .platform-title {
-            font-size: 16px;
+            font-size: 15.5px;
             font-weight: 700;
             color: var(--text-dark);
+            line-height: 1.35;
+            margin-bottom: 6px;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .platform-caption {
             font-size: 12.5px;
             color: var(--text-muted);
-            line-height: 1.5;
-            min-height: 38px;
+            line-height: 1.55;
+            margin-bottom: 20px;
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .btn-connect {
             width: 100%;
             height: 42px;
+            margin-top: auto;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -334,7 +373,7 @@
             transition: all 0.15s ease;
             box-shadow: 0 1px 2px rgba(37, 99, 235, 0.05);
         }
-        .btn-connect:hover {
+        .btn-connect:hover:not(:disabled) {
             background: #2563eb;
             color: #ffffff;
             border-color: #2563eb;
@@ -342,19 +381,28 @@
             transform: translateY(-1px);
         }
         .btn-connect.connected {
-            background: #f0fdf4;
-            color: #15803d;
-            border: 1px solid #bbf7d0;
-            cursor: default;
-            box-shadow: none;
-            transform: none;
+            background: #f0fdf4 !important;
+            color: #15803d !important;
+            border: 1px solid #bbf7d0 !important;
+            cursor: default !important;
+            box-shadow: none !important;
+            transform: none !important;
+            opacity: 1 !important;
         }
         .btn-connect.connected:hover {
-            background: #f0fdf4;
-            color: #15803d;
-            border-color: #bbf7d0;
-            box-shadow: none;
-            transform: none;
+            background: #f0fdf4 !important;
+            color: #15803d !important;
+            border-color: #bbf7d0 !important;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+        .btn-connect-upcoming {
+            background: #f8fafc !important;
+            color: #94a3b8 !important;
+            border: 1px dashed #cbd5e1 !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+            transform: none !important;
         }
 
         /* Action Buttons */
@@ -410,6 +458,11 @@
         @media (max-width: 680px) {
             .platforms-deck { grid-template-columns: 1fr; }
             .two-col-grid { grid-template-columns: 1fr; }
+            .stepper-row { gap: 8px; }
+            .step-node span { display: none; }
+            .step-line { width: 32px; }
+            .bottom-actions { flex-wrap: wrap; gap: 12px; }
+            .bottom-actions .btn-submit, .bottom-actions .btn-back { width: 100%; justify-content: center; }
         }
     </style>
 </head>
@@ -424,24 +477,24 @@
             <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
                 <span data-i18n="lang.switch_btn">🌐 العربية</span>
             </button>
-            <a href="/inbox" class="exit-link" data-i18n="topbar.exit_inbox">Go to Live Inbox →</a>
+            <a href="/inbox" class="exit-link" onclick="finalizeSetup(true); return false;" data-i18n="topbar.exit_inbox">Go to Live Inbox →</a>
         </div>
     </header>
 
     <div class="wizard-container">
         <!-- Stepper -->
         <div class="stepper-row">
-            <div class="step-node active" id="node-1">
+            <div class="step-node active" id="node-1" onclick="nextStep(1)" style="cursor: pointer;" title="Step 1">
                 <div class="step-badge" id="badge-1">1</div>
                 <span data-i18n="onboard.step1_tab">Knowledge Base</span>
             </div>
             <div class="step-line"></div>
-            <div class="step-node" id="node-2">
+            <div class="step-node" id="node-2" onclick="nextStep(2, true)" style="cursor: pointer;" title="Step 2">
                 <div class="step-badge" id="badge-2">2</div>
                 <span data-i18n="onboard.step2_tab">Agent Setup</span>
             </div>
             <div class="step-line"></div>
-            <div class="step-node" id="node-3">
+            <div class="step-node" id="node-3" onclick="nextStep(3, true)" style="cursor: pointer;" title="Step 3">
                 <div class="step-badge" id="badge-3">3</div>
                 <span data-i18n="onboard.step3_tab">Connect Channels</span>
             </div>
@@ -481,9 +534,9 @@
                 <div id="upload-status" style="font-size: 12.5px; margin-top: 6px;"></div>
             </div>
 
-            <div class="bottom-actions" style="justify-content: flex-end;">
-                <button class="btn-submit" onclick="nextStep(2)" data-i18n="onboard.btn_next">Next Step →</button>
-                <button class="btn-back" onclick="nextStep(2)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
+            <div class="bottom-actions" style="justify-content: flex-end; align-items: center; gap: 14px;">
+                <button type="button" class="btn-submit" onclick="nextStep(2)" data-i18n="onboard.btn_next">Next Step →</button>
+                <button type="button" class="btn-back" onclick="nextStep(2, true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
             </div>
         </div>
 
@@ -529,9 +582,9 @@
             </div>
 
             <div class="bottom-actions">
-                <button class="btn-back" onclick="nextStep(1)" data-i18n="onboard.btn_back">← Back</button>
-                <button class="btn-submit" onclick="nextStep(3)" data-i18n="onboard.btn_next">Next Step →</button>
-                <button class="btn-back" onclick="nextStep(3)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
+                <button type="button" class="btn-back" onclick="nextStep(1)" data-i18n="onboard.btn_back">← Back</button>
+                <button type="button" class="btn-submit" onclick="nextStep(3)" data-i18n="onboard.btn_next">Next Step →</button>
+                <button type="button" class="btn-back" onclick="nextStep(3, true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip">Skip for now</button>
             </div>
         </div>
 
@@ -547,7 +600,7 @@
                     <div style="font-size:12.5px;color:#a16207;" data-i18n="onboard.no_sub_desc">You don't have an active subscription or trial. Start a free trial or subscribe to a plan to connect messaging channels.</div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn-submit" style="padding:9px 18px;font-size:13px;" onclick="window.location.href='/billing/success?trial=1'" data-i18n="onboard.start_trial">Start Free Trial (3 days)</button>
+                    <button class="btn-submit" id="btn-start-trial" style="padding:9px 18px;font-size:13px;" onclick="startTrial()" data-i18n="onboard.start_trial">Start Free Trial (3 days)</button>
                     <button class="btn-back" style="padding:9px 18px;font-size:13px;" onclick="window.location.href='/billing/checkout-page'" data-i18n="onboard.subscribe">Subscribe to a plan</button>
                 </div>
             </div>
@@ -555,7 +608,9 @@
             <div class="platforms-deck">
                 <!-- Instagram -->
                 <div class="platform-tile">
-                    <div class="platform-icon-circle"><svg viewBox="0 0 24 24" width="100%" height="100%"><defs><radialGradient id="igL" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect x="1.5" y="1.5" width="21" height="21" rx="5.5" fill="url(#igL)"/><circle cx="12" cy="12" r="4.7" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="17.6" cy="6.4" r="1.35" fill="#fff"/></svg></div>
+                    <div class="platform-icon-circle">
+                        <svg viewBox="0 0 24 24"><defs><radialGradient id="igL" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><rect x="1.5" y="1.5" width="21" height="21" rx="5.5" fill="url(#igL)"/><circle cx="12" cy="12" r="4.7" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="17.6" cy="6.4" r="1.35" fill="#fff"/></svg>
+                    </div>
                     <div class="platform-title" data-i18n="onboard.platform_ig_title">Instagram Direct & Comments</div>
                     <div class="platform-caption" data-i18n="onboard.platform_ig_desc">Turn Reels comments and DMs into qualified sales meetings instantly.</div>
                     <button class="btn-connect" id="btn-connect-ig" onclick="triggerConnect('instagram')" data-i18n="onboard.btn_connect" disabled style="opacity:.45;cursor:not-allowed;">Connect Channel</button>
@@ -563,27 +618,49 @@
 
                 <!-- Messenger -->
                 <div class="platform-tile">
-                    <div class="platform-icon-circle"><svg viewBox="0 0 24 24" width="100%" height="100%"><path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg></div>
+                    <div class="platform-icon-circle">
+                        <svg viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+                    </div>
                     <div class="platform-title" data-i18n="onboard.platform_fb_title">Facebook Messenger</div>
                     <div class="platform-caption" data-i18n="onboard.platform_fb_desc">Engage ad inquiries and Page messages with zero wait time.</div>
                     <button class="btn-connect" id="btn-connect-fb" onclick="triggerConnect('facebook')" data-i18n="onboard.btn_connect" disabled style="opacity:.45;cursor:not-allowed;">Connect Channel</button>
+                </div>
+
+                <!-- Threads -->
+                <div class="platform-tile">
+                    <div class="platform-icon-circle">
+                        <svg viewBox="0 0 24 24"><path fill="#0f172a" d="M17.09 11.33c-.1-.05-.2-.1-.3-.14-.18-3.28-1.95-5.16-4.93-5.18h-.04c-1.78 0-3.26.76-4.17 2.14l1.63 1.12c.68-1.03 1.74-1.25 2.54-1.25h.03c.98.01 1.72.29 2.2.84.35.4.58.95.7 1.64-.87-.15-1.82-.19-2.83-.14-2.85.16-4.68 1.82-4.55 4.13.06 1.17.64 2.18 1.63 2.83.84.55 1.92.82 3.04.76 1.48-.08 2.64-.64 3.45-1.68.62-.78 1.01-1.8 1.18-3.07.71.43 1.24 1 1.53 1.68.5 1.15.53 3.05-1.02 4.6-1.35 1.35-2.98 1.94-5.44 1.96-2.72-.02-4.78-.89-6.11-2.59C3.86 17.4 3.2 15.1 3.18 12c.02-3.1.68-5.4 1.96-6.92 1.33-1.7 3.39-2.57 6.11-2.59 2.74.02 4.84.89 6.24 2.6.68.82 1.19 1.86 1.53 3.06l1.9-.51c-.42-1.53-1.06-2.85-1.96-3.93C17.27 1.63 14.75.54 11.26.51h-.01C7.77.54 5.19 1.63 3.5 3.75 1.98 5.65 1.19 8.36 1.17 11.99v.02c.02 3.63.81 6.34 2.33 8.24 1.69 2.12 4.27 3.21 7.75 3.24h.01c2.99-.02 5.09-.81 6.8-2.52 2.23-2.22 2.16-5 1.43-6.72-.53-1.25-1.54-2.26-2.9-2.92zm-4.9 5.02c-1.25.07-2.55-.49-2.61-1.71-.05-.9.64-1.91 2.7-2.03.24-.01.47-.02.7-.02.75 0 1.45.07 2.09.21-.24 2.94-1.62 3.48-2.88 3.55z"/></svg>
+                    </div>
+                    <div class="platform-title" data-i18n="onboard.platform_th_title">Threads by Meta</div>
+                    <div class="platform-caption" data-i18n="onboard.platform_th_desc">Engage followers, auto-reply to mentions, and boost text reach.</div>
+                    <button class="btn-connect" id="btn-connect-th" onclick="triggerConnect('threads')" data-i18n="onboard.btn_connect" disabled style="opacity:.45;cursor:not-allowed;">Connect Channel</button>
+                </div>
+
+                <!-- WhatsApp Cloud (Upcoming) -->
+                <div class="platform-tile">
+                    <span class="platform-badge-soon" data-i18n="onboard.coming_soon">Coming Soon</span>
+                    <div class="platform-icon-circle">
+                        <svg viewBox="0 0 24 24"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                    </div>
+                    <div class="platform-title" data-i18n="onboard.platform_wa_title">WhatsApp Cloud</div>
+                    <div class="platform-caption" data-i18n="onboard.platform_wa_desc">Automate WhatsApp business conversations and follow-ups 24/7.</div>
+                    <button class="btn-connect btn-connect-upcoming" id="btn-connect-wa" disabled data-i18n="onboard.coming_soon">Coming Soon</button>
                 </div>
             </div>
 
             <!-- Phase 9.7: discovered-but-locked upsell cards (entitlement-gated) -->
             <div id="connections-upsell"></div>
 
-            <div style="text-align:center;margin-top:14px;">
-                <button class="btn-back" onclick="finalizeSetup(true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip_all">Skip for now — finish setup without connecting</button>
-            </div>
-
             <div id="save-status" style="text-align: center; font-size: 13.5px; margin: 16px 0;"></div>
 
-            <div class="bottom-actions" style="display:none;">
-                <button class="btn-back" onclick="nextStep(2)" data-i18n="onboard.btn_back">← Back</button>
-                <button class="btn-submit" onclick="finalizeSetup()" data-i18n="onboard.btn_finish">
-                    Launch AI Agent & Open Inbox 🚀
-                </button>
+            <div class="bottom-actions" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <button type="button" class="btn-back" onclick="nextStep(2)" data-i18n="onboard.btn_back">← Back</button>
+                <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+                    <button type="button" class="btn-back" onclick="finalizeSetup(true)" style="background:none;border:none;color:var(--text-muted);font-size:12.5px;cursor:pointer;text-decoration:underline;" data-i18n="onboard.skip_all">Skip for now — finish setup without connecting</button>
+                    <button type="button" class="btn-submit" onclick="finalizeSetup(false)" data-i18n="onboard.btn_finish">
+                        Launch AI Agent & Open Inbox 🚀
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -594,6 +671,7 @@
 
     <script>
         let cur = 1;
+        let kbFileUploaded = false;
 
         function updateStepTitles(step) {
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
@@ -625,26 +703,31 @@
             arrow.textContent = isShown ? '▾' : '▴';
         }
 
-        function nextStep(step) {
-            if (cur === 1 && step > 1) {
-                const txt = document.getElementById('kb-text').value.trim();
-                if (!txt) {
+        function nextStep(step, isSkip = false) {
+            if (!isSkip && cur === 1 && step > 1) {
+                const txt = (document.getElementById('kb-text') || {}).value ? document.getElementById('kb-text').value.trim() : '';
+                if (!txt && !kbFileUploaded) {
                     const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
                     alert(isAr ? 'يرجى كتابة نبذة عن نشاطك أو رفع ملف لتدريب الوكيل قبل المتابعة.' : 'Please write your business details or upload a file to train the agent before proceeding.');
                     return;
                 }
             }
 
-            document.getElementById('pane-1').style.display = 'none';
-            document.getElementById('pane-2').style.display = 'none';
-            document.getElementById('pane-3').style.display = 'none';
+            const p1 = document.getElementById('pane-1');
+            const p2 = document.getElementById('pane-2');
+            const p3 = document.getElementById('pane-3');
+            if (p1) p1.style.display = 'none';
+            if (p2) p2.style.display = 'none';
+            if (p3) p3.style.display = 'none';
 
-            document.getElementById(`pane-${step}`).style.display = 'block';
+            const targetPane = document.getElementById(`pane-${step}`);
+            if (targetPane) targetPane.style.display = 'block';
 
             // Stepper update
             for (let i = 1; i <= 3; i++) {
                 const node = document.getElementById(`node-${i}`);
                 const badge = document.getElementById(`badge-${i}`);
+                if (!node || !badge) continue;
                 node.classList.remove('active', 'completed');
 
                 if (i === step) {
@@ -678,6 +761,7 @@
                 const res = await fetch('/api/knowledge/upload', { method: 'POST', body: fd });
                 const data = await res.json();
                 if (res.ok) {
+                    kbFileUploaded = true;
                     status.textContent = isAr ? `✅ تم استيعاب وهضم الملف بنجاح! (${file.name})` : `✅ File processed and learned successfully! (${file.name})`;
                     status.style.color = '#10b981';
                 } else {
@@ -691,6 +775,28 @@
         }
 
         let pollTimer = null;
+
+        async function startTrial() {
+            const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+            const btn = document.getElementById('btn-start-trial');
+            if (!btn) return;
+            const original = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = isAr ? '⏳ جاري تحويلك للدفع الآمن...' : '⏳ Redirecting to secure checkout...';
+            try {
+                const res = await fetch('/api/billing/trial', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok && data.checkout_url) {
+                    window.location.href = data.checkout_url;
+                    return;
+                }
+                alert(data.detail || (isAr ? 'التجربة غير متاحة حالياً.' : 'Trial is unavailable right now.'));
+            } catch (e) {
+                alert(isAr ? 'تعذر الاتصال بالخادم.' : 'Could not reach the server.');
+            }
+            btn.disabled = false;
+            btn.textContent = original;
+        }
 
         async function triggerConnect(platform) {
             // Subscription gate (owner spec): connect only when a plan/trial is active
@@ -709,7 +815,12 @@
             } catch (e) { /* fall through to door check */ }
 
             // Phase 9.7: per-user connect doors (OAuth popup — token never touches the client)
-            const btn = document.getElementById(`btn-connect-${platform === 'instagram' ? 'ig' : 'fb'}`);
+            const btnMap = {
+                instagram: 'btn-connect-ig',
+                facebook: 'btn-connect-fb',
+                threads: 'btn-connect-th'
+            };
+            const btn = document.getElementById(btnMap[platform] || `btn-connect-${platform}`);
             try {
                 const res = await fetch(`/api/connections/${platform}/authorize`);
                 const data = await res.json();
@@ -717,20 +828,28 @@
                     alert(data.detail || (isAr ? 'الربط غير متاح حاليًا.' : 'Connection is unavailable.'));
                     return;
                 }
-                const orig = btn.textContent;
-                btn.textContent = isAr ? '⏳ أكمل الموافقة في النافذة...' : '⏳ Approve in the popup...';
+                const orig = btn ? btn.textContent : '';
+                if (btn) btn.textContent = isAr ? '⏳ أكمل الموافقة في النافذة...' : '⏳ Approve in the popup...';
                 window.open(data.authorize_url, 'hudhud_connect_' + platform, 'width=650,height=750,status=yes,scrollbars=yes');
                 let tries = 0;
                 clearInterval(pollTimer);
                 pollTimer = setInterval(async () => {
                     tries++;
                     const done = await refreshConnections();
-                    if (done || tries > 60) { clearInterval(pollTimer); btn.textContent = orig; }
+                    if (done || tries > 60) { clearInterval(pollTimer); if (btn) btn.textContent = orig; }
                 }, 2500);
             } catch (e) {
                 alert(isAr ? 'فشل فتح نافذة الربط.' : 'Failed to open the connect window.');
             }
         }
+
+        // Instant reactivity when popup completes connection
+        window.addEventListener('message', async (e) => {
+            if (e.data && e.data.type === 'hudhud_connected') {
+                clearInterval(pollTimer);
+                await refreshConnections();
+            }
+        });
 
         // Phase 9.7: per-user connections overview — tile states + locked upsell cards
         async function refreshConnections() {
@@ -758,6 +877,7 @@
             };
             const fbDone = setTile('btn-connect-fb', conns.includes('facebook'));
             const igDone = setTile('btn-connect-ig', conns.includes('instagram'));
+            const thDone = setTile('btn-connect-th', conns.includes('threads'));
 
             // golden upsell: discovered accounts on platforms the user hasn't paid for
             const box = document.getElementById('connections-upsell');
@@ -771,22 +891,27 @@
                         <a href="${u.checkout_url}" style="background:#2563eb;color:#fff;border-radius:10px;padding:9px 16px;font-size:13px;text-decoration:none;font-weight:700;">${isAr ? 'تفعيل الخدمة' : 'Activate service'}</a>
                     </div>`).join('');
             }
-            return fbDone && igDone;
+            return fbDone && igDone && thDone;
         }
 
         async function finalizeSetup(skip = false) {
-            const kbText = document.getElementById('kb-text').value.trim();
-            const roleSel = document.getElementById('agent-role').value;
+            const kbText = (document.getElementById('kb-text') || {}).value ? document.getElementById('kb-text').value.trim() : '';
+            const roleEl = document.getElementById('agent-role');
+            const roleSel = roleEl ? roleEl.value : 'sales';
             const roleCustom = (document.getElementById('agent-role-custom') || {}).value || '';
             const role = roleSel === 'custom' ? (roleCustom.trim() || 'custom') : roleSel;
-            const brain = document.getElementById('agent-brain').value;
-            const tone = document.getElementById('agent-tone').value;
-            const booking = document.getElementById('agent-booking-link').value.trim();
+            const brainEl = document.getElementById('agent-brain');
+            const brain = brainEl ? brainEl.value : 'gemini';
+            const toneEl = document.getElementById('agent-tone');
+            const tone = toneEl ? toneEl.value : 'friendly';
+            const booking = (document.getElementById('agent-booking-link') || {}).value ? document.getElementById('agent-booking-link').value.trim() : '';
             const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
 
             const status = document.getElementById('save-status');
-            status.textContent = isAr ? '⏳ جاري إطلاق وكيلك وتفعيل قنوات المراسلة...' : '⏳ Launching your AI sales agent and activating channels...';
-            status.style.color = 'var(--primary)';
+            if (status) {
+                status.textContent = isAr ? '⏳ جاري إطلاق وكيلك وتفعيل قنوات المراسلة...' : '⏳ Launching your AI sales agent and activating channels...';
+                status.style.color = 'var(--primary)';
+            }
 
             try {
                 const res = await fetch('/api/onboarding/save-all', {
@@ -803,31 +928,37 @@
 
                 if (res.ok) {
                     if (window.hudhudTrack) window.hudhudTrack('onboarding_completed', { role: role, brain: brain });
-                    status.textContent = isAr ? '✅ تم إطلاق الوكيل بنجاح! جاري توجيهك لصندوق الوارد...' : '✅ AI Agent launched successfully! Redirecting to Live Inbox...';
-                    status.style.color = '#10b981';
-                    setTimeout(() => { window.location.href = '/inbox'; }, 1000);
+                    if (status) {
+                        status.textContent = isAr ? '✅ تم إطلاق الوكيل بنجاح! جاري توجيهك لصندوق الوارد...' : '✅ AI Agent launched successfully! Redirecting to Live Inbox...';
+                        status.style.color = '#10b981';
+                    }
+                    setTimeout(() => { window.location.href = '/inbox'; }, 600);
                 } else {
-                    const data = await res.json();
-                    status.textContent = '❌ ' + (data.detail || (isAr ? 'فشل الحفظ' : 'Failed to save settings'));
-                    status.style.color = '#ef4444';
+                    const data = await res.json().catch(() => ({}));
+                    if (status) {
+                        status.textContent = '❌ ' + (data.detail || (isAr ? 'فشل الحفظ' : 'Failed to save settings'));
+                        status.style.color = '#ef4444';
+                    }
+                    if (skip) {
+                        setTimeout(() => { window.location.href = '/inbox'; }, 1000);
+                    }
                 }
             } catch (e) {
-                status.textContent = isAr ? '❌ فشل الاتصال بالخادم.' : '❌ Failed to connect to server.';
-                status.style.color = '#ef4444';
+                if (status) {
+                    status.textContent = isAr ? '❌ فشل الاتصال بالخادم.' : '❌ Failed to connect to server.';
+                    status.style.color = '#ef4444';
+                }
+                if (skip) {
+                    setTimeout(() => { window.location.href = '/inbox'; }, 1000);
+                }
             }
         }
 
         // Check platform state on load
         document.addEventListener('DOMContentLoaded', async () => {
-            // honor paid/trial return from checkout
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('trial') === '1') {
-                localStorage.setItem('hudhud_trial_started', '1');
-            }
-
             const urlStep = new URLSearchParams(window.location.search).get('step');
             if (urlStep) {
-                nextStep(parseInt(urlStep));
+                nextStep(parseInt(urlStep), true);
             } else {
                 updateStepTitles(1);
             }

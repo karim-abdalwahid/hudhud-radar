@@ -13,7 +13,7 @@ Owner safety requirements baked into the contract:
   - duplicate events are neutralized by payment_events dedup (services layer)
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 class PaymentProvider(ABC):

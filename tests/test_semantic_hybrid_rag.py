@@ -57,14 +57,14 @@ def test_semantic_synonym_retrieval():
     assert "باقات الأسعار" in top_text
 
 
-def test_knowledge_base_hybrid_search_integration():
-    # Seed an isolated document (conftest forces KB into a tmp file-mode dir),
-    # then verify the hybrid search produces relevant chunks.
+def test_knowledge_base_file_mode_is_not_used_for_tenant_replies():
+    # The legacy file cache is deliberately unavailable to SaaS reply paths:
+    # without per-user storage it cannot safely isolate tenants.
     knowledge_base.save_document(
         "pricing_packages.md",
         "# باقات الأسعار\nتكلفة الاشتراك الشهري في إدارة الحملات الإعلانية تبدأ من 5000 جنيه مصري.\nباقة الاحترافية تشمل ريلز وإدارة إعلانات."
     )
-    result = knowledge_base.search_relevant_chunks("عايز اعرف اسعار باقات الإعلانات", top_k=2)
-    assert isinstance(result, str)
-    assert len(result) > 20
-    assert "باقات" in result or "إعلان" in result
+    result = knowledge_base.search_relevant_chunks(
+        "عايز اعرف اسعار باقات الإعلانات", top_k=2, user_id="tenant_a"
+    )
+    assert result == ""

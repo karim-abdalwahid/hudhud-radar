@@ -26,7 +26,7 @@ router = APIRouter()
 FB_SCOPES = ("pages_show_list,pages_messaging,pages_manage_metadata,pages_read_engagement,"
              "pages_manage_posts,pages_read_user_content,read_insights,instagram_basic,"
              "instagram_manage_messages,instagram_manage_comments,instagram_content_publish,"
-             "pages_utility_messaging")
+             "pages_manage_engagement,instagram_manage_engagement")
 IG_SCOPES = ("instagram_business_basic,instagram_business_manage_insights,"
              "instagram_business_content_publish,instagram_business_manage_comments,"
              "instagram_business_manage_messages")
@@ -93,6 +93,8 @@ async def connections_overview(request: Request):
 @router.delete("/api/connections/{platform}", tags=["Connections"])
 async def disconnect_platform(platform: str, request: Request):
     s = _require_user(request)
+    if platform not in ("facebook", "instagram", "threads"):
+        raise HTTPException(status_code=404, detail="unknown platform")
     ok = connection_service.revoke(s["sub"], platform)
     if not ok:
         raise HTTPException(status_code=500, detail="disconnect failed")
@@ -123,7 +125,7 @@ async def facebook_authorize(request: Request):
 async def facebook_callback(request: Request, code: str = Query(...), state: str = Query(...)):
     user_id = _verify_state(state, "facebook")
     if not user_id:
-        return RedirectResponse("/settings?connect_error=invalid_state", status_code=303)
+        return RedirectResponse("/account?connect_error=invalid_state", status_code=303)
     import httpx
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -135,7 +137,7 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
                         "redirect_uri": _redirect_uri("facebook"), "code": code})
             if tok.status_code != 200:
                 logger.error(f"FB code exchange failed: {tok.text[:200]}")
-                return RedirectResponse("/settings?connect_error=facebook", status_code=303)
+                return RedirectResponse("/account?connect_error=facebook", status_code=303)
             short = tok.json().get("access_token")
             # → long-lived user token
             lng = await client.get(
@@ -155,7 +157,7 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
                                              "access_token": user_token})
             plist = (pages.json() if pages.status_code == 200 else {}).get("data", [])
             if not plist:
-                return RedirectResponse("/settings?connect_error=no_pages", status_code=303)
+                return RedirectResponse("/account?connect_error=no_pages", status_code=303)
         page = plist[0]
         ig = page.get("instagram_business_account") or {}
         saved = connection_service.store(
@@ -168,11 +170,26 @@ async def facebook_callback(request: Request, code: str = Query(...), state: str
                       "linked_ig_username": ig.get("username"),
                       "pages_count": len(plist)})
         if not saved:
-            return RedirectResponse("/settings?connect_error=store", status_code=303)
-        return RedirectResponse("/settings?connected=facebook", status_code=303)
+            return RedirectResponse("/account?connect_error=store", status_code=303)
+        # Auto-subscribe the Page (+ linked IG) to webhooks so messages
+        # arrive immediately without a separate manual step.
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as sub_client:
+                await sub_client.post(
+                    f"{settings.META_GRAPH_API_BASE_URL}/{page.get('id')}/subscribed_apps",
+                    data={"subscribed_fields": "feed,messages,conversations",
+                          "access_token": page.get("access_token")})
+                if ig.get("id"):
+                    await sub_client.post(
+                        f"{settings.META_GRAPH_API_BASE_URL}/{ig['id']}/subscribed_apps",
+                        data={"subscribed_fields": "comments,messages,messaging_postbacks",
+                              "access_token": page.get("access_token")})
+        except Exception as sub_err:
+            logger.warning(f"Auto-subscribe after FB connect failed (non-fatal): {sub_err}")
+        return RedirectResponse("/account?connected=facebook", status_code=303)
     except Exception as e:
         logger.error(f"facebook callback error: {e}")
-        return RedirectResponse("/settings?connect_error=facebook", status_code=303)
+        return RedirectResponse("/account?connect_error=facebook", status_code=303)
 
 
 # --------------------------------------------------------------------------
@@ -200,7 +217,7 @@ async def instagram_authorize(request: Request):
 async def instagram_callback(request: Request, code: str = Query(...), state: str = Query(...)):
     user_id = _verify_state(state, "instagram")
     if not user_id:
-        return RedirectResponse("/settings?connect_error=invalid_state", status_code=303)
+        return RedirectResponse("/account?connect_error=invalid_state", status_code=303)
     import httpx
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -210,7 +227,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
                 "redirect_uri": _redirect_uri("instagram"), "code": code})
             if tok.status_code != 200:
                 logger.error(f"IG code exchange failed: {tok.text[:200]}")
-                return RedirectResponse("/settings?connect_error=instagram", status_code=303)
+                return RedirectResponse("/account?connect_error=instagram", status_code=303)
             j = tok.json()
             short, ig_uid = j.get("access_token"), str(j.get("user_id", ""))
             lng = await client.get("https://graph.instagram.com/access_token", params={
@@ -228,7 +245,7 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
             metadata={"platform_user_id": str(ig_uid),
                       "token_expires_in_days": 60})
         if not saved:
-            return RedirectResponse("/settings?connect_error=store", status_code=303)
+            return RedirectResponse("/account?connect_error=store", status_code=303)
         # 60-day token expiry recorded for refresh scheduling
         from datetime import datetime, timedelta, timezone
         from src.core.supabase_client import supabase_db
@@ -240,7 +257,32 @@ async def instagram_callback(request: Request, code: str = Query(...), state: st
                                              + timedelta(days=60)).isoformat()})
         except Exception:
             pass
-        return RedirectResponse("/settings?connected=instagram", status_code=303)
+        # Auto-subscribe IG account to webhooks (independent of Facebook)
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as sub_client:
+                ig_account_id = str(m.get("user_id") or ig_uid)
+                await sub_client.post(
+                    f"{settings.META_GRAPH_API_BASE_URL}/{ig_account_id}/subscribed_apps",
+                    data={"subscribed_fields": "comments,messages,messaging_postbacks",
+                          "access_token": token})
+        except Exception as sub_err:
+            logger.warning(f"Auto-subscribe after IG connect failed: {sub_err}")
+        return RedirectResponse("/account?connected=instagram", status_code=303)
     except Exception as e:
         logger.error(f"instagram callback error: {e}")
-        return RedirectResponse("/settings?connect_error=instagram", status_code=303)
+        return RedirectResponse("/account?connect_error=instagram", status_code=303)
+
+
+# --------------------------------------------------------------------------
+# 🧵 threads door
+# --------------------------------------------------------------------------
+@router.get("/api/connections/threads/authorize", tags=["Connections"])
+async def threads_authorize(request: Request):
+    s = _require_user(request)
+    if s.get("role") != "admin" and not connection_service.assert_entitled(s["sub"], "threads"):
+        raise HTTPException(status_code=403, detail="threads service not in subscription")
+    from src.meta_api.threads_oauth import threads_oauth
+    res = threads_oauth.build_authorize_url(s["sub"])
+    if res.get("status") == "error":
+        raise HTTPException(status_code=400, detail=res.get("detail", "Failed to build Threads authorize URL"))
+    return res

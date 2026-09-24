@@ -30,6 +30,77 @@ DISCOVERY_UPSELL_META = {
 class ConnectionService:
     """Storage + retrieval + entitlement gate for per-user platform connections."""
 
+    @staticmethod
+    def _matches_recipient_account(row: Dict[str, Any], platform: str,
+                                   account_id: str) -> bool:
+        """Whether an active connection owns a Meta webhook recipient.
+
+        Instagram messaging/comment webhooks can identify the IG business
+        account while the customer connected through Facebook Login.  That
+        connection stores the linked IG id in metadata, so it is also a valid
+        owner/token source for the Instagram recipient.
+        """
+        if row.get("platform") == platform and str(row.get("account_id") or "") == account_id:
+            return True
+        if platform == "instagram" and row.get("platform") == "facebook":
+            metadata = row.get("metadata") or {}
+            return str(metadata.get("linked_ig_id") or "") == account_id
+        return False
+
+    def _active_recipient_connections(self, platform: str, account_id: str,
+                                      user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Find exact active connections for a recipient business account.
+
+        Exact account ownership is filtered by PostgreSQL rather than loading
+        every tenant's active connection into application memory.  Instagram
+        may also be represented by a Facebook connection's ``linked_ig_id``;
+        that JSON lookup is likewise pushed to Postgres in production.
+        """
+        if not account_id:
+            return []
+        try:
+            filters: Dict[str, Any] = {
+                "status": "active",
+                "platform": platform,
+                "account_id": str(account_id),
+            }
+            if user_id:
+                filters["user_id"] = str(user_id)
+            rows = supabase_db.select("platform_connections", filters) or []
+
+            if platform == "instagram":
+                linked_filters: Dict[str, Any] = {
+                    "status": "active",
+                    "platform": "facebook",
+                }
+                if user_id:
+                    linked_filters["user_id"] = str(user_id)
+
+                if supabase_db.is_connected and supabase_db.client:
+                    query = supabase_db.client.table("platform_connections").select("*")
+                    for key, value in linked_filters.items():
+                        query = query.eq(key, value)
+                    linked_rows = query.contains(
+                        "metadata", {"linked_ig_id": str(account_id)}
+                    ).execute().data or []
+                else:
+                    # Test/local memory data is already process-local.  Keep
+                    # the same exact filtering semantics without a global scan
+                    # in the real database path.
+                    linked_rows = [
+                        row for row in (supabase_db.select("platform_connections", linked_filters) or [])
+                        if str((row.get("metadata") or {}).get("linked_ig_id") or "") == str(account_id)
+                    ]
+                rows.extend(linked_rows)
+
+            # A linked row could theoretically overlap an exact row.  Preserve
+            # the fail-closed ambiguity check while returning each DB row once.
+            unique_rows = {str(row.get("id")): row for row in rows if row.get("id")}
+            return list(unique_rows.values())
+        except Exception as e:
+            logger.warning("recipient connection lookup failed → empty: %s", e)
+            return []
+
     # ---- storage -----------------------------------------------------------
     def store(self, user_id: str, platform: str, access_token: str,
               account_id: Optional[str] = None, account_name: Optional[str] = None,
@@ -74,6 +145,135 @@ class ConnectionService:
             logger.warning(f"connection list failed → empty (fail-closed): {e}")
             return []
 
+    def owner_for_account(self, platform: str, account_id: Optional[str]) -> Optional[str]:
+        """Return the sole active SaaS owner of an inbound recipient account.
+
+        Webhook sender IDs belong to the end customer; the recipient business
+        account identifies the tenant. Missing or ambiguous ownership returns
+        None so the caller can fail closed rather than route a conversation to
+        another tenant.
+        """
+        if platform not in ("facebook", "instagram", "threads") or not account_id:
+            return None
+        try:
+            rows = self._active_recipient_connections(platform, str(account_id))
+            owners = {str(row.get("user_id")) for row in rows if row.get("user_id")}
+            if len(owners) == 1:
+                return owners.pop()
+            if len(owners) > 1:
+                logger.error("Ambiguous active connection owner for %s account %s", platform, account_id)
+        except Exception as e:
+            logger.warning("connection owner lookup failed → None (fail-closed): %s", e)
+        return None
+
+    def get_active_token_for_account(self, user_id: str, platform: str,
+                                     account_id: Optional[str]) -> Optional[str]:
+        """Resolve the entitled user's token for exactly this recipient account.
+
+        _active_recipient_connections may return more than one row for Instagram
+        when the user has both a direct Instagram connection AND a Facebook
+        connection whose ``linked_ig_id`` points to the same IG account.
+        In that case we prefer the row whose platform matches directly so we
+        always use the strongest, most-specific token rather than failing closed.
+        """
+        if not account_id or not self.assert_entitled(user_id, platform, raise_http=False):
+            return None
+        try:
+            rows = self._active_recipient_connections(platform, str(account_id), user_id=user_id)
+            if not rows:
+                return None
+            # Prefer a direct platform match (e.g. platform="instagram" row over
+            # the Facebook row that merely carries linked_ig_id in metadata).
+            direct = [r for r in rows if r.get("platform") == platform]
+            row = direct[0] if direct else rows[0]
+            exp = row.get("token_expires_at")
+            if exp and exp <= datetime.now(timezone.utc).isoformat():
+                return None
+            return decrypt_token(row.get("access_token_encrypted") or "")
+        except Exception as e:
+            logger.warning("account token lookup failed → None (fail-closed): %s", e)
+            return None
+
+    def get_send_token_for_instagram(self, user_id: str, ig_account_id: str) -> Optional[str]:
+        """Return the Facebook Page Access Token to use when SENDING Instagram DMs.
+
+        The Instagram Messaging API (/me/messages) requires a Facebook Page
+        Access Token — NOT the Instagram User Access Token from the child app.
+        We find the Facebook connection whose metadata.linked_ig_id matches
+        the IG business account and return its token.
+        Falls back to the IG User Token if no linked Facebook connection exists.
+        """
+        try:
+            # Look for a Facebook connection linked to this IG account
+            if supabase_db.is_connected and supabase_db.client:
+                linked = supabase_db.client.table("platform_connections").select("*") \
+                    .eq("user_id", str(user_id)) \
+                    .eq("platform", "facebook") \
+                    .eq("status", "active") \
+                    .contains("metadata", {"linked_ig_id": str(ig_account_id)}) \
+                    .execute().data or []
+            else:
+                linked = [
+                    r for r in (supabase_db.select("platform_connections", {
+                        "user_id": user_id, "platform": "facebook", "status": "active"
+                    }) or [])
+                    if str((r.get("metadata") or {}).get("linked_ig_id") or "") == str(ig_account_id)
+                ]
+            if linked:
+                row = linked[0]
+                exp = row.get("token_expires_at")
+                if not exp or exp > datetime.now(timezone.utc).isoformat():
+                    fb_token = decrypt_token(row.get("access_token_encrypted") or "")
+                    if fb_token:
+                        logger.debug("IG send: using linked Facebook Page token for IG account %s", ig_account_id)
+                        return fb_token
+        except Exception as e:
+            logger.warning("IG send token lookup via FB link failed: %s", e)
+        # Fallback: use the direct IG user token
+        logger.debug("IG send: no linked FB token found, falling back to IG user token for %s", ig_account_id)
+        return self.get_active_token_for_account(user_id, "instagram", ig_account_id)
+
+    def get_publish_credentials(self, user_id: str, platform: str) -> Optional[Dict[str, str]]:
+        """Return one entitled user's exact publishing credentials.
+
+        The caller receives only the decrypted token and destination account
+        required for one outbound Graph request.  A missing/ambiguous
+        connection returns ``None``; there is intentionally no legacy global
+        token fallback in the SaaS path.
+        """
+        if platform not in ("facebook", "instagram"):
+            return None
+        if not self.assert_entitled(user_id, platform, raise_http=False):
+            return None
+        try:
+            rows = supabase_db.select("platform_connections", {
+                "user_id": user_id, "status": "active",
+            }) or []
+            candidates: List[tuple[Dict[str, Any], str]] = []
+            for row in rows:
+                if platform == "facebook" and row.get("platform") == "facebook":
+                    candidates.append((row, str(row.get("account_id") or "")))
+                elif platform == "instagram":
+                    if row.get("platform") == "instagram":
+                        candidates.append((row, str(row.get("account_id") or "")))
+                    elif row.get("platform") == "facebook":
+                        linked_ig_id = str((row.get("metadata") or {}).get("linked_ig_id") or "")
+                        if linked_ig_id:
+                            candidates.append((row, linked_ig_id))
+            if len(candidates) != 1:
+                return None
+            row, account_id = candidates[0]
+            if not account_id:
+                return None
+            expires_at = row.get("token_expires_at")
+            if expires_at and expires_at <= datetime.now(timezone.utc).isoformat():
+                return None
+            token = decrypt_token(row.get("access_token_encrypted") or "")
+            return {"access_token": token, "account_id": account_id}
+        except Exception as e:
+            logger.warning("publish credential lookup failed → None (fail-closed): %s", e)
+            return None
+
     def get_active_token(self, user_id: str, platform: str,
                          check_entitlement: bool = True) -> Optional[str]:
         """Resolves the user's decrypted token for a platform. THE gate:
@@ -84,7 +284,9 @@ class ConnectionService:
         try:
             rows = supabase_db.select("platform_connections", {
                 "user_id": user_id, "platform": platform, "status": "active"}) or []
-            if not rows:
+            # Ambiguous connections must never select an arbitrary tenant
+            # token/account.  The caller must use the exact-account helper.
+            if len(rows) != 1:
                 return None
             row = rows[0]
             exp = row.get("token_expires_at")
@@ -92,8 +294,24 @@ class ConnectionService:
                 return None
             return decrypt_token(row.get("access_token_encrypted") or "")
         except Exception as e:
-            logger.warning(f"token resolve failed → None (fail-closed): {e}")
+            logger.warning("token resolve failed → None (fail-closed): %s", e)
             return None
+
+    def get_connection_metadata(self, user_id: str, platform: str) -> Dict[str, Any]:
+        """Return metadata from one exact active tenant connection.
+
+        This deliberately never falls back to deployment settings. It is used
+        for account IDs (such as a customer's Meta ad account), not tokens.
+        """
+        try:
+            rows = supabase_db.select("platform_connections", {
+                "user_id": user_id, "platform": platform, "status": "active"}) or []
+            if len(rows) != 1:
+                return {}
+            return dict(rows[0].get("metadata") or {})
+        except Exception as e:
+            logger.warning("connection metadata lookup failed → empty: %s", e)
+            return {}
 
     def revoke(self, user_id: str, platform: str) -> bool:
         try:

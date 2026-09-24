@@ -6,7 +6,7 @@ let lastMetaData = null;
 const hudhudRoleManager = {
     // Admin-only surfaces (server 403s non-admins). Client View hides ALL of
     // them; Dev Console shows them and hides client workspace sections.
-    DEV_ROUTES: ['/settings', '/identity', '/analytics', '/users', '/templates'],
+    DEV_ROUTES: ['/settings', '/users', '/templates'],
     _isAdmin: false,
 
     isDevRoute() {
@@ -311,17 +311,28 @@ function escapeHtml(str) {
 // --------------------------------------------------------------------
 let _notifPolling = null;
 
+function getOrCreateTopbarActions(topbar) {
+    let actions = topbar.querySelector('.topbar-actions');
+    if (!actions) {
+        actions = document.createElement('div');
+        actions.className = 'topbar-actions';
+        topbar.appendChild(actions);
+    }
+    return actions;
+}
+
 function injectNotificationsBell() {
     // Only dashboard pages (topbar exists there); skip landing/auth
     const topbar = document.querySelector('.app-topbar');
     if (!topbar || document.getElementById('hudhud-bell')) return;
+    const actions = getOrCreateTopbarActions(topbar);
 
     const wrap = document.createElement('div');
     wrap.id = 'hudhud-bell';
-    wrap.style.cssText = 'position:relative;margin-inline-start:auto;display:flex;align-items:center;gap:10px;';
+    wrap.style.cssText = 'position:relative;display:flex;align-items:center;';
     wrap.innerHTML = `
-        <button id="hudhud-bell-btn" style="position:relative;background:none;border:1px solid var(--border-default);
-            border-radius:12px;padding:8px 11px;cursor:pointer;font-size:16px;" title="Notifications">🔔
+        <button id="hudhud-bell-btn" style="position:relative;background:var(--bg-card);border:1px solid var(--border-default);
+            border-radius:10px;padding:7px 11px;cursor:pointer;font-size:15px;color:var(--text-primary);" title="Notifications">🔔
             <span id="hudhud-bell-badge" style="display:none;position:absolute;top:-6px;inset-inline-end:-6px;
                 background:#dc2626;color:#fff;border-radius:99px;font-size:10.5px;font-weight:800;
                 padding:1px 6px;min-width:18px;text-align:center;">0</span>
@@ -330,7 +341,7 @@ function injectNotificationsBell() {
             inset-inline-end:0;width:340px;max-height:420px;overflow-y:auto;background:var(--bg-card);
             border:1px solid var(--border-default);border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,0.14);z-index:90;"></div>
     `;
-    topbar.appendChild(wrap);
+    actions.appendChild(wrap);
 
     document.getElementById('hudhud-bell-btn').onclick = toggleBellDropdown;
     document.addEventListener('click', (e) => {
@@ -342,9 +353,74 @@ function injectNotificationsBell() {
     if (!_notifPolling) _notifPolling = setInterval(refreshNotifications, 60000);
 }
 
+function getEffectiveLang() {
+    return (window.hudhudI18n && window.hudhudI18n.currentLang) ||
+           localStorage.getItem('hudhud_lang') ||
+           document.documentElement.lang ||
+           'en';
+}
+
+function localizeNotificationClient(n, lang) {
+    if (!n) return n;
+    const isEn = lang === 'en';
+    const meta = n.meta || {};
+    let title = n.title || '';
+    let body = n.body || '';
+
+    if (isEn) {
+        if (meta.title_en) title = meta.title_en;
+        if (meta.body_en) body = meta.body_en;
+
+        // Dynamic Arabic -> English patterns if stored text is Arabic
+        if (/أهلاً بك (?:في|إلى) هدهد/i.test(title)) {
+            const m = title.match(/أهلاً بك (?:في|إلى) هدهد[،\s]+يا?\s*(.+?)!?$/);
+            const name = m ? m[1].trim() : (meta.user_name || '');
+            title = name ? `🎉 Welcome to Hudhud, ${name}!` : '🎉 Welcome to Hudhud!';
+            body = 'Your account is ready. Next step: connect your social channels from Settings to activate automated replies.';
+        } else if (title.includes('تم تفعيل')) {
+            const plan = title.replace('✅', '').replace('تم تفعيل', '').replace('خطتك:', '').replace('باقة', '').trim();
+            title = plan ? `✅ Plan activated: ${plan}` : '✅ Plan activated';
+            if (body.includes('المنصات المشمولة')) {
+                const m = body.match(/المنصات المشمولة في خطتك:\s*([^.]+)/);
+                const p = m ? m[1].trim() : 'All channels';
+                body = `Included platforms: ${p}. AI credits have been updated.`;
+            } else if (!meta.body_en) {
+                body = 'Your plan is active and AI credits have been added to your balance.';
+            }
+        } else if (title.includes('بدأت تجربتك المجانية')) {
+            title = '✅ Your free trial has started';
+            body = 'All messaging channels are available for 3 days.';
+        } else if (title.includes('تم إلغاء اشتراكك')) {
+            title = '⚠️ Subscription canceled';
+            body = 'Channels paused — activate a plan to resume automated service.';
+        } else if (title.includes('تم إضافة') && title.includes('رصيد')) {
+            const m = title.match(/(\d+)/);
+            title = m ? `⚡ Added ${m[1]} AI credits` : '⚡ Added AI credits';
+            const tot = body.match(/الآن:\s*(\d+)/);
+            body = tot ? `Credits successfully added to your account. Your new total: ${tot[1]} points.` : 'Credits successfully added to your account.';
+        } else if (title.includes('رصيد الذكاء الاصطناعي منخفض')) {
+            title = '⚠️ Low AI credits warning';
+            const m = body.match(/(\d+)/);
+            body = m ? `You have ${m[1]} credits remaining. The agent will fall back to static templates when depleted.` : 'Your AI credit balance is running low.';
+        } else if (title.includes('رصيد الردود الآلية خلص')) {
+            title = '⚠️ Out of AI credits';
+            body = 'The AI agent has temporarily paused automated replies because your AI credits are exhausted. New messages will still arrive in your inbox for manual replies.';
+        } else if (title.includes('عميل محتمل جديد')) {
+            title = '🎯 New qualified lead captured!';
+            body = meta.lead_name ? `Your AI agent captured a new prospect: ${meta.lead_name} — view details in your Leads CRM.` : 'Your AI agent captured a new prospect — view details in your Leads CRM.';
+        }
+    } else {
+        if (meta.title_ar) title = meta.title_ar;
+        if (meta.body_ar) body = meta.body_ar;
+    }
+
+    return Object.assign({}, n, { title, body });
+}
+
 async function refreshNotifications() {
     try {
-        const res = await fetch('/api/notifications?limit=20');
+        const lang = getEffectiveLang();
+        const res = await fetch(`/api/notifications?limit=20&lang=${encodeURIComponent(lang)}`);
         if (!res.ok) return; // 401 on public pages — silent
         const data = await res.json();
         const badge = document.getElementById('hudhud-bell-badge');
@@ -353,29 +429,67 @@ async function refreshNotifications() {
             badge.style.display = (data.unread || 0) > 0 ? 'block' : 'none';
         }
         renderBellDropdown(data.notifications || []);
+
+        // Toast any new unread notification that hasn't been toasted this session
+        try {
+            const seen = JSON.parse(sessionStorage.getItem('hudhud_toasted_notifs') || '[]');
+            const unread = (data.notifications || []).filter(n => !n.read && !seen.includes(n.id));
+            if (unread.length > 0) {
+                const latest = unread[0];
+                seen.push(latest.id);
+                sessionStorage.setItem('hudhud_toasted_notifs', JSON.stringify(seen.slice(-50)));
+                const tType = latest.type === 'error' ? 'error' : latest.type === 'warning' ? 'warning' : latest.type === 'success' ? 'success' : 'info';
+                const loc = localizeNotificationClient(latest, lang);
+                if (window.hudhudToast) {
+                    window.hudhudToast.show({
+                        title: loc.title,
+                        message: loc.body || '',
+                        type: tType,
+                        duration: 6000
+                    });
+                }
+            }
+        } catch (e) {}
     } catch (e) { /* silent — bell is a courtesy */ }
 }
 
 function renderBellDropdown(items) {
     const dd = document.getElementById('hudhud-bell-dropdown');
     if (!dd) return;
-    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+    const lang = getEffectiveLang();
+    const isAr = lang === 'ar';
     if (!items.length) {
         dd.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">${isAr ? 'لا إشعارات بعد' : 'No notifications yet'}</div>`;
         return;
     }
-    const colors = { success: '#059669', warning: '#b45309', error: '#dc2626', broadcast: '#1d4ed8', info: '#64748b' };
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const colors = isDark ? {
+        success: '#34d399',
+        warning: '#fbbf24',
+        error: '#f87171',
+        broadcast: '#60a5fa',
+        info: '#94a3b8'
+    } : {
+        success: '#059669',
+        warning: '#b45309',
+        error: '#dc2626',
+        broadcast: '#1d4ed8',
+        info: '#64748b'
+    };
     dd.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border-default);position:sticky;top:0;background:var(--bg-card);">
             <strong style="font-size:13px;">${isAr ? 'الإشعارات' : 'Notifications'}</strong>
             <button onclick="markAllNotificationsRead()" style="background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;font-weight:600;">${isAr ? 'تعليم الكل كمقروء' : 'Mark all read'}</button>
         </div>
-        ${items.map(n => `
+        ${items.map(rawN => {
+            const n = localizeNotificationClient(rawN, lang);
+            return `
             <div style="padding:11px 14px;border-bottom:1px solid var(--border-default);${n.read ? 'opacity:0.55;' : ''}">
                 <div style="font-size:12.8px;font-weight:700;color:${colors[n.type] || 'var(--text-primary)'};">${escapeHtml(n.title)}</div>
                 ${n.body ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${escapeHtml(n.body)}</div>` : ''}
                 <div style="font-size:10.5px;color:var(--text-muted);margin-top:3px;">${escapeHtml(String(n.created_at || '').slice(0, 16).replace('T', ' '))}</div>
-            </div>`).join('')}
+            </div>`;
+        }).join('')}
     `;
 }
 
@@ -395,49 +509,40 @@ async function markAllNotificationsRead() {
 // --------------------------------------------------------------------
 const hudhudTheme = {
     get() {
-        const saved = localStorage.getItem('hudhud_theme') || 'device';
+        const saved = localStorage.getItem('hudhud_theme');
         if (saved === 'dark' || saved === 'light') return saved;
-        // device mode
-        return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
-            ? 'dark' : 'light';
+        return 'dark';
     },
     apply() {
-        const mode = localStorage.getItem('hudhud_theme') || 'device';
-        const effective = this.get();
-        document.documentElement.setAttribute('data-theme', effective);
+        const mode = this.get();
+        document.documentElement.setAttribute('data-theme', mode);
         const sel = document.getElementById('hudhud-theme-select');
         if (sel) sel.value = mode;
     },
     set(mode) {
-        if (!['light', 'dark', 'device'].includes(mode)) return;
+        if (!['light', 'dark'].includes(mode)) return;
         localStorage.setItem('hudhud_theme', mode);
         this.apply();
     },
     injectSwitcher() {
         const topbar = document.querySelector('.app-topbar');
         if (!topbar || document.getElementById('hudhud-theme-select')) return;
+        const actions = getOrCreateTopbarActions(topbar);
         const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
         const wrap = document.createElement('div');
-        wrap.style.cssText = 'display:flex;align-items:center;margin-inline-start:auto;gap:8px;';
+        wrap.id = 'hudhud-theme-wrap';
+        wrap.style.cssText = 'display:flex;align-items:center;';
         wrap.innerHTML = `
             <select id="hudhud-theme-select" style="background:var(--bg-card);color:var(--text-primary);
                 border:1px solid var(--border-default);border-radius:10px;padding:7px 10px;font-family:inherit;
                 font-size:12.5px;font-weight:600;cursor:pointer;">
                 <option value="light">${isAr ? '☀️ فاتح' : '☀️ Light'}</option>
                 <option value="dark">${isAr ? '🌙 داكن' : '🌙 Dark'}</option>
-                <option value="device">${isAr ? '🖥️ حسب الجهاز' : '🖥️ Device'}</option>
             </select>`;
-        // Bell is appended after — keep bell last (right side)
         const bell = document.getElementById('hudhud-bell');
-        if (bell) topbar.insertBefore(wrap, bell); else topbar.appendChild(wrap);
+        if (bell) actions.insertBefore(wrap, bell); else actions.appendChild(wrap);
         wrap.querySelector('select').onchange = (e) => this.set(e.target.value);
         this.apply();
-        // follow OS live in device mode
-        if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                if ((localStorage.getItem('hudhud_theme') || 'device') === 'device') this.apply();
-            });
-        }
     }
 };
 
@@ -448,10 +553,10 @@ const hudhudTheme = {
 function injectLanguageGlobe() {
     const topbar = document.querySelector('.app-topbar');
     if (!topbar || document.getElementById('hudhud-lang-globe')) return;
-    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+    const actions = getOrCreateTopbarActions(topbar);
     const wrap = document.createElement('div');
     wrap.id = 'hudhud-lang-globe';
-    wrap.style.cssText = 'position:relative;display:flex;align-items:center;gap:8px;';
+    wrap.style.cssText = 'position:relative;display:flex;align-items:center;';
     wrap.innerHTML = `
         <button id="hudhud-lang-btn" style="background:var(--bg-card);color:var(--text-primary);
             border:1px solid var(--border-default);border-radius:10px;padding:7px 12px;cursor:pointer;
@@ -466,10 +571,11 @@ function injectLanguageGlobe() {
                 background:none;border:none;padding:10px 14px;cursor:pointer;font-size:13.5px;font-weight:600;
                 color:var(--text-primary);border-top:1px solid var(--border-default);">🇪🇬 العربية</button>
         </div>`;
-    // insert before the theme select
-    const themeSel = document.getElementById('hudhud-theme-select');
-    const anchor = themeSel ? themeSel.parentElement : null;
-    if (anchor) topbar.insertBefore(wrap, anchor); else topbar.appendChild(wrap);
+    // insert before the theme wrap or bell
+    const themeWrap = document.getElementById('hudhud-theme-wrap');
+    const bell = document.getElementById('hudhud-bell');
+    const anchor = themeWrap || bell;
+    if (anchor) actions.insertBefore(wrap, anchor); else actions.appendChild(wrap);
     document.getElementById('hudhud-lang-btn').onclick = (e) => {
         e.stopPropagation();
         const menu = document.getElementById('hudhud-lang-menu');
@@ -514,6 +620,8 @@ window.addEventListener('hudhud_lang_change', () => {
     const btnDev = document.querySelector('#hudhud-btn-dev span[data-i18n]');
     if (btnClient) btnClient.textContent = isAr ? 'واجهة العميل' : 'Client View';
     if (btnDev) btnDev.textContent = isAr ? 'لوحة المطور' : 'Dev Console';
+    // Re-render and fetch notifications in the new language
+    try { refreshNotifications(); } catch (e) {}
 });
 
 
@@ -568,3 +676,232 @@ window.platformIcon = function (platform, size = 20) {
         }).catch(function () { /* noop */ });
     } catch (e) { /* noop */ }
 })();
+
+// ====================================================================
+// Enterprise Hudhud Toast & Notification Engine (Universal Alert System)
+// Animated, glassmorphic, theme-aware, RTL/LTR compatible, action-capable
+// ====================================================================
+const hudhudToast = {
+    container: null,
+    activeToasts: [],
+    maxConcurrent: 4,
+
+    getOrCreateContainer() {
+        if (!this.container || !document.body.contains(this.container)) {
+            this.container = document.getElementById('hudhud-toast-container');
+            if (!this.container) {
+                this.container = document.createElement('div');
+                this.container.id = 'hudhud-toast-container';
+                document.body.appendChild(this.container);
+            }
+        }
+        return this.container;
+    },
+
+    getIconSvg(type) {
+        switch (type) {
+            case 'success':
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
+            case 'warning':
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+            case 'error':
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+            case 'info':
+            default:
+                return '<svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+        }
+    },
+
+    show(options) {
+        if (typeof options === 'string') {
+            options = { message: options, type: 'info' };
+        }
+        const {
+            title = '',
+            message = '',
+            type = 'info',
+            duration = 5000,
+            actionText = null,
+            onAction = null
+        } = options;
+
+        const container = this.getOrCreateContainer();
+
+        // Enforce max concurrency limit
+        while (this.activeToasts.length >= this.maxConcurrent) {
+            const oldest = this.activeToasts.shift();
+            if (oldest) this.dismiss(oldest, true);
+        }
+
+        const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+        const defaultTitle = title || (
+            type === 'success' ? (isAr ? 'تم بنجاح' : 'Success') :
+            type === 'error' ? (isAr ? 'حدث خطأ' : 'Error') :
+            type === 'warning' ? (isAr ? 'تنبيه' : 'Warning') :
+            (isAr ? 'إشعار' : 'Notice')
+        );
+
+        const toast = document.createElement('div');
+        toast.className = `hudhud-toast toast-${type}`;
+        toast.setAttribute('role', 'alert');
+
+        let actionHtml = '';
+        if (actionText && typeof onAction === 'function') {
+            actionHtml = `<div class="hudhud-toast-actions"><button type="button" class="hudhud-toast-btn hudhud-toast-btn-primary">${escapeHtml(actionText)}</button></div>`;
+        }
+
+        toast.innerHTML = `
+            <div class="hudhud-toast-main">
+                <div class="hudhud-toast-icon">${this.getIconSvg(type)}</div>
+                <div class="hudhud-toast-body">
+                    <div class="hudhud-toast-title">${escapeHtml(defaultTitle)}</div>
+                    <div class="hudhud-toast-message">${escapeHtml(message)}</div>
+                    ${actionHtml}
+                </div>
+                <button type="button" class="hudhud-toast-close" title="${isAr ? 'إغلاق' : 'Dismiss'}">✕</button>
+            </div>
+            ${duration > 0 ? '<div class="hudhud-toast-progress"><div class="hudhud-toast-progress-bar"></div></div>' : ''}
+        `;
+
+        if (actionText && typeof onAction === 'function') {
+            const btn = toast.querySelector('.hudhud-toast-btn');
+            if (btn) {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    try { onAction(); } catch (err) { console.error(err); }
+                    this.dismiss(toast);
+                };
+            }
+        }
+
+        const closeBtn = toast.querySelector('.hudhud-toast-close');
+        if (closeBtn) {
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.dismiss(toast);
+            };
+        }
+
+        container.appendChild(toast);
+        this.activeToasts.push(toast);
+
+        // Auto-dismiss with progress countdown and pause on hover
+        if (duration > 0) {
+            const progressBar = toast.querySelector('.hudhud-toast-progress-bar');
+            let remaining = duration;
+            let startTime = Date.now();
+            let timer = null;
+
+            const startTimer = () => {
+                startTime = Date.now();
+                if (progressBar) {
+                    progressBar.style.transition = `width ${remaining}ms linear`;
+                    progressBar.style.width = '0%';
+                }
+                timer = setTimeout(() => {
+                    this.dismiss(toast);
+                }, remaining);
+            };
+
+            const pauseTimer = () => {
+                clearTimeout(timer);
+                const elapsed = Date.now() - startTime;
+                remaining = Math.max(0, remaining - elapsed);
+                if (progressBar) {
+                    const currentPct = (remaining / duration) * 100;
+                    progressBar.style.transition = 'none';
+                    progressBar.style.width = `${currentPct}%`;
+                }
+            };
+
+            toast.onmouseenter = pauseTimer;
+            toast.onmouseleave = startTimer;
+            startTimer();
+        }
+
+        return toast;
+    },
+
+    dismiss(toast, immediate = false) {
+        if (!toast || !toast.parentNode) return;
+        const idx = this.activeToasts.indexOf(toast);
+        if (idx !== -1) this.activeToasts.splice(idx, 1);
+
+        if (immediate) {
+            toast.remove();
+        } else {
+            toast.classList.add('toast-hiding');
+            setTimeout(() => {
+                try { toast.remove(); } catch (e) {}
+            }, 250);
+        }
+    },
+
+    success(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'success', ...options });
+    },
+
+    error(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'error', ...options });
+    },
+
+    warning(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'warning', ...options });
+    },
+
+    info(message, title = '', options = {}) {
+        return this.show({ message, title, type: 'info', ...options });
+    }
+};
+
+window.hudhudToast = hudhudToast;
+window.toast = hudhudToast;
+
+// Polite non-blocking replacement for window.alert
+window.alert = function (message) {
+    if (typeof message === 'object') {
+        try { message = JSON.stringify(message); } catch (e) {}
+    }
+    const str = String(message || '');
+    if (str.toLowerCase().includes('fail') || str.toLowerCase().includes('error') || str.includes('خطأ') || str.includes('فشل')) {
+        hudhudToast.error(str);
+    } else if (str.toLowerCase().includes('success') || str.includes('نجاح') || str.includes('✓') || str.includes('✅')) {
+        hudhudToast.success(str);
+    } else if (str.toLowerCase().includes('warn') || str.includes('تنبيه') || str.includes('تحذير') || str.includes('⚠️')) {
+        hudhudToast.warning(str);
+    } else {
+        hudhudToast.info(str);
+    }
+};
+
+// Global fetch observer for automatic error/credit handling
+(function() {
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        try {
+            const response = await originalFetch.apply(this, args);
+            // 402: Insufficient credits
+            if (response.status === 402) {
+                const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+                // Don't toast if it's a silent auth check
+                if (!url.includes('/auth/me')) {
+                    const isAr = window.hudhudI18n && window.hudhudI18n.currentLang === 'ar';
+                    hudhudToast.warning(
+                        isAr ? 'رصيدك غير كافٍ لإتمام هذه العملية. يرجى تجديد الاشتراك أو شحن الرصيد.' 
+                             : 'Insufficient AI credits. Please recharge or renew your subscription.',
+                        isAr ? 'رصيد الذكاء الاصطناعي نافد' : 'AI Credits Depleted',
+                        {
+                            duration: 7000,
+                            actionText: isAr ? 'شحن الرصيد' : 'Top Up / Upgrade',
+                            onAction: () => { window.location.href = '/onboarding'; }
+                        }
+                    );
+                }
+            }
+            return response;
+        } catch (err) {
+            throw err;
+        }
+    };
+})();
+

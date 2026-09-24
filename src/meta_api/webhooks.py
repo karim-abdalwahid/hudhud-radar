@@ -28,10 +28,14 @@ class WebhookHandler:
 
     @staticmethod
     def verify_signature(payload_bytes: bytes, signature_header: Optional[str]) -> bool:
-        """Verifies HMAC SHA-256 signature against META_APP_SECRET.
-        Fail-closed: without a secret, webhooks are ALWAYS rejected (any env)."""
-        if not settings.META_APP_SECRET:
-            logger.error("META_APP_SECRET not configured — webhook rejected (fail-closed).")
+        """Verifies HMAC SHA-256 signature against META_APP_SECRET or IG_APP_SECRET.
+        Instagram child-app webhooks are signed with IG_APP_SECRET, not META_APP_SECRET.
+        We try both secrets; if either matches the webhook is accepted.
+        Fail-closed: without any configured secret, webhooks are ALWAYS rejected."""
+        secrets = [s for s in [settings.META_APP_SECRET,
+                                getattr(settings, "IG_APP_SECRET", None)] if s]
+        if not secrets:
+            logger.error("No app secret configured — webhook rejected (fail-closed).")
             return False
 
         if not signature_header:
@@ -43,16 +47,17 @@ class WebhookHandler:
             return False
         expected_hash = parts[1]
 
-        computed_hash = hmac.new(
-            key=settings.META_APP_SECRET.encode("utf-8"),
-            msg=payload_bytes,
-            digestmod=hashlib.sha256
-        ).hexdigest()
+        for secret in secrets:
+            computed_hash = hmac.new(
+                key=secret.encode("utf-8"),
+                msg=payload_bytes,
+                digestmod=hashlib.sha256
+            ).hexdigest()
+            if hmac.compare_digest(computed_hash, expected_hash):
+                return True
 
-        is_valid = hmac.compare_digest(computed_hash, expected_hash)
-        if not is_valid:
-            logger.error("HMAC SHA-256 signature verification failed.")
-        return is_valid
+        logger.error("HMAC SHA-256 signature verification failed (tried %d secret(s)).", len(secrets))
+        return False
 
     @staticmethod
     def parse_messaging_events(payload: Dict[str, Any]) -> List[Dict[str, Any]]:

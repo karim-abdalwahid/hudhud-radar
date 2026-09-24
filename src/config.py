@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     # Application Info
     APP_ENV: str = Field(default="development", description="Application Environment: development, staging, production")
     APP_DEBUG: bool = Field(default=True, description="Debug mode")
+    TESTING: bool = Field(default=False, description="Forces isolated in-memory dependencies during automated tests")
     PORT: int = Field(default=8000, description="Server port")
     HOST: str = Field(default="0.0.0.0", description="Server host")
     SECRET_KEY: str = Field(default="dev-secret-key-change-in-production-32-chars-min", description="App secret key")
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
     # the app emits: OAuth redirects, compliance callbacks, templates, scripts).
     # Domain swap = change this env var in BOTH Vercel scopes + app dashboards.
     APP_BASE_URL: str = Field(
-        default="https://hudhud-radar.vercel.app",
+        default="https://www.hudhd.com",
         description="Canonical public origin without trailing slash",
     )
 

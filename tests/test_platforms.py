@@ -33,15 +33,15 @@ def test_meta_status_never_raises_and_is_honest(monkeypatch):
     assert st.connected is False
 
 
-def test_threads_status_maps_real_fields(monkeypatch):
+def test_threads_adapter_does_not_expose_a_global_customer_connection(monkeypatch):
     from src.platforms.threads_adapter import ThreadsPlatformAdapter
+    from src.config import settings
 
-    class _Fake:
-        def get_status(self):
-            return {"configured": True, "connected": True,
-                    "username": "real_user", "expires_in_days": 30.0}
-    import src.platforms.threads_adapter as mod
-    monkeypatch.setattr(mod, "threads_oauth", _Fake())
+    monkeypatch.setattr(settings, "THREADS_APP_ID", "threads-app")
+    monkeypatch.setattr(settings, "THREADS_APP_SECRET", "threads-secret")
     st = ThreadsPlatformAdapter().get_status()
-    assert st.connected and st.username == "real_user"
-    assert st.expires_at is not None
+    # PlatformAdapter has no user context. Returning a stored connection here
+    # would leak the status of whichever tenant linked Threads most recently.
+    assert st.configured is True
+    assert st.connected is False
+    assert st.username is None

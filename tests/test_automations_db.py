@@ -23,7 +23,7 @@ def test_db_save_and_load_roundtrip():
     assert len(rows) == 2
     assert all(r.get("user_id") == "user-1" for r in rows)
 
-    loaded = db_load_workflows(db)
+    loaded = db_load_workflows(db, user_id="user-1")
     assert loaded is not None and len(loaded) == 2
     by_name = {w.name: w for w in loaded}
     assert by_name["Alpha"].status == "active"
@@ -35,17 +35,19 @@ def test_db_save_and_load_roundtrip():
 def test_db_upsert_updates_not_duplicates():
     db = FakeDB()
     wf = _wf("Mutable")
-    db_save_workflows(db, {wf.id: wf})
-    wf2 = db_load_workflows(db)[0]
+    db_save_workflows(db, {wf.id: wf}, owner_user_id="user-1")
+    wf2 = db_load_workflows(db, user_id="user-1")[0]
     wf2.name = "Mutated"
-    db_save_workflows(db, {wf2.id: wf2})
+    db_save_workflows(db, {wf2.id: wf2}, owner_user_id="user-1")
 
     assert len(db.select("automations_workflows")) == 1
-    assert db_load_workflows(db)[0].name == "Mutated"
+    assert db_load_workflows(db, user_id="user-1")[0].name == "Mutated"
 
 
-def test_empty_table_returns_none_for_legacy_fallback():
-    assert db_load_workflows(FakeDB()) is None
+def test_owner_is_required_for_all_tenant_queries_and_writes():
+    db = FakeDB()
+    assert db_load_workflows(db) is None
+    assert db_save_workflows(db, {_wf().id: _wf()}) is False
 
 
 def test_disconnected_db_is_safe():
@@ -57,45 +59,19 @@ def test_disconnected_db_is_safe():
 
 def test_malformed_row_skipped_not_fatal():
     db = FakeDB()
-    db.insert("automations_workflows", {"id": "wf_bad", "config": {"not": "a workflow"}})
+    db.insert("automations_workflows", {"id": "wf_bad", "user_id": "user-1", "config": {"not": "a workflow"}})
     good = _wf("Good")
-    db_save_workflows(db, {good.id: good})
-    loaded = db_load_workflows(db)
+    db_save_workflows(db, {good.id: good}, owner_user_id="user-1")
+    loaded = db_load_workflows(db, user_id="user-1")
     assert loaded is not None and [w.name for w in loaded] == ["Good"]
 
 
-def test_service_bootstrap_cascade(monkeypatch):
-    """Table empty → legacy app_settings mirror loads AND bootstraps the table."""
+def test_service_does_not_bootstrap_global_legacy_settings(monkeypatch):
+    """A shared legacy store is never assigned to an arbitrary tenant."""
     import src.automations.service as amod
     db = FakeDB()
     db.set_setting = lambda *a, **k: True
-    db.get_setting = lambda key: {
-        "workflows": [ _wf("Legacy One").model_dump(mode="json") ]
-    } if key == "automations_workflows" else None
-    db.is_connected = True
-
     svc = amod.AutomationsService.__new__(amod.AutomationsService)
     svc._workflows = {}
-    monkeypatch.setattr(svc, "_load_db", lambda: db_load_workflows(db))
-    monkeypatch.setattr(svc, "_save_db", lambda: db_save_workflows(db, svc._workflows))
-    monkeypatch.setattr(svc, "_load_supabase", lambda: db.get_setting("automations_workflows"))
-    monkeypatch.setattr(svc, "_save_supabase", lambda: False)
-    monkeypatch.setattr(svc, "_save", lambda: None)
-
     svc._load()
-    assert [w.name for w in svc._workflows.values()] == ["Legacy One"]
-
-    # bootstrap mirror (explicit _save_db as production does at first write)
-    svc._save_db()
-    assert len(db.select("automations_workflows")) == 1
-
-    # second load: table is now the source of truth (legacy would be empty)
-    db.get_setting = lambda key: None
-    svc2 = amod.AutomationsService.__new__(amod.AutomationsService)
-    svc2._workflows = {}
-    monkeypatch.setattr(svc2, "_load_db", lambda: db_load_workflows(db))
-    monkeypatch.setattr(svc2, "_save_db", lambda: db_save_workflows(db, svc2._workflows))
-    monkeypatch.setattr(svc2, "_load_supabase", lambda: None)
-    monkeypatch.setattr(svc2, "_save", lambda: None)
-    svc2._load()
-    assert [w.name for w in svc2._workflows.values()] == ["Legacy One"]
+    assert svc._workflows == {}

@@ -23,7 +23,11 @@ from src.core.supabase_client import supabase_db
 GEMINI_EMBED_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
 )
+GEMINI_BATCH_EMBED_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents"
+)
 EMBED_DIMS = 3072
+EMBED_BATCH_SIZE = 32
 CHUNK_MAX_CHARS = 900
 CHUNK_OVERLAP_CHARS = 120
 
@@ -38,7 +42,7 @@ class DBKnowledgeBase:
     # Gemini embeddings
     # ------------------------------------------------------------------
     def _embed(self, text: str) -> Optional[List[float]]:
-        """Returns a 768-dim embedding for text via Gemini, with a small cache."""
+        """Returns a 3072-dim embedding for text via Gemini, with a small cache."""
         key = hashlib.md5(text.encode("utf-8")).hexdigest()
         if key in self._embed_cache:
             return self._embed_cache[key]
@@ -64,6 +68,68 @@ class DBKnowledgeBase:
         except Exception as e:
             logger.warning(f"Gemini embedding error: {e}")
         return None
+
+    def _embed_many(self, texts: List[str]) -> List[Optional[List[float]]]:
+        """Embeds uncached chunks in bounded Gemini batch requests.
+
+        Gemini's ``batchEmbedContents`` returns vectors in the same order as
+        submitted requests.  Using it reduces a large PDF upload from one HTTP
+        request per chunk to one request per bounded batch; callers run this
+        synchronous adapter in a worker thread, never in the ASGI event loop.
+        """
+        vectors: List[Optional[List[float]]] = [None] * len(texts)
+        if not texts:
+            return vectors
+
+        missing: List[Tuple[int, str, str]] = []
+        for index, text in enumerate(texts):
+            key = hashlib.md5(text.encode("utf-8")).hexdigest()
+            cached = self._embed_cache.get(key)
+            if cached:
+                vectors[index] = cached
+            else:
+                missing.append((index, text, key))
+
+        if not missing or not settings.GEMINI_API_KEY:
+            return vectors
+
+        for offset in range(0, len(missing), EMBED_BATCH_SIZE):
+            batch = missing[offset:offset + EMBED_BATCH_SIZE]
+            try:
+                response = httpx.post(
+                    GEMINI_BATCH_EMBED_URL,
+                    headers={"Content-Type": "application/json", "X-goog-api-key": settings.GEMINI_API_KEY},
+                    json={
+                        "requests": [
+                            {
+                                "model": "models/gemini-embedding-001",
+                                "content": {"parts": [{"text": text[:6000]}]},
+                            }
+                            for _, text, _ in batch
+                        ]
+                    },
+                    timeout=30.0,
+                )
+                returned = response.json().get("embeddings", []) if response.status_code == 200 else []
+                if len(returned) != len(batch):
+                    raise ValueError(
+                        f"Gemini returned {len(returned)} embeddings for a batch of {len(batch)}"
+                    )
+                for (index, _text, key), embedding in zip(batch, returned):
+                    vector = embedding.get("values") if isinstance(embedding, dict) else None
+                    if vector and len(vector) == EMBED_DIMS:
+                        vectors[index] = vector
+                        self._embed_cache[key] = vector
+                    else:
+                        logger.warning("Gemini batch embedding returned an invalid vector dimension")
+            except Exception as exc:
+                logger.warning("Gemini batch embedding failed; retrying this batch per chunk: %s", exc)
+                # Retain availability if batch support is unavailable for a
+                # configured project/model.  This runs in the worker thread.
+                for index, text, _key in batch:
+                    vectors[index] = self._embed(text)
+
+        return vectors
 
     # ------------------------------------------------------------------
     # Chunking (paragraph-aware, fixed-size with overlap)
@@ -102,7 +168,7 @@ class DBKnowledgeBase:
         return chunks or ([text] if text else [])
 
     # ------------------------------------------------------------------
-    # Document CRUD (per-user aware: user_id=None = legacy global)
+    # Document CRUD (tenant-owned; no legacy global documents in production)
     # ------------------------------------------------------------------
     def save_document(self, filename: str, content: str, source: str = "upload",
                       user_id: Optional[str] = None, is_core: bool = False) -> Dict[str, Any]:
@@ -110,6 +176,8 @@ class DBKnowledgeBase:
         content = (content or "").strip()
         if not filename or not content:
             raise ValueError("اسم الملف والمحتوى مطلوبان")
+        if not user_id:
+            raise ValueError("مالك قاعدة المعرفة مطلوب")
 
         # Per-user upsert: filename uniqueness is scoped to (user_id, filename)
         # since migration 017 — so we select-then-insert/update manually.
@@ -117,12 +185,12 @@ class DBKnowledgeBase:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select("id").eq(
                     "filename", filename)
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                q = q.eq("user_id", user_id)
                 existing = q.execute().data or []
             else:
                 existing = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
                             if r.get("filename") == filename
-                            and (r.get("user_id") or None) == user_id
+                            and r.get("user_id") == user_id
                             and "id" in r]
                 existing = existing[:1]
         except Exception as e:
@@ -134,7 +202,7 @@ class DBKnowledgeBase:
             "source": source,
             "word_count": len(content.split()),
             "is_core": is_core,
-            **({"user_id": user_id} if user_id else {}),
+            "user_id": user_id,
         }
         try:
             if existing:
@@ -149,8 +217,8 @@ class DBKnowledgeBase:
         self._delete_chunks(doc_id)
         chunks = self._chunk_text(content)
         embedded_count = 0
-        for idx, chunk in enumerate(chunks):
-            vec = self._embed(chunk)
+        vectors = self._embed_many(chunks)
+        for idx, (chunk, vec) in enumerate(zip(chunks, vectors)):
             payload: Dict[str, Any] = {
                 "document_id": doc_id,
                 "chunk_index": idx,
@@ -173,16 +241,18 @@ class DBKnowledgeBase:
                 "embedded": fully_embedded, "embedded_chunks": embedded_count}
 
     def get_document(self, filename: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        if not user_id:
+            return None
         try:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select("*").eq(
                     "filename", self._safe_filename(filename))
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                q = q.eq("user_id", user_id)
                 rows = q.execute().data or []
                 return rows[0] if rows else None
             rows = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
                     if r.get("filename") == self._safe_filename(filename)
-                    and (r.get("user_id") or None) == user_id]
+                    and r.get("user_id") == user_id]
             return rows[0] if rows else None
         except Exception as e:
             logger.error(f"KB get_document failed: {e}")
@@ -193,20 +263,24 @@ class DBKnowledgeBase:
         return doc["content"] if doc else None
 
     def list_documents(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        if not user_id:
+            return []
         try:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select(
-                    "filename,word_count,source,is_core,updated_at")
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                    "filename,word_count,content,source,is_core,updated_at")
+                q = q.eq("user_id", user_id)
                 docs = q.execute().data or []
             else:
                 docs = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
-                        if (r.get("user_id") or None) == user_id]
+                        if r.get("user_id") == user_id]
             docs.sort(key=lambda d: (not d.get("is_core", False), d.get("filename", "")))
             return [
                 {
                     "filename": d["filename"],
-                    "word_count": d.get("word_count", 0),
+                    "word_count": d.get("word_count") or (len(d.get("content", "").split()) if d.get("content") else 0),
+                    "words_count": d.get("word_count") or (len(d.get("content", "").split()) if d.get("content") else 0),
+                    "size_bytes": len((d.get("content") or "").encode("utf-8")),
                     "source": d.get("source", "upload"),
                     "is_core": d.get("is_core", False),
                     "updated_at": d.get("updated_at"),
@@ -253,18 +327,22 @@ class DBKnowledgeBase:
         user_id scopes results to that user's documents (Wave 9.8)."""
         if not query.strip():
             return []
+        if not user_id:
+            logger.warning("KB search skipped because tenant user_id is missing (fail-closed).")
+            return []
         try:
             if not (supabase_db.is_connected and supabase_db.client):
                 return self._fallback_keyword_search(query, top_k, user_id=user_id)
             qvec = self._embed(query)
+            if not qvec:
+                # ``embedding <=> NULL`` cannot produce a meaningful semantic
+                # ranking.  Do an explicitly scoped keyword-only search rather
+                # than letting the RPC assign arbitrary semantic row numbers.
+                logger.info("Query embedding unavailable; using tenant-scoped keyword search only.")
+                return self._fallback_keyword_search(query, top_k, user_id=user_id)
             params: Dict[str, Any] = {"query_text": query, "match_count": top_k}
-            if qvec:
-                params["query_embedding"] = qvec
-            else:
-                # keyword-only: pass null embedding
-                params["query_embedding"] = None
-            if user_id:
-                params["p_user_id"] = user_id
+            params["query_embedding"] = qvec
+            params["p_user_id"] = user_id
             res = supabase_db.client.rpc("match_kb_chunks", params).execute()
             rows = res.data or []
             return [(r["score"], r["filename"], r["chunk_text"]) for r in rows]
@@ -279,11 +357,11 @@ class DBKnowledgeBase:
         try:
             if supabase_db.is_connected and supabase_db.client:
                 q = supabase_db.client.table("kb_documents").select("filename,content")
-                q = q.eq("user_id", user_id) if user_id else q.is_("user_id", "null")
+                q = q.eq("user_id", user_id)
                 docs = q.execute().data or []
             else:
                 docs = [r for r in supabase_db.memory_db.tables.get("kb_documents", [])
-                        if (r.get("user_id") or None) == user_id]
+                        if r.get("user_id") == user_id]
             terms = [t for t in re.split(r"\s+", query.lower()) if len(t) > 1]
             for d in docs:
                 content = d.get("content") or ""

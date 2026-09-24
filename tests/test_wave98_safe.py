@@ -28,7 +28,7 @@ def test_resolve_page_token_from_connection(monkeypatch):
     })
     monkeypatch.setattr(sc, "supabase_db", db)
     from src.meta_api.client import resolve_page_token
-    assert resolve_page_token("1234") == "PAGE_TOKEN_1"
+    assert resolve_page_token("u1", "1234") == "PAGE_TOKEN_1"
 
 
 def test_resolve_page_token_misses_and_guards(monkeypatch):
@@ -39,9 +39,9 @@ def test_resolve_page_token_misses_and_guards(monkeypatch):
         "access_token_encrypted": "x", "status": "active"})
     monkeypatch.setattr(sc, "supabase_db", db)
     from src.meta_api.client import resolve_page_token
-    assert resolve_page_token(None) is None            # no id -> None (legacy)
-    assert resolve_page_token("your-xxx") is None      # placeholder -> None
-    assert resolve_page_token("does-not-exist") is None  # miss -> None
+    assert resolve_page_token(None, "9") is None       # no tenant -> None
+    assert resolve_page_token("u1", "your-xxx") is None  # placeholder -> None
+    assert resolve_page_token("u1", "does-not-exist") is None  # miss -> None
 
 
 # ----------------------------------------------------------------------
@@ -67,7 +67,7 @@ async def test_send_facebook_uses_override_token():
 
 
 @pytest.mark.asyncio
-async def test_send_facebook_falls_back_to_global():
+async def test_send_facebook_can_use_explicit_test_client_default():
     from src.meta_api.client import meta_client
     captured = {}
 
@@ -87,7 +87,7 @@ async def test_send_facebook_falls_back_to_global():
 # 3. Threads proactive refresh (decision logic)
 # ----------------------------------------------------------------------
 @pytest.mark.asyncio
-async def test_refresh_if_expiring_legacy_only_when_close(monkeypatch):
+async def test_refresh_if_expiring_ignores_removed_legacy_token(monkeypatch):
     import src.meta_api.threads_oauth as to
     calls = []
 
@@ -99,22 +99,12 @@ async def test_refresh_if_expiring_legacy_only_when_close(monkeypatch):
         calls.append(1)
         return {"status": "error", "detail": "x"}
 
-    monkeypatch.setattr(to.threads_oauth, "refresh_token",
-                        fake_refresh)
     soon = (datetime.now(timezone.utc) + timedelta(days=3)).timestamp()
     monkeypatch.setattr(to, "_get_stored_creds",
                         lambda: {"access_token": "t", "expires_at": int(soon)})
     monkeypatch.setattr(to, "supabase_db", FakeDB())
     r = await to.threads_oauth.refresh_if_expiring()
-    assert calls == [1] and "legacy" in r["refreshed"]
-
-    # far expiry -> no refresh
-    calls.clear()
-    far = (datetime.now(timezone.utc) + timedelta(days=40)).timestamp()
-    monkeypatch.setattr(to, "_get_stored_creds",
-                        lambda: {"access_token": "t", "expires_at": int(far)})
-    r2 = await to.threads_oauth.refresh_if_expiring()
-    assert calls == [] and r2["refreshed"] == []
+    assert calls == [] and r["refreshed"] == []
 
 
 @pytest.mark.asyncio
@@ -165,8 +155,9 @@ def test_threads_webhook_rejects_unsigned(client):
     assert r.status_code == 401
 
 
-def test_threads_webhook_accepts_signed_reply(client):
+def test_threads_webhook_accepts_signed_reply(client, monkeypatch):
     from src.config import settings
+    monkeypatch.setattr(settings, "THREADS_APP_SECRET", "threads-test-secret")
     payload = {"object": "threads",
                "entry": [{"id": "thread_1",
                           "changes": [{"field": "replies",
@@ -174,7 +165,7 @@ def test_threads_webhook_accepts_signed_reply(client):
                                                  "username": "customer_x",
                                                  "timestamp": "2026-09-11T10:00:00+0000"}}]}]}
     raw = json.dumps(payload).encode()
-    sig = "sha256=" + _hmac.new((settings.THREADS_APP_SECRET or "x").encode(),
+    sig = "sha256=" + _hmac.new(settings.THREADS_APP_SECRET.encode(),
                                 raw, hashlib.sha256).hexdigest()
     r = client.post("/api/webhook/threads", content=raw,
                     headers={"Content-Type": "application/json",

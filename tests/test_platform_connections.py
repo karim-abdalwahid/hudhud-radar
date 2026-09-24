@@ -6,6 +6,7 @@ OAuth state signing. FULLY isolated (fake tables — no live Supabase writes).
 import uuid
 
 import pytest
+from urllib.parse import parse_qs, urlparse
 from fastapi import HTTPException
 
 from src.core import supabase_client as sb_mod
@@ -186,7 +187,16 @@ def test_authorize_requires_entitlement(client_as_user, fake_tables):
     assert res.status_code == 403
 
 
-def test_authorize_returns_url_when_entitled(client, fake_tables):
+def test_threads_authorize_requires_entitlement(client_as_user, fake_tables):
+    """Threads must have the same server-side paid gate as the Meta doors."""
+    res = client_as_user.get("/api/threads/oauth/authorize")
+    assert res.status_code == 403
+    res_conn = client_as_user.get("/api/connections/threads/authorize")
+    assert res_conn.status_code == 403
+
+
+
+def test_authorize_returns_url_when_entitled(client, fake_tables, monkeypatch):
     """Admin session (conftest client) + granted entitlement → authorize URL."""
     me = client.get("/auth/me").json()
     _grant(me["user_id"], "platform:facebook")
@@ -194,6 +204,17 @@ def test_authorize_returns_url_when_entitled(client, fake_tables):
     assert res.status_code == 200
     assert res.json()["authorize_url"].startswith("https://www.facebook.com/v26.0/dialog/oauth")
     assert "state=" in res.json()["authorize_url"]
+
+
+def test_threads_authorize_returns_url_when_entitled(client, fake_tables, monkeypatch):
+    from src.config import settings
+    monkeypatch.setattr(settings, "THREADS_APP_ID", "threads-test-app")
+    me = client.get("/auth/me").json()
+    _grant(me["user_id"], "platform:threads")
+    res_th = client.get("/api/connections/threads/authorize")
+    assert res_th.status_code == 200
+    assert "threads.net" in res_th.json()["authorize_url"]
+    assert "state=" in res_th.json()["authorize_url"]
 
 
 def test_instagram_authorize_url_includes_state(client, fake_tables, monkeypatch):
@@ -208,11 +229,21 @@ def test_instagram_authorize_url_includes_state(client, fake_tables, monkeypatch
     url = res.json()["authorize_url"]
     assert url.startswith("https://www.instagram.com/oauth/authorize?")
     assert "state=" in url
-    # callback returns 303 to settings with connect_error on bad state, so a
-    # valid door must carry a state that _verify_state accepts
+    # callback returns 303 to the account page with connect_error on bad state,
+    # so a valid door must carry a state that _verify_state accepts
     from urllib.parse import urlparse, parse_qs
     st = parse_qs(urlparse(url).query).get("state", [""])[0]
     assert conn_routes._verify_state(st, "instagram") == me["user_id"]
+
+
+@pytest.mark.parametrize("platform", ["facebook", "instagram"])
+def test_invalid_oauth_callback_returns_to_customer_account(anon_client, platform):
+    res = anon_client.get(
+        f"/api/connections/{platform}/callback?code=unused&state=invalid",
+        follow_redirects=False,
+    )
+    assert res.status_code == 303
+    assert res.headers["location"] == "/account?connect_error=invalid_state"
 
 
 # ---- IG 60-day token refresh (AUDIT-2026-09-15 Fix) ------------------------

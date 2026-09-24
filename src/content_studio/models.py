@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 from enum import Enum
 import uuid
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class ContentPlatform(str, Enum):
@@ -61,12 +61,25 @@ class ContentPostUpdate(BaseModel):
 
 class ContentPostResponse(ContentPostBase):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # Always present in Supabase after tenant hardening. Optional only so
+    # isolated legacy unit-test fixtures can still be parsed.
+    user_id: Optional[str] = None
     published_at: Optional[datetime] = None
     meta_post_id: Optional[str] = None
     error_message: Optional[str] = None
     performance_metrics: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @computed_field
+    @property
+    def caption(self) -> str:
+        return self.content_text
+
+    @computed_field
+    @property
+    def scheduled_time(self) -> Optional[datetime]:
+        return self.scheduled_for
 
 
 class ContentGenerationRequest(BaseModel):

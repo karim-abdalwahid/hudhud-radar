@@ -22,9 +22,12 @@ class PagePerformanceTracker:
         impressions: int,
         followers_count: int,
         leads_captured: int,
-        engagement_rate: float
+        engagement_rate: float,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Saves daily performance record for Facebook or Instagram."""
+        if not user_id and getattr(self.db, "is_connected", False):
+            raise ValueError("A tenant owner is required for production performance metrics")
         data = {
             "platform": platform,
             "metric_date": str(metric_date),
@@ -34,14 +37,21 @@ class PagePerformanceTracker:
             "leads_captured": leads_captured,
             "engagement_rate": round(engagement_rate, 3)
         }
+        if user_id:
+            data["user_id"] = user_id
         record = self.db.insert("page_performance_metrics", data)
         logger.info(f"Recorded performance metrics for {platform} on {metric_date}")
         return record
 
-    def get_latest_performance(self, platform: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_latest_performance(self, platform: Optional[str] = None,
+                               user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Returns the most recent performance metrics recorded."""
-        filters = {"platform": platform} if platform else None
-        metrics = self.db.select("page_performance_metrics", filters)
+        if not user_id and getattr(self.db, "is_connected", False):
+            raise ValueError("A tenant owner is required for production performance metrics")
+        filters = {"platform": platform} if platform else {}
+        if user_id:
+            filters["user_id"] = user_id
+        metrics = self.db.select("page_performance_metrics", filters or None)
         return sorted(metrics, key=lambda m: m.get("metric_date", ""), reverse=True)
 
 

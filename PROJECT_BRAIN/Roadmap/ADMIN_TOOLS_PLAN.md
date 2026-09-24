@@ -70,3 +70,14 @@ app_settings → key: "custom_snippets" → JSON:
 
 ---
 > **مرتبط بـ**: [[PHASE_9_PLAN]] (الموجة 9.8 مكتملة البنية — هذه تتبعها) · [[SOP_10_Custom_Code_Injection]] · [[Development_Roadmap]]
+
+---
+
+## ملحق الحالة والحواجز — 2026-09-16
+
+- Wave 9.9 ما زالت **خطة غير منفذة**. وجود developer mode في الواجهة أو إدارة
+  رصيد يدوية لا يساوي RBAC developer الكامل أو SnippetService المعتمد.
+- لا يبدأ التنفيذ قبل موافقة مالك مستقلة على matrix الصلاحيات ونطاق snippets.
+- `app_settings` في التنفيذ المستقبلي يقتصر على global non-secret snippets؛
+  ممنوع تخزين Meta/Threads tokens أو بيانات/معرفة عميل فيه. كل audit entry
+  يحمل actor `user_id` صريحاً وفق [[SOP_10_Custom_Code_Injection]].

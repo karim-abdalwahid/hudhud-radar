@@ -2,7 +2,7 @@
 Comprehensive Performance and Activity Report Generator.
 Generates human-readable Markdown and structured data reports for executive review.
 """
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
 from src.core.supabase_client import supabase_db
 from src.analytics.statistics_engine import StatisticsEngine
@@ -17,10 +17,12 @@ class ReportGenerator:
         self.stats = StatisticsEngine(db=self.db)
         self.tracker = PagePerformanceTracker(db=self.db)
 
-    def generate_page_performance_report_md(self, platform: str = "all") -> str:
+    def generate_page_performance_report_md(self, platform: str = "all",
+                                            user_id: Optional[str] = None) -> str:
         """Generates executive Markdown report of page performance metrics and KPIs."""
-        perf_data = self.tracker.get_latest_performance(None if platform == "all" else platform)
-        conversion_data = self.stats.get_lead_conversion_metrics()
+        perf_data = self.tracker.get_latest_performance(
+            None if platform == "all" else platform, user_id=user_id)
+        conversion_data = self.stats.get_lead_conversion_metrics(user_id=user_id)
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         lines = [
@@ -56,10 +58,10 @@ class ReportGenerator:
 
         return "\n".join(lines)
 
-    def generate_activity_execution_report_md(self) -> str:
+    def generate_activity_execution_report_md(self, user_id: Optional[str] = None) -> str:
         """Generates executive Markdown report of all processed actions, failures, and root causes."""
-        ops_summary = self.stats.get_operations_summary()
-        all_logs = self.db.select("activity_logs")
+        ops_summary = self.stats.get_operations_summary(user_id=user_id)
+        all_logs = self.db.select("activity_logs", {"user_id": user_id} if user_id else None)
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         lines = [

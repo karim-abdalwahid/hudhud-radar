@@ -55,47 +55,27 @@ PUBLIC_PATH_PREFIXES = (
 
 # Admin-only API endpoints (any method)
 ADMIN_EXACT_PATHS = frozenset({
-    "/api/meta/configure",
-    "/api/meta/exchange-token",
-    "/api/meta/user-pages",
-    "/api/meta/subscribe-page",
-    "/api/meta/sync-posts",
-    "/api/onboarding/save-all",
     "/api/content/scheduler/trigger",
-    "/api/threads/oauth/authorize",
-    "/api/threads/oauth/refresh",
-    "/api/threads/disconnect",
-    # Paid external actions on the OWNER's business accounts — admin only
-    "/api/threads/publish",
-    "/api/threads/my-posts",
-    "/api/marketing/sync-leads",
-    "/api/marketing/sync-campaigns",
 })
 
 # Admin-only dashboard pages (server-side enforcement of Developer Console)
 ADMIN_PAGE_PATHS = frozenset({
     "/settings",
-    "/identity",
-    "/analytics",
 })
 
 # Admin-only API path prefixes (any method)
 ADMIN_PATH_PREFIXES = (
-    "/api/identity",
     "/api/ai/providers",
     "/api/ai/models",
     "/api/admin",
     "/api/debug",
 )
 
-# Admin-only mutations on these prefixes (GET allowed for logged-in users)
-ADMIN_MUTATION_PREFIXES = (
-    "/api/knowledge",
-    "/api/automations",
-    "/api/content",
-    # Inbox actions send REAL DMs from the owner's connected accounts
-    "/api/inbox/conversations",
-)
+# SaaS workspaces are protected by each handler's verified session-user and
+# object ownership checks.  Do not add broad admin-only mutation prefixes
+# here: doing so would prevent paying customers from operating their own
+# knowledge base, inbox, automations, and content.
+ADMIN_MUTATION_PREFIXES = ()
 
 
 # --------------------------------------------------------------------
@@ -269,6 +249,7 @@ class UserStore:
             "password_hash": hash_password(password),
             "role": role,
             "is_active": True,
+            "ai_credits": 100,  # migration 007 signup default
         }
         if terms_accepted_at:
             record["terms_accepted_at"] = terms_accepted_at

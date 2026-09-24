@@ -17,6 +17,8 @@ def bridged_db(monkeypatch):
     monkeypatch.setattr(bridge_mod, "supabase_db", db)
     monkeypatch.setattr(bridge_mod, "identity_resolver", IdentityResolver(db=db))
     monkeypatch.setattr(leads_service_mod.lead_service, "db", db)
+    from src.modules.connections.service import connection_service
+    monkeypatch.setattr(connection_service, "owner_for_account", lambda *_: "tenant-mentions")
     return db
 
 

@@ -22,6 +22,210 @@ _ADMIN_USERS_HTML = """<!DOCTYPE html>
    buttons/chips/modal) comes from saas.css, same as every other page. */
 .search{width:280px;padding:9px 14px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;}
 td .btn{white-space:nowrap;}
+
+/* Plans Distribution Grid */
+.plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+.plan-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all var(--transition-fast);
+}
+.plan-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+.plan-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.plan-name-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-primary);
+    text-transform: capitalize;
+}
+.plan-badge {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+}
+.plan-count-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+.plan-count {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+.plan-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.plan-progress-track {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-subtle);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.plan-progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+/* Users Management Table Alignment & Polish */
+.users-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--bg-card);
+}
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: start;
+    table-layout: auto;
+}
+.users-table th {
+    text-align: start;
+    padding: 12px 16px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-default);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.users-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+.users-table th.sortable:hover {
+    color: var(--text-primary);
+}
+.users-table th.th-actions {
+    text-align: end;
+}
+.users-table td {
+    text-align: start;
+    padding: 13px 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+}
+.users-table td.td-actions {
+    text-align: end;
+    white-space: nowrap;
+}
+.users-table tr:hover td {
+    background: var(--bg-hover);
+}
+.users-table .actions-wrap {
+    display: inline-flex;
+    gap: 6px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.pagination-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    margin-top: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.pagination-btns {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.traffic-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+.traffic-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    gap: 14px;
+    transition: all var(--transition-fast);
+}
+.traffic-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
+}
+.traffic-route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 600;
+    min-width: 150px;
+    direction: ltr;
+}
+.traffic-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border-subtle);
+    border-radius: 99px;
+    overflow: hidden;
+    margin: 0 10px;
+}
+.traffic-bar-fill {
+    height: 100%;
+    background: var(--accent-blue-gradient);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+.traffic-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: var(--badge-blue-bg);
+    color: var(--badge-blue-text);
+    white-space: nowrap;
+}
 </style>
 </head>
 <body>
@@ -48,11 +252,7 @@ td .btn{white-space:nowrap;}
                 <span class="crumb-sep">/</span>
                 <span class="crumb-current">Admin Console — Users & Site</span>
             </div>
-            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;">
-                <button type="button" class="lang-switcher-btn" onclick="window.hudhudI18n.toggle()">
-                    <span data-i18n="lang.switch_btn">🌐 العربية</span>
-                </button>
-            </div>
+            <div class="topbar-actions" style="display:flex; gap:10px; align-items:center;"></div>
         </header>
 
         <div class="app-content">
@@ -67,7 +267,9 @@ td .btn{white-space:nowrap;}
             <div class="panel-section">
                 <div class="panel-header"><div><h3 class="panel-title">Plans Distribution</h3>
                 <div class="panel-desc">Subscriptions across the workspace</div></div></div>
-                <div id="plans-dist" style="font-size:13px;color:var(--text-secondary);">—</div>
+                <div id="plans-dist" class="plans-grid">
+                    <div style="color:var(--text-muted);font-size:13px;">Loading plans…</div>
+                </div>
             </div>
 
             <div class="panel-section">
@@ -86,50 +288,28 @@ td .btn{white-space:nowrap;}
                         <option value="disabled">Disabled only</option>
                     </select>
                 </div>
-                <div style="overflow-x:auto;">
-                <table>
+                <div class="users-table-wrap">
+                <table class="users-table">
                     <thead><tr>
-                        <th>User</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Plan</th>
-                        <th class="sortable" onclick="usersView.setSort('ai_credits')">AI Credits <span id="sort-ai_credits"></span></th>
-                        <th class="sortable" onclick="usersView.setSort('leads_count')">Leads <span id="sort-leads_count"></span></th>
-                        <th class="sortable" onclick="usersView.setSort('created_at')">Joined <span id="sort-created_at"></span></th>
-                        <th>Actions</th>
+                        <th style="width:24%;">User</th>
+                        <th style="width:10%;">Role</th>
+                        <th style="width:10%;">Status</th>
+                        <th style="width:10%;">Plan</th>
+                        <th class="sortable" style="width:11%;" onclick="usersView.setSort('ai_credits')">AI Credits <span id="sort-ai_credits"></span></th>
+                        <th class="sortable" style="width:9%;" onclick="usersView.setSort('leads_count')">Leads <span id="sort-leads_count"></span></th>
+                        <th class="sortable" style="width:12%;" onclick="usersView.setSort('created_at')">Joined <span id="sort-created_at"></span></th>
+                        <th class="th-actions" style="width:14%;">Actions</th>
                     </tr></thead>
                     <tbody id="users-body"><tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:24px;">Loading…</td></tr></tbody>
                 </table>
                 </div>
-                <div id="pager" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:12.5px;color:var(--text-secondary);"></div>
+                <div id="pager" class="pagination-wrap"></div>
             </div>
 
             <div class="panel-section">
-                <div class="panel-header"><div><h3 class="panel-title">Traffic — Top Paths</h3>
-                <div class="panel-desc">Internal dashboard traffic log (7 days)</div></div></div>
+                <div class="panel-header"><div><h3 class="panel-title" data-i18n="users.traffic_title">Traffic — Top Paths</h3>
+                <div class="panel-desc" data-i18n="users.traffic_desc">Internal dashboard traffic log (7 days)</div></div></div>
                 <div id="traffic-box"><div style="color:var(--text-muted);font-size:13px;">Loading…</div></div>
-            </div>
-
-            <div class="panel-section">
-                <div class="panel-header"><div><h3 class="panel-title">Product Analytics (PostHog)</h3>
-                <div class="panel-desc">Toggle-gated — disabled means zero tracking (privacy-safe default)</div></div></div>
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;">
-                        <input type="checkbox" id="ph-enabled"> Enabled
-                    </label>
-                </div>
-                <div style="display:grid;gap:10px;max-width:560px;">
-                    <div>
-                        <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Project API Key</label>
-                        <input id="ph-key" placeholder="phc_..." style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
-                    </div>
-                    <div>
-                        <label style="font-size:11.5px;color:var(--text-muted);font-weight:600;text-transform:uppercase;">Host (EU: https://eu.i.posthog.com)</label>
-                        <input id="ph-host" value="https://eu.i.posthog.com" style="width:100%;padding:9px 12px;border:1px solid var(--border-default);border-radius:10px;font-family:inherit;font-size:13px;margin-top:4px;">
-                    </div>
-                    <div><button class="btn-primary" style="padding:9px 18px;" onclick="saveAnalytics()">💾 Save analytics config</button>
-                    <span id="ph-status" style="font-size:12.5px;margin-inline-start:10px;"></span></div>
-                </div>
             </div>
         </div>
     </main>
@@ -141,13 +321,45 @@ async function loadOverview() {
     try {
         const r = await fetch('/api/admin/overview');
         const d = await r.json();
-        document.getElementById('kpi-users').textContent = d.users_total;
-        document.getElementById('kpi-signups').textContent = d.signups_7d;
-        document.getElementById('kpi-views').textContent = d.traffic_views_7d;
-        document.getElementById('kpi-leads').textContent = d.leads_total;
-        document.getElementById('kpi-ai').textContent = d.ai_calls;
-        document.getElementById('plans-dist').textContent = Object.entries(d.plan_distribution)
-            .map(([p, c]) => `${p}: ${c}`).join('  ·  ') || 'no users yet';
+        document.getElementById('kpi-users').textContent = d.users_total ?? 0;
+        document.getElementById('kpi-signups').textContent = d.signups_7d ?? 0;
+        document.getElementById('kpi-views').textContent = d.traffic_views_7d ?? 0;
+        document.getElementById('kpi-leads').textContent = d.leads_total ?? 0;
+        document.getElementById('kpi-ai').textContent = d.ai_calls ?? 0;
+
+        const dist = d.plan_distribution || {};
+        const total = Math.max(d.users_total || 0, 1);
+        const planMeta = {
+            'free': { name: 'Free', icon: '🌱', color: 'var(--accent-blue, #2563eb)', bg: 'rgba(37, 99, 235, 0.12)' },
+            'starter': { name: 'Starter', icon: '⚡', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
+            'growth': { name: 'Growth', icon: '🚀', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
+            'scale': { name: 'Scale', icon: '👑', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' }
+        };
+        const allKeys = Array.from(new Set([...Object.keys(planMeta), ...Object.keys(dist)]));
+        const html = allKeys.map(k => {
+            const m = planMeta[k] || { name: k, icon: '📦', color: '#64748b', bg: 'rgba(100, 116, 139, 0.12)' };
+            const count = dist[k] || 0;
+            const pct = Math.round((count / total) * 100);
+            return `
+                <div class="plan-card">
+                    <div class="plan-card-header">
+                        <span class="plan-name-wrap">
+                            <span>${m.icon}</span>
+                            <span>${m.name}</span>
+                        </span>
+                        <span class="plan-badge" style="background:${m.bg};color:${m.color};">${pct}%</span>
+                    </div>
+                    <div class="plan-count-row">
+                        <span class="plan-count">${count}</span>
+                        <span class="plan-sub">user${count === 1 ? '' : 's'}</span>
+                    </div>
+                    <div class="plan-progress-track">
+                        <div class="plan-progress-fill" style="width:${pct}%;background:${m.color};"></div>
+                    </div>
+                </div>`;
+        }).join('');
+        const distEl = document.getElementById('plans-dist');
+        if (distEl) distEl.innerHTML = html || '<div style="color:var(--text-muted);font-size:13px;">No users yet</div>';
     } catch (e) { console.error(e); }
 }
 
@@ -221,26 +433,35 @@ const usersView = {
             const slice = rows.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
             body.innerHTML = slice.map(u => `
                 <tr>
-                    <td><strong>${escapeHtml(u.email)}</strong><br><span style="color:var(--text-muted);font-size:11.5px;">${escapeHtml(u.full_name || '')}</span></td>
-                    <td>${u.role === 'admin' ? '<span class="badge badge-plan">ADMIN</span>' : 'user'}</td>
+                    <td>
+                        <div style="font-weight:600;color:var(--text-primary);line-height:1.3;">${escapeHtml(u.email)}</div>
+                        <div style="color:var(--text-muted);font-size:11.5px;margin-top:2px;">${escapeHtml(u.full_name || '—')}</div>
+                    </td>
+                    <td>${u.role === 'admin' ? '<span class="badge badge-plan">ADMIN</span>' : '<span class="badge badge-secondary" style="text-transform:uppercase;font-size:11px;">user</span>'}</td>
                     <td><span class="badge ${u.is_active ? 'badge-ok' : 'badge-off'}">${u.is_active ? 'Active' : 'Disabled'}</span></td>
                     <td><span class="badge badge-plan">${escapeHtml(u.plan || 'free')}</span></td>
-                    <td id="credits-${u.id}">${u.ai_credits}</td>
-                    <td>${u.leads_count}</td>
-                    <td style="font-size:11.5px;color:var(--text-muted);">${String(u.created_at || '').slice(0, 10)}</td>
-                    <td>
-                        <button class="btn btn-ghost" onclick="openCreditsModal('${u.id}')">+ Credits</button>
-                        <button class="btn btn-ghost" onclick="cyclePlan('${u.id}', '${u.plan || 'free'}')">Plan ▸</button>
-                        ${u.role !== 'admin' ? `<button class="btn ${u.is_active ? 'btn-danger' : 'btn-primary'}" onclick="toggleActive('${u.id}', ${u.is_active})">${u.is_active ? 'Disable' : 'Enable'}</button>` : ''}
+                    <td id="credits-${u.id}" style="font-weight:600;font-variant-numeric:tabular-nums;">${u.ai_credits}</td>
+                    <td style="font-weight:600;font-variant-numeric:tabular-nums;">${u.leads_count}</td>
+                    <td style="font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums;">${String(u.created_at || '').slice(0, 10) || '—'}</td>
+                    <td class="td-actions">
+                        <div class="actions-wrap">
+                            <button class="btn btn-ghost" style="padding:5px 9px;font-size:11.5px;" onclick="openCreditsModal('${u.id}')">+ Credits</button>
+                            <button class="btn btn-ghost" style="padding:5px 9px;font-size:11.5px;" onclick="cyclePlan('${u.id}', '${u.plan || 'free'}')">Plan ▸</button>
+                            ${u.role !== 'admin' ? `<button class="btn ${u.is_active ? 'btn-danger' : 'btn-primary'}" style="padding:5px 9px;font-size:11.5px;" onclick="toggleActive('${u.id}', ${u.is_active})">${u.is_active ? 'Disable' : 'Enable'}</button>` : ''}
+                        </div>
                     </td>
                 </tr>`).join('');
         }
 
         const pager = document.getElementById('pager');
+        const prevText = window.hudhudI18n ? window.hudhudI18n.t('users.btn_prev') : '‹ Prev';
+        const nextText = window.hudhudI18n ? window.hudhudI18n.t('users.btn_next') : 'Next ›';
         pager.innerHTML = `
-            <span>${rows.length} user(s) · page ${this.page}/${pages}</span>
-            <button class="btn btn-ghost" ${this.page <= 1 ? 'disabled' : ''} onclick="usersView.goto(${this.page - 1})">‹ Prev</button>
-            <button class="btn btn-ghost" ${this.page >= pages ? 'disabled' : ''} onclick="usersView.goto(${this.page + 1})">Next ›</button>`;
+            <span><strong>${rows.length}</strong> user(s) · page <strong>${this.page}</strong> of <strong>${pages}</strong></span>
+            <div class="pagination-btns">
+                <button class="btn btn-secondary" style="padding:6px 14px; font-size:12.5px;" ${this.page <= 1 ? 'disabled' : ''} onclick="usersView.goto(${this.page - 1})">${prevText}</button>
+                <button class="btn btn-secondary" style="padding:6px 14px; font-size:12.5px;" ${this.page >= pages ? 'disabled' : ''} onclick="usersView.goto(${this.page + 1})">${nextText}</button>
+            </div>`;
     },
 
     goto(p) { this.page = p; this.render(); },
@@ -345,39 +566,25 @@ async function loadTraffic() {
         const box = document.getElementById('traffic-box');
         const entries = Object.entries(d.by_path || {});
         if (!entries.length) { box.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No traffic recorded yet</div>'; return; }
-        box.innerHTML = entries.map(([p, c]) => `<div class="traffic-row"><span>${escapeHtml(p)}</span><strong>${c}</strong></div>`).join('');
+        const maxHits = Math.max(...entries.map(e => e[1])) || 1;
+        box.innerHTML = '<div class="traffic-list">' + entries.map(([p, c]) => {
+            const pct = Math.max(6, Math.round((c / maxHits) * 100));
+            return `
+                <div class="traffic-item">
+                    <div class="traffic-route">
+                        <span class="badge" style="font-size:10.5px; padding:2px 6px; background:var(--bg-card); color:var(--text-secondary); border:1px solid var(--border-default);">GET</span>
+                        <span>${escapeHtml(p)}</span>
+                    </div>
+                    <div class="traffic-bar-track">
+                        <div class="traffic-bar-fill" style="width: ${pct}%;"></div>
+                    </div>
+                    <div class="traffic-badge">${c.toLocaleString()} views</div>
+                </div>`;
+        }).join('') + '</div>';
     } catch (e) { console.error(e); }
 }
 
-// Phase 9.6 — PostHog toggle-gated config (site-settings: analytics_config)
-async function loadAnalytics() {
-    try {
-        const r = await fetch('/api/admin/site-settings');
-        const d = await r.json();
-        const cfg = (d.settings || {}).analytics_config || {};
-        document.getElementById('ph-enabled').checked = !!cfg.enabled;
-        document.getElementById('ph-key').value = cfg.posthog_key || '';
-        document.getElementById('ph-host').value = cfg.posthog_host || 'https://eu.i.posthog.com';
-    } catch (e) { console.error(e); }
-}
-
-async function saveAnalytics() {
-    const status = document.getElementById('ph-status');
-    const cfg = {
-        enabled: document.getElementById('ph-enabled').checked,
-        posthog_key: document.getElementById('ph-key').value.trim(),
-        posthog_host: document.getElementById('ph-host').value.trim() || 'https://eu.i.posthog.com'
-    };
-    const r = await fetch('/api/admin/site-settings', {
-        method: 'PUT', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ analytics_config: cfg })
-    });
-    if (r.ok) { status.textContent = '✅ Saved'; status.style.color = '#059669'; }
-    else { const d = await r.json().catch(() => ({})); status.textContent = '❌ ' + (d.detail || 'Failed'); status.style.color = '#dc2626'; }
-    setTimeout(() => { status.textContent = ''; }, 3000);
-}
-
-document.addEventListener('DOMContentLoaded', () => { loadOverview(); loadUsers(); loadTraffic(); loadAnalytics(); });
+document.addEventListener('DOMContentLoaded', () => { loadOverview(); loadUsers(); loadTraffic(); });
 </script>
 </body>
 </html>"""

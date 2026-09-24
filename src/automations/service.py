@@ -18,19 +18,19 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
         {
             "id": "wf_ig_reel_sales",
             "name": "Instagram Reel Viral Comment-to-DM Sales Closer",
-            "description": "Monitors Reel comments for keywords [Ø³ÙˆØ´ÙŠØ§Ù„, ÙƒÙˆØ±Ø³, ØªÙØ§ØµÙŠÙ„], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
+            "description": "Monitors Reel comments for keywords [سوشيال, كورس, تفاصيل], delivers immediate DM pitch, and auto-qualifies the lead in CRM.",
             "platform": "instagram",
             "trigger_type": "comment_to_dm",
             "status": "paused",
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Reels & Posts",
-            "keywords": ["Ø³ÙˆØ´ÙŠØ§Ù„", "ÙƒÙˆØ±Ø³", "ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…"],
+            "keywords": ["سوشيال", "كورس", "تفاصيل", "سعر", "مهتم"],
             "like_comment": True,
             "reply_comment": True,
-            "reply_comment_text": "ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ Ø¹Ù„Ù‰ Ø§Ù„Ø¯Ø§ÙŠØ±ÙƒØª ÙÙˆØ±Ø§Ù‹ ðŸš€",
+            "reply_comment_text": "تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك على الدايركت فوراً 🚀",
             "send_dm": True,
-            "dm_text": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø¥Ù„ÙŠÙƒ ØªÙØ§ØµÙŠÙ„ Ø§Ù„ÙƒÙˆØ±Ø³ ÙˆØ§Ù„Ø¹Ø±Ø¶ Ø§Ù„Ø®Ø§Øµ Ù„Ù„ÙŠÙˆÙ…:",
+            "dm_text": "أهلاً بحضرتك! إليك تفاصيل الكورس والعرض الخاص لليوم:",
             "dm_link": "",
             "dm_image": "",
             "executions_count": 0,
@@ -42,9 +42,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "ig_comment_trigger",
                     "label": "Instagram Reel Comment",
                     "platform": "instagram",
-                    "icon": "ðŸ“¸",
+                    "icon": "📸",
                     "config": {
-                        "keywords": ["Ø³ÙˆØ´ÙŠØ§Ù„", "ÙƒÙˆØ±Ø³", "ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…"],
+                        "keywords": ["سوشيال", "كورس", "تفاصيل", "سعر", "مهتم"],
                         "match_type": "any"
                     },
                     "position": {"x": 100, "y": 220}
@@ -55,7 +55,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "keyword_filter",
                     "label": "Intent & Keyword Filter",
                     "platform": "general",
-                    "icon": "ðŸ”",
+                    "icon": "🔍",
                     "config": {
                         "filter_mode": "contains_commercial_intent",
                         "exclude_spam": True
@@ -68,7 +68,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "ai_reply_action",
                     "label": "Gemini Sales Pitch Synthesizer",
                     "platform": "general",
-                    "icon": "ðŸ¤–",
+                    "icon": "🤖",
                     "config": {
                         "tone": "egyptian_professional",
                         "include_offer": False,
@@ -82,7 +82,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "meta_dm_action",
                     "label": "Send Instagram Direct Message",
                     "platform": "instagram",
-                    "icon": "ðŸ’¬",
+                    "icon": "💬",
                     "config": {
                         "cta_button": "Book Free 15-min Call",
                         "calendar_link": ""
@@ -95,7 +95,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "crm_lead_action",
                     "label": "Capture & Qualify in CRM",
                     "platform": "general",
-                    "icon": "ðŸŽ¯",
+                    "icon": "🎯",
                     "config": {
                         "stage": "qualified",
                         "deal_value": 250,
@@ -123,12 +123,12 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
             "target_type": "all_posts",
             "target_post_id": None,
             "target_post_title": "All Facebook Posts & Reels",
-            "keywords": ["ØªÙØ§ØµÙŠÙ„", "Ø³Ø¹Ø±", "Ù…Ù‡ØªÙ…", "Ø®Ø¯Ù…Ø§Øª", "Ø¹Ø±Ø¶"],
+            "keywords": ["تفاصيل", "سعر", "مهتم", "خدمات", "عرض"],
             "like_comment": True,
             "reply_comment": True,
-            "reply_comment_text": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ùƒ! ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ ÙÙˆØ±Ø§Ù‹ ðŸš€",
+            "reply_comment_text": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀",
             "send_dm": True,
-            "dm_text": "Ù…Ø±Ø­Ø¨Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø§Ø³ØªÙØ³Ø§Ø±Ùƒ Ø¨Ø®ØµÙˆØµ Ø§Ù„Ø®Ø¯Ù…Ø© Ù…Ø­Ù„ Ø§Ù‡ØªÙ…Ø§Ù…Ù†Ø§ØŒ ØªÙØ¶Ù„ Ø¨Ø§Ù„Ø§Ø·Ù„Ø§Ø¹ Ø¹Ù„Ù‰ Ø§Ù„ØªÙØ§ØµÙŠÙ„:",
+            "dm_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
             "dm_link": "",
             "dm_image": "",
             "executions_count": 0,
@@ -140,7 +140,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_comment_trigger",
                     "label": "Facebook Post / Reel Comment",
                     "platform": "facebook",
-                    "icon": "ðŸ“˜",
+                    "icon": "📘",
                     "config": {
                         "pages": ["1108892288983475"],
                         "trigger_on": "all_comments"
@@ -153,9 +153,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_public_reply",
                     "label": "Reply to Public Comment",
                     "platform": "facebook",
-                    "icon": "ðŸ“¢",
+                    "icon": "📢",
                     "config": {
-                        "reply_template": "Ø£Ù‡Ù„Ø§Ù‹ Ø¨Ùƒ! ØªÙ… Ø¥Ø±Ø³Ø§Ù„ ÙƒØ§ÙØ© Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙÙŠ Ø±Ø³Ø§Ù„Ø© Ø®Ø§ØµØ© Ù„Ø­Ø¶Ø±ØªÙƒ ÙÙˆØ±Ø§Ù‹ ðŸš€"
+                        "reply_template": "أهلاً بك! تم إرسال كافة التفاصيل في رسالة خاصة لحضرتك فوراً 🚀"
                     },
                     "position": {"x": 450, "y": 120}
                 },
@@ -165,9 +165,9 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "fb_send_message",
                     "label": "Send Messenger Private Message",
                     "platform": "facebook",
-                    "icon": "ðŸ’¬",
+                    "icon": "💬",
                     "config": {
-                        "message_text": "Ù…Ø±Ø­Ø¨Ø§Ù‹ Ø¨Ø­Ø¶Ø±ØªÙƒ! Ø§Ø³ØªÙØ³Ø§Ø±Ùƒ Ø¨Ø®ØµÙˆØµ Ø§Ù„Ø®Ø¯Ù…Ø© Ù…Ø­Ù„ Ø§Ù‡ØªÙ…Ø§Ù…Ù†Ø§ØŒ ØªÙØ¶Ù„ Ø¨Ø§Ù„Ø§Ø·Ù„Ø§Ø¹ Ø¹Ù„Ù‰ Ø§Ù„ØªÙØ§ØµÙŠÙ„:",
+                        "message_text": "مرحباً بحضرتك! استفسارك بخصوص الخدمة محل اهتمامنا، تفضل بالاطلاع على التفاصيل:",
                         "attach_booking_link": True
                     },
                     "position": {"x": 450, "y": 300}
@@ -196,7 +196,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "lead_qualified_trigger",
                     "label": "Lead Form / Phone Confirmed",
                     "platform": "both",
-                    "icon": "â­",
+                    "icon": "⭐",
                     "config": {"min_deal_value": 100},
                     "position": {"x": 120, "y": 200}
                 },
@@ -206,7 +206,7 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
                     "type": "n8n_http_action",
                     "label": "HTTP Request Node (n8n API format)",
                     "platform": "general",
-                    "icon": "ðŸŒ",
+                    "icon": "🌐",
                     "config": {
                         "method": "POST",
                         "url": "https://n8n.webhook.internal/webhook/hudhud-leads",
@@ -223,19 +223,21 @@ def _get_default_workflows() -> List[Dict[str, Any]]:
             "updated_at": "2026-09-04T14:00:00Z"
         }
     ]
-
-
 # ----------------------------------------------------------------------
 # Wave 9.8: automations_workflows table (source of truth) — pure helpers
 # (db injected for testability; class methods delegate to these).
 # ----------------------------------------------------------------------
-def db_load_workflows(db) -> Optional[List[Workflow]]:
-    """Rebuilds workflows from table rows (config JSONB = full model dump).
-    Returns None when unavailable/empty (caller falls back to legacy stores)."""
-    if db is None or not getattr(db, "is_connected", False):
+def db_load_workflows(db, user_id: Optional[str] = None) -> Optional[List[Workflow]]:
+    """Rebuild one tenant's workflows from the authoritative table.
+
+    A missing owner is never interpreted as "all workspaces".  That former
+    global query was the route by which legacy workflows could cross tenant
+    boundaries.
+    """
+    if not user_id or db is None or not getattr(db, "is_connected", False):
         return None
     try:
-        rows = db.select("automations_workflows") or []
+        rows = db.select("automations_workflows", {"user_id": user_id}) or []
         if not rows:
             return None
         wfs: List[Workflow] = []
@@ -251,17 +253,79 @@ def db_load_workflows(db) -> Optional[List[Workflow]]:
         return None
 
 
+def _workflow_row(wf: "Workflow", owner_user_id: str) -> Dict[str, Any]:
+    """Serialize one workflow with its immutable tenant owner."""
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        "id": wf.id,
+        "user_id": owner_user_id,
+        "name": wf.name,
+        "platform": wf.platform,
+        "status": wf.status,
+        "keywords": wf.keywords or [],
+        "target_type": wf.target_type,
+        "target_post_id": wf.target_post_id,
+        "like_comment": wf.like_comment,
+        "reply_comment": wf.reply_comment,
+        "reply_comment_text": wf.reply_comment_text,
+        "send_dm": wf.send_dm,
+        "dm_text": wf.dm_text,
+        "last_executed_at": getattr(wf, "last_executed_at", None),
+        "execution_count": getattr(wf, "execution_count", 0) or 0,
+        "config": wf.model_dump(mode="json"),
+        "updated_at": now,
+    }
+
+
+def db_get_workflow(db, wf_id: str, user_id: str) -> Optional[Workflow]:
+    if not user_id or db is None or not getattr(db, "is_connected", False):
+        return None
+    try:
+        rows = db.select("automations_workflows", {"id": wf_id, "user_id": user_id}) or []
+        config = (rows[0].get("config") or {}) if rows else {}
+        return Workflow(**config) if config else None
+    except Exception as e:
+        logger.warning("Automation lookup failed for tenant %s: %s", user_id, e)
+        return None
+
+
+def db_upsert_workflow(db, wf: "Workflow", user_id: str) -> bool:
+    """Persist exactly one workflow without pruning another tenant's rows."""
+    if not user_id or db is None or not getattr(db, "is_connected", False):
+        return False
+    try:
+        payload = _workflow_row(wf, user_id)
+        existing = db.select("automations_workflows", {"id": wf.id, "user_id": user_id}) or []
+        if existing:
+            db.update("automations_workflows", wf.id, payload)
+        else:
+            db.insert("automations_workflows", payload)
+        return True
+    except Exception as e:
+        logger.warning("Automation save failed for tenant %s: %s", user_id, e)
+        return False
+
+
+def db_delete_workflow(db, wf_id: str, user_id: str) -> bool:
+    if not db_get_workflow(db, wf_id, user_id):
+        return False
+    try:
+        return bool(db.delete("automations_workflows", wf_id))
+    except Exception as e:
+        logger.warning("Automation delete failed for tenant %s: %s", user_id, e)
+        return False
+
+
 def db_save_workflows(db, workflows: Dict[str, "Workflow"],
                       owner_user_id: Optional[str] = None) -> bool:
-    """Upserts each workflow (column subset for querying + full model in
-    config JSONB). Best-effort: per-row failures are logged, never raised."""
-    if db is None or not getattr(db, "is_connected", False):
+    """Upserts one tenant's workflows; ownerless writes are forbidden."""
+    if not owner_user_id or db is None or not getattr(db, "is_connected", False):
         return False
     now = datetime.now(timezone.utc).isoformat()
     ok = False
     # prune rows that no longer exist in the authoritative in-memory set
     try:
-        existing = db.select("automations_workflows") or []
+        existing = db.select("automations_workflows", {"user_id": owner_user_id}) or []
         live_ids = set(workflows.keys())
         for row in existing:
             if row.get("id") and row["id"] not in live_ids:
@@ -272,28 +336,10 @@ def db_save_workflows(db, workflows: Dict[str, "Workflow"],
     except Exception as e:
         logger.warning(f"Automations prune check failed: {e}")
     for wf in workflows.values():
-        payload = {
-            "id": wf.id,
-            "name": wf.name,
-            "platform": wf.platform,
-            "status": wf.status,
-            "keywords": wf.keywords or [],
-            "target_type": wf.target_type,
-            "target_post_id": wf.target_post_id,
-            "like_comment": wf.like_comment,
-            "reply_comment": wf.reply_comment,
-            "reply_comment_text": wf.reply_comment_text,
-            "send_dm": wf.send_dm,
-            "dm_text": wf.dm_text,
-            "last_executed_at": getattr(wf, "last_executed_at", None),
-            "execution_count": getattr(wf, "execution_count", 0) or 0,
-            "config": wf.model_dump(mode="json"),
-            "updated_at": now,
-        }
-        if owner_user_id:
-            payload["user_id"] = owner_user_id
+        payload = _workflow_row(wf, owner_user_id)
         try:
-            existing = db.select("automations_workflows", {"id": wf.id}) or []
+            existing = db.select(
+                "automations_workflows", {"id": wf.id, "user_id": owner_user_id}) or []
             if existing:
                 db.update("automations_workflows", wf.id, payload)
             else:
@@ -307,120 +353,20 @@ def db_save_workflows(db, workflows: Dict[str, "Workflow"],
 class AutomationsService:
     """Manages storage, lifecycle, and execution of visual automation workflows.
 
-    Persistence strategy (serverless-safe):
-    - Primary: Supabase `app_settings['automations_workflows']` (survives cold starts).
-    - Secondary: local JSON file (fast local cache / offline dev).
+    The tenant-owned ``automations_workflows`` table is the only production
+    source of truth.  The historic shared app_settings/disk stores are never
+    imported because their rows have no workspace owner.
     """
 
     def __init__(self):
         self._workflows: Dict[str, Workflow] = {}
         self._load()
 
-    # ------------------------------------------------------------------
-    # Persistence helpers
-    # ------------------------------------------------------------------
-    def _owner_user_id(self) -> Optional[str]:
-        """Stamp rows with the legacy workspace operator (oldest admin)."""
-        try:
-            if not getattr(self, "_owner_cache", None):
-                from src.core.supabase_client import supabase_db
-                rows = supabase_db.select("users", {"role": "admin"}) or []
-                if rows:
-                    self._owner_cache = sorted(
-                        rows, key=lambda u: u.get("created_at") or "")[0]["id"]
-            return getattr(self, "_owner_cache", None)
-        except Exception:
-            return None
-
-    def _load_db(self) -> Optional[List[Workflow]]:
-        from src.core.supabase_client import supabase_db
-        return db_load_workflows(supabase_db)
-
-    def _save_db(self) -> bool:
-        from src.core.supabase_client import supabase_db
-        return db_save_workflows(supabase_db, self._workflows, self._owner_user_id())
-
-    def _load_supabase(self) -> Optional[Dict[str, Any]]:
-        try:
-            from src.core.supabase_client import supabase_db
-            if not supabase_db.is_connected:
-                return None
-            data = supabase_db.get_setting("automations_workflows")
-            if data and isinstance(data, dict) and data.get("workflows"):
-                return data
-        except Exception as e:
-            logger.warning(f"Automations Supabase load failed: {e}")
-        return None
-
-    def _save_supabase(self) -> bool:
-        try:
-            from src.core.supabase_client import supabase_db
-            if not supabase_db.is_connected:
-                return False
-            payload = {
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "total_count": len(self._workflows),
-                "workflows": [wf.model_dump() for wf in self._workflows.values()],
-            }
-            return supabase_db.set_setting("automations_workflows", payload)
-        except Exception as e:
-            logger.warning(f"Automations Supabase save failed: {e}")
-            return False
-
     def _load(self):
-        """Loads workflows: DB table (Wave 9.8 source of truth) first,
-        then legacy Supabase settings, then disk, then defaults.
-        Legacy loads are mirrored into the table once (self-healing bootstrap)."""
-        # 0. automations_workflows table (per-user ready)
-        try:
-            table_rows = self._load_db()
-        except Exception as e:
-            logger.error(f"Error loading automations from table: {e}")
-            table_rows = None
-            self._workflows = {}
-        if table_rows:
-            for wf in table_rows:
-                self._workflows[wf.id] = wf
-            self._sanitize_legacy_fabrications()
-            logger.info(f"Loaded {len(self._workflows)} workflows from automations_workflows table")
-            return
-
-        # 1. Supabase legacy (serverless-safe until cutover is proven)
-        cloud = self._load_supabase()
-        if cloud:
-            try:
-                for item in cloud.get("workflows", []):
-                    wf = Workflow(**item)
-                    self._workflows[wf.id] = wf
-                self._sanitize_legacy_fabrications()
-                logger.info(f"Loaded {len(self._workflows)} workflows from Supabase app_settings")
-                self._save_db()  # one-time bootstrap mirror into the table
-                return
-            except Exception as e:
-                logger.error(f"Error parsing Supabase workflows: {e}")
-                self._workflows = {}
-
-        # 2. Local disk cache
-        if STORE_PATH.exists():
-            try:
-                data = json.loads(STORE_PATH.read_text(encoding="utf-8"))
-                for item in data.get("workflows", []):
-                    wf = Workflow(**item)
-                    self._workflows[wf.id] = wf
-                self._sanitize_legacy_fabrications()
-                logger.info(f"Loaded {len(self._workflows)} workflows from {STORE_PATH}")
-                self._save_db()  # one-time bootstrap mirror into the table
-                return
-            except Exception as e:
-                logger.error(f"Error loading automations store: {e}")
-
-        # 3. First-run defaults (all PAUSED — zero-fabrication: nothing ships
-        #    active with invented booking links or discount codes)
-        defaults = _get_default_workflows()
-        for item in defaults:
-            wf = Workflow(**item)
-            self._workflows[wf.id] = wf
-        self._save()
+        # Deliberately do not pre-load all database rows: callers must always
+        # ask through list_workflows(user_id=...).  This makes an accidental
+        # ownerless/global query impossible at startup.
+        self._workflows = {}
 
     def _sanitize_legacy_fabrications(self):
         """One-time cleanup of previously-shipped fabricated defaults that
@@ -455,32 +401,26 @@ class AutomationsService:
             self._save()
 
     def _save(self):
-        """Persists workflows: DB table (Wave 9.8 primary) + legacy Supabase
-        settings mirror + disk cache."""
-        saved_db = self._save_db()
-        saved_cloud = self._save_supabase()
-        try:
-            try:
-                STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            except OSError:
-                pass
-            payload = {
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "total_count": len(self._workflows),
-                "workflows": [wf.model_dump() for wf in self._workflows.values()]
-            }
-            STORE_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception as e:
-            if not saved_cloud:
-                logger.warning(f"Could not persist automations store (Supabase + disk both failed): {e}")
+        """Compatibility no-op for ownerless unit-test workflows.
 
-    def list_workflows(self) -> List[Workflow]:
+        Production calls always provide ``user_id`` and persist through the
+        scoped helpers above; no shared cache is written.
+        """
+        return None
+
+    def list_workflows(self, user_id: Optional[str] = None) -> List[Workflow]:
+        if user_id:
+            return db_load_workflows(supabase_db, user_id=user_id) or []
         return list(self._workflows.values())
 
-    def get_workflow(self, wf_id: str) -> Optional[Workflow]:
+    def get_workflow(self, wf_id: str, user_id: Optional[str] = None) -> Optional[Workflow]:
+        if user_id:
+            return db_get_workflow(supabase_db, wf_id, user_id)
         return self._workflows.get(wf_id)
 
-    def create_workflow(self, payload: WorkflowCreate) -> Workflow:
+    def create_workflow(self, payload: WorkflowCreate, user_id: Optional[str] = None) -> Workflow:
+        if user_id and not getattr(supabase_db, "is_connected", False):
+            raise ValueError("قاعدة البيانات غير متصلة؛ لا يمكن حفظ Workflow العميل بأمان")
         now = datetime.now(timezone.utc).isoformat()
         wf_id = f"wf_{uuid.uuid4().hex[:8]}"
         
@@ -489,7 +429,7 @@ class AutomationsService:
 
         # Auto-generate visual nodes if not provided
         if not nodes:
-            platform_icon = "ðŸ“¸" if payload.platform == "instagram" else ("ðŸ“˜" if payload.platform == "facebook" else "âš¡")
+            platform_icon = "📸" if payload.platform == "instagram" else ("📘" if payload.platform == "facebook" else "⚡")
             nodes = [
                 NodeData(
                     id=f"node_trig_{wf_id[:6]}",
@@ -512,7 +452,7 @@ class AutomationsService:
                     type="keyword_filter",
                     label="Keywords & Intent Filter",
                     platform="general",
-                    icon="ðŸ”",
+                    icon="🔍",
                     config={"keywords": payload.keywords},
                     position=NodePosition(x=420, y=200)
                 )
@@ -534,7 +474,7 @@ class AutomationsService:
                     type="comment_reply_action",
                     label="Public Comment Reply & Like",
                     platform=payload.platform,
-                    icon="ðŸ“¢",
+                    icon="📢",
                     config={
                         "like_comment": payload.like_comment,
                         "reply_text": payload.reply_comment_text
@@ -556,7 +496,7 @@ class AutomationsService:
                     type="meta_dm_action",
                     label=f"Send {payload.platform.capitalize()} Direct Message",
                     platform=payload.platform,
-                    icon="ðŸ’¬",
+                    icon="💬",
                     config={
                         "dm_text": payload.dm_text,
                         "dm_link": payload.dm_link,
@@ -596,12 +536,17 @@ class AutomationsService:
             created_at=now,
             updated_at=now
         )
-        self._workflows[wf_id] = wf
-        self._save()
+        if user_id:
+            if not db_upsert_workflow(supabase_db, wf, user_id):
+                raise ValueError("تعذر حفظ Workflow العميل")
+        else:
+            self._workflows[wf_id] = wf
+            self._save()
         return wf
 
-    def update_workflow(self, wf_id: str, payload: WorkflowUpdate) -> Optional[Workflow]:
-        wf = self._workflows.get(wf_id)
+    def update_workflow(self, wf_id: str, payload: WorkflowUpdate,
+                        user_id: Optional[str] = None) -> Optional[Workflow]:
+        wf = self.get_workflow(wf_id, user_id=user_id)
         if not wf:
             return None
         
@@ -643,35 +588,50 @@ class AutomationsService:
             wf.connections = payload.connections
 
         wf.updated_at = datetime.now(timezone.utc).isoformat()
-        self._workflows[wf_id] = wf
-        self._save()
+        if user_id:
+            if not db_upsert_workflow(supabase_db, wf, user_id):
+                return None
+        else:
+            self._workflows[wf_id] = wf
+            self._save()
         return wf
 
-    def delete_workflow(self, wf_id: str) -> bool:
+    def delete_workflow(self, wf_id: str, user_id: Optional[str] = None) -> bool:
+        if user_id:
+            return db_delete_workflow(supabase_db, wf_id, user_id)
         if wf_id in self._workflows:
             del self._workflows[wf_id]
             self._save()
             return True
         return False
 
-    def toggle_status(self, wf_id: str) -> Optional[Workflow]:
-        wf = self._workflows.get(wf_id)
+    def toggle_status(self, wf_id: str, user_id: Optional[str] = None) -> Optional[Workflow]:
+        wf = self.get_workflow(wf_id, user_id=user_id)
         if not wf:
             return None
         wf.status = "paused" if wf.status == "active" else "active"
         wf.updated_at = datetime.now(timezone.utc).isoformat()
-        self._save()
+        if user_id:
+            if not db_upsert_workflow(supabase_db, wf, user_id):
+                return None
+        else:
+            self._save()
         return wf
 
-    def simulate_execution(self, wf_id: str, sample_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def simulate_execution(self, wf_id: str, sample_payload: Optional[Dict[str, Any]] = None,
+                           user_id: Optional[str] = None) -> Dict[str, Any]:
         """Simulates step-by-step execution across nodes in the workflow for testing."""
-        wf = self._workflows.get(wf_id)
+        wf = self.get_workflow(wf_id, user_id=user_id)
         if not wf:
             return {"status": "error", "message": f"Workflow {wf_id} not found"}
 
         wf.executions_count += 1
         wf.last_executed_at = datetime.now(timezone.utc).isoformat()
-        self._save()
+        if user_id:
+            if not db_upsert_workflow(supabase_db, wf, user_id):
+                return {"status": "error", "message": "Workflow could not be saved"}
+        else:
+            self._save()
 
         steps = []
         for i, node in enumerate(wf.nodes):
@@ -702,12 +662,18 @@ class AutomationsService:
         text = (event.get("text") or "").lower()
         comment_id = event.get("comment_id")
         media_id = event.get("media_id") or event.get("post_id")
-        token = settings.META_PAGE_ACCESS_TOKEN
-        if not token:
-            logger.warning("Cannot process automation: META_PAGE_ACCESS_TOKEN not configured.")
-            return None
-
         platform_str = platform.value if hasattr(platform, "value") else str(platform).lower()
+        recipient_account_id = str(event.get("account_id") or "")
+        from src.modules.connections.service import connection_service
+        owner_user_id = connection_service.owner_for_account(platform_str, recipient_account_id)
+        if not owner_user_id:
+            logger.warning("Automation ignored: no unique owner for comment recipient %s", recipient_account_id)
+            return None
+        token = connection_service.get_active_token_for_account(
+            owner_user_id, platform_str, recipient_account_id)
+        if not token:
+            logger.warning("Automation ignored: no entitled token for comment recipient %s", recipient_account_id)
+            return None
 
         # Human Takeover / AI Pause guards: the human owns the conversation —
         # automations must stay silent. (Takeover = per-conversation; AI pause
@@ -716,7 +682,8 @@ class AutomationsService:
             sender_id = event.get("sender_id")
             if sender_id:
                 id_field = "instagram_account_id" if platform_str == "instagram" else "facebook_account_id"
-                matches_lead = supabase_db.select("leads", {id_field: sender_id}) or []
+                matches_lead = supabase_db.select("leads", {
+                    id_field: sender_id, "user_id": owner_user_id}) or []
                 lead_row = matches_lead[0] if matches_lead else None
                 from src.ai.pause import is_ai_paused
                 if lead_row and (lead_row.get("human_takeover")
@@ -732,7 +699,7 @@ class AutomationsService:
         from src.meta_api.rate_limiter import rate_limiter
         from src.core.exceptions import RateLimitExceededError
 
-        for wf in self._workflows.values():
+        for wf in self.list_workflows(user_id=owner_user_id):
             if wf.status != "active":
                 continue
             # FIX B1: 'both'/'omnichannel' both mean all-platform workflows
@@ -757,9 +724,9 @@ class AutomationsService:
                     if wf.like_comment and comment_id:
                         try:
                             rate_limiter.check_and_acquire(platform_str)
-                            if "instagram" in platform_str and settings.META_INSTAGRAM_ACCOUNT_ID:
+                            if "instagram" in platform_str and recipient_account_id:
                                 resp = await client.post(
-                                    f"{settings.META_GRAPH_API_BASE_URL}/{settings.META_INSTAGRAM_ACCOUNT_ID}/likes",
+                                    f"{settings.META_GRAPH_API_BASE_URL}/{recipient_account_id}/likes",
                                     data={"comment_id": comment_id, "access_token": token}
                                 )
                             else:
@@ -796,7 +763,7 @@ class AutomationsService:
                     if wf.send_dm and wf.dm_text and comment_id:
                         try:
                             rate_limiter.check_and_acquire(platform_str)
-                            target_id = settings.META_INSTAGRAM_ACCOUNT_ID if "instagram" in platform_str else settings.META_PAGE_ID
+                            target_id = recipient_account_id
                             if target_id:
                                 msg_payload = {"text": wf.dm_text}
                                 if wf.dm_link:
@@ -822,7 +789,7 @@ class AutomationsService:
             if any_success:
                 wf.executions_count += 1
                 wf.last_executed_at = datetime.now(timezone.utc).isoformat()
-                self._save()
+                db_upsert_workflow(supabase_db, wf, owner_user_id)
             else:
                 logger.error(f"Automation '{wf.name}' completed with NO successful steps for comment {comment_id}: {step_results}")
 

@@ -25,13 +25,14 @@ class BroadcastPayload(BaseModel):
 
 def register(app: FastAPI) -> None:
     @app.get("/api/notifications", tags=["Notifications"])
-    async def my_notifications(request: Request, unread_only: bool = False, limit: int = 30):
+    async def my_notifications(request: Request, unread_only: bool = False, limit: int = 30, lang: Optional[str] = None):
         token = request.cookies.get(SESSION_COOKIE_NAME)
         session = verify_session_token(token) if token else None
         if not session:
             raise HTTPException(status_code=401, detail="غير مصرح")
+        target_lang = lang or request.cookies.get("hudhud_lang") or "en"
         rows = notification_service.list_for_user(
-            session["sub"], limit=min(max(limit, 1), 100), unread_only=unread_only
+            session["sub"], limit=min(max(limit, 1), 100), unread_only=unread_only, lang=target_lang
         )
         return {"status": "success", "notifications": rows,
                 "unread": notification_service.unread_count(session["sub"])}
@@ -42,7 +43,13 @@ def register(app: FastAPI) -> None:
         session = verify_session_token(token) if token else None
         if not session:
             raise HTTPException(status_code=401, detail="غير مصرح")
-        return {"unread": notification_service.unread_count(session["sub"])}
+        cnt = notification_service.unread_count(session["sub"])
+        return {
+            "status": "success",
+            "unread": cnt,
+            "count": cnt,
+            "unread_count": cnt,
+        }
 
     @app.post("/api/notifications/{notification_id}/read", tags=["Notifications"])
     async def mark_one_read(notification_id: str, request: Request):
