@@ -1,0 +1,13 @@
+import re, sys
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+src = open("src/modules/content/routes.py", encoding="utf-8").read()
+print(re.findall(r'@router\.(?:get|post|put|delete)\("([^"]+)"', src))
+print("---create handler---")
+i = src.find("create")
+print(src[max(0, i - 100):i + 900] if i > 0 else "not found")
+print("---service create---")
+svc = open("src/content_studio/service.py", encoding="utf-8").read()
+j = svc.find("def create_post")
+print(svc[j:j+800] if j > 0 else "service create_post not found")
+print("---service insert---")
+print([m for m in re.findall(r'(insert|upsert)\("[\w_]+"', svc)][:10])
