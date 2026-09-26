@@ -41,6 +41,16 @@ KIND_KB_VISION = "kb_vision"      # Gemini multimodal vision analysis for upload
 CREDITS_PER_PLATFORM = 500
 TRIAL_MINIMUM_CREDITS = 100  # matches the schema's own signup default
 
+# One-time, self-serve top-up packs (see grant_purchased_credits). The key
+# doubles as the Polar product-id lookup key in polar_credit_pack_ids
+# (admin-editable setting) and as the checkout-metadata value that round-trips
+# back on the order.paid webhook — see payments/polar.py.
+CREDIT_PACKS: Dict[str, int] = {
+    "credits_500": 500,
+    "credits_2000": 2000,
+    "credits_5000": 5000,
+}
+
 
 class UsageService:
     """Reads/debits the ai_credits balance and logs to usage_events."""
@@ -121,6 +131,30 @@ class UsageService:
     def grant_platform_credits(self, user_id: str, platform_count: int) -> None:
         """Called on paid subscription activation (billing/__init__.py webhook)."""
         self.ensure_minimum_credits(user_id, CREDITS_PER_PLATFORM * max(1, platform_count))
+
+    def grant_purchased_credits(self, user_id: str, amount: int) -> None:
+        """A one-time credit-pack purchase — genuinely additive.
+
+        Deliberately NOT ensure_minimum_credits: a customer who buys a 2,000
+        pack while sitting on 400 unused credits must end up with 2,400, not
+        get clamped to 2,000. This is safe against a redelivered webhook
+        because the dispatcher in billing/__init__.py already dedupes by
+        event_id via event_deduplicator.claim(...) before this is ever
+        called — a genuinely new purchase always carries a new event_id, and
+        a retried delivery of the SAME event never reaches here twice.
+        """
+        if amount <= 0:
+            return
+        try:
+            rows = supabase_db.select("users", {"id": user_id}) or []
+            if not rows:
+                logger.error(f"credit purchase grant skipped — unknown user {user_id}")
+                return
+            current = int(rows[0].get("ai_credits", 0) or 0)
+            supabase_db.update("users", user_id, {"ai_credits": current + amount})
+            logger.info(f"ai_credits purchase applied for {user_id}: +{amount} ({current} -> {current + amount})")
+        except Exception as e:
+            logger.error(f"ai_credits purchase grant failed for {user_id}: {e}")
 
     def grant_trial_credits(self, user_id: str) -> None:
         """Called from EntitlementService.start_trial (services.py)."""

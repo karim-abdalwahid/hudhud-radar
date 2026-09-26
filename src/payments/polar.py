@@ -68,6 +68,19 @@ class PolarGateway(PaymentProvider):
         except Exception:
             return {}
 
+    def _credit_pack_product_ids(self) -> Dict[str, str]:
+        """credit-pack key (e.g. "credits_500") → polar product id.
+
+        Separate setting from _product_ids: platform addons are recurring
+        subscription components, credit packs are one-time purchases — mixing
+        the two mappings would make it easy to accidentally checkout a
+        recurring product when a one-time purchase was intended.
+        """
+        try:
+            return supabase_db.get_setting("polar_credit_pack_ids") or {}
+        except Exception:
+            return {}
+
     # ------------------------------------------------------------------
     def create_checkout(self, user: Dict[str, Any], quote: Dict[str, Any],
                         return_url: str) -> Dict[str, Any]:
@@ -142,6 +155,35 @@ class PolarGateway(PaymentProvider):
             data = r.json()
         return {"checkout_url": data.get("url"), "provider_ref": data.get("id")}
 
+    def create_credits_checkout(self, user: Dict[str, Any], pack_key: str,
+                                return_url: str) -> Dict[str, Any]:
+        """One-time checkout for a single credit pack — NOT a subscription.
+
+        `credit_pack` in metadata is the load-bearing signal that lets
+        parse_event() route the resulting order.paid webhook to the
+        one-time-purchase branch instead of subscription_activated: Polar
+        echoes checkout metadata back verbatim on the paid order, so this
+        round-trips without needing to reverse-engineer the product id.
+        """
+        if not self._token():
+            raise RuntimeError("POLAR_ACCESS_TOKEN غير مضبوط")
+        pid = self._credit_pack_product_ids().get(pack_key)
+        if not pid:
+            raise RuntimeError(f"لا يوجد منتج Polar مربوط لحزمة الرصيد: {pack_key} — أضفه من إعدادات الأدمن")
+        payload = {
+            "products": [pid],
+            "success_url": return_url,
+            "customer_email": user.get("email"),
+            "metadata": {"user_id": str(user.get("id") or ""), "credit_pack": pack_key},
+        }
+        with httpx.Client(timeout=30, follow_redirects=True) as c:
+            r = c.post(f"{self.api}/v1/checkouts/", headers=self._headers(), json=payload)
+            if r.status_code not in (200, 201):
+                logger.error(f"Polar credits checkout failed: {r.status_code} {r.text[:300]}")
+                raise RuntimeError(f"Polar {r.status_code}: {r.text[:200]}")
+            data = r.json()
+        return {"checkout_url": data.get("url"), "provider_ref": data.get("id")}
+
     # ------------------------------------------------------------------
     def verify_webhook(self, headers: Dict[str, str], raw_body: bytes) -> bool:
         """Svix scheme, fail-closed, 5-minute timestamp tolerance."""
@@ -213,8 +255,18 @@ class PolarGateway(PaymentProvider):
                 platforms, trial_product = _resolve(data.get("subscription") or {})
             is_trial = is_trial or trial_product
         kind = "other"
-        if event_type in ("subscription.active", "subscription.created", "order.paid", "subscription.cycled"):
+        if event_type in ("subscription.active", "subscription.created", "subscription.cycled"):
             kind = "subscription_activated"
+        elif event_type == "order.paid":
+            # order.paid fires for BOTH a subscription's first charge and a
+            # genuine one-time purchase. credit_pack in metadata is the only
+            # reliable signal for the latter — it is set exclusively by
+            # create_credits_checkout below, so an existing platform
+            # subscription checkout (or a subscription.cycled renewal, which
+            # doesn't go through this branch at all) can never carry it.
+            # Anything without it keeps the prior behavior exactly
+            # (subscription_activated).
+            kind = "order_paid" if meta.get("credit_pack") else "subscription_activated"
         elif event_type in ("subscription.canceled", "subscription.revoked"):
             kind = "subscription_canceled"
         elif event_type == "subscription.past_due":
@@ -229,6 +281,7 @@ class PolarGateway(PaymentProvider):
             "subscription_status": data.get("status") or subscription.get("status") or "",
             "subscription_ref": data.get("subscription_id") or data.get("id"),
             "current_period_end": data.get("current_period_end") or subscription.get("current_period_end"),
+            "credit_pack": meta.get("credit_pack") or None,
             "raw": payload,
         }
 

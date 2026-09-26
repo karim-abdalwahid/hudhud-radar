@@ -16,6 +16,11 @@ from src.core.logger import logger
 from src.core.supabase_client import supabase_db
 
 MULTI_PLATFORM_DISCOUNTS = {1: 0, 2: 10, 3: 20}  # count → percent off (fallback defaults)
+# Fallback USD prices for CREDIT_PACKS (usage.py), used when no admin
+# override exists in the "credit_packs_pricing" setting. Volume-discounted
+# per-credit (larger packs cost less per credit) — a starting point, not a
+# committed price; tune via PUT /api/admin/site-settings.
+DEFAULT_CREDIT_PACK_PRICES_USD = {"credits_500": 9.0, "credits_2000": 29.0, "credits_5000": 59.0}
 TRIAL_DAYS = 3
 TRIAL_ENTITLEMENTS = ["platform:facebook", "platform:instagram", "platform:threads"]
 
@@ -388,6 +393,26 @@ class PricingService:
         return [{"platform": r.get("platform"), "display_name": r.get("display_name"),
                  "price_usd": float(r.get("price_usd") or 0),
                  "is_available": r.get("is_available", True)} for r in rows]
+
+    def credit_pack_catalog(self) -> List[Dict[str, Any]]:
+        """Self-serve AI-credit top-up packs.
+
+        Deliberately settings-backed with a coded fallback rather than a new
+        database table (same shape as _discount_percent below): pack sizes
+        change rarely, unlike per-platform pricing, so a new migration would
+        be more ceremony than the feature warrants for v1. Admin overrides via
+        PUT /api/admin/site-settings {"credit_packs_pricing": {"credits_500": 7.99, ...}}.
+        """
+        from src.modules.billing.usage import CREDIT_PACKS
+        try:
+            overrides = supabase_db.get_setting("credit_packs_pricing") or {}
+        except Exception:
+            overrides = {}
+        out = []
+        for key, credits in CREDIT_PACKS.items():
+            price = float(overrides.get(key, DEFAULT_CREDIT_PACK_PRICES_USD.get(key, 0)))
+            out.append({"pack": key, "credits": credits, "price_usd": price})
+        return out
 
     def _discount_percent(self, count: int) -> int:
         try:

@@ -70,6 +70,24 @@ async function poll() {
 }
 document.addEventListener('DOMContentLoaded', () => {
     const isAr = localStorage.getItem('hudhud_lang') === 'ar';
+    const isCredits = new URLSearchParams(location.search).get('type') === 'credits';
+    if (isCredits) {
+        // A credit-pack purchase has nothing to "sync" cross-system the way
+        // platform entitlements do (no OAuth round-trip pending) — the
+        // webhook grant is effectively immediate, so this skips the
+        // platform-activation poll() entirely rather than showing a
+        // misleading "activating your platforms" message.
+        document.getElementById('title').textContent = isAr ? 'تم شحن رصيدك — شكراً لك!' : 'Credits added — thank you!';
+        document.getElementById('sub').textContent = isAr
+            ? 'تمت إضافة الرصيد لحسابك. تقدر تشوف رصيدك الجديد في صفحة حسابي.'
+            : 'Your AI credits have been added. You can see the new balance on your account page.';
+        document.getElementById('status').innerHTML = isAr ? '✅ تم الشحن بنجاح' : '✅ Top-up successful';
+        const btn = document.getElementById('continueBtn');
+        btn.textContent = isAr ? 'الذهاب لحسابي' : 'Go to my account';
+        btn.setAttribute('onclick', "window.location.href='/account'");
+        btn.style.display = 'block';
+        return;  // no poll() — nothing platform-related to wait for
+    }
     if (isAr) {
         document.getElementById('title').textContent = 'تم استلام الدفعة — شكراً لك!';
         document.getElementById('sub').textContent = 'منصاتك بتتفعل الآن — عادة بياخد ثواني.';

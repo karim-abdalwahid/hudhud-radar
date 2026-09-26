@@ -87,6 +87,33 @@ def register(app: FastAPI) -> None:
             "balance": data.get("ai_credits", 0),
         }
 
+    @app.get("/api/billing/credits/packs", tags=["Billing"])
+    async def credit_packs(request: Request):
+        _me(request)  # any signed-in user
+        return {"status": "success", "packs": pricing_service.credit_pack_catalog()}
+
+    class CreditsCheckoutPayload(BaseModel):
+        pack: str
+
+    @app.post("/api/billing/credits/checkout", tags=["Billing"])
+    async def credits_checkout(payload: CreditsCheckoutPayload, request: Request):
+        session = _me(request)
+        from src.config import settings
+        from src.modules.billing.usage import CREDIT_PACKS
+        if payload.pack not in CREDIT_PACKS:
+            raise HTTPException(status_code=400, detail="حزمة رصيد غير معروفة")
+        user = {"id": session["sub"], "email": session["email"]}
+        return_url = f"{settings.APP_BASE_URL.rstrip('/')}/billing/success?type=credits"
+        from src.payments.registry import active_gateway
+        gateway = active_gateway()
+        if not gateway:
+            raise HTTPException(status_code=503, detail="بوابة الدفع غير مهيأة — تواصل معنا")
+        try:
+            result = gateway.create_credits_checkout(user, payload.pack, return_url)
+        except RuntimeError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        return {"status": "success", "pack": payload.pack, **result}
+
     @app.get("/api/admin/billing/catalog", tags=["Billing"])
     async def admin_catalog(request: Request):
         _require_admin(request)
@@ -262,6 +289,33 @@ def register(app: FastAPI) -> None:
                     })
             except Exception:
                 pass
+        elif kind == "order_paid" and target_user:
+            # A one-time AI-credit pack purchase (see create_credits_checkout
+            # / parse_event). Genuinely additive — grant_purchased_credits is
+            # not idempotent-by-minimum like the subscription grant above,
+            # because it doesn't need to be: event_deduplicator.claim(...)
+            # already guaranteed above that this specific event_id runs once.
+            from src.modules.billing.usage import usage_service, CREDIT_PACKS
+            pack = event.get("credit_pack")
+            credits_amount = CREDIT_PACKS.get(pack, 0)
+            if credits_amount > 0:
+                usage_service.grant_purchased_credits(target_user["id"], credits_amount)
+                try:
+                    from src.modules.notifications.service import notification_service
+                    title_ar = "✅ تم شحن رصيدك"
+                    body_ar = f"أضيف {credits_amount} رصيد ذكاء اصطناعي لحسابك."
+                    title_en = "✅ Credits added"
+                    body_en = f"{credits_amount} AI credits were added to your account."
+                    notification_service.create(
+                        target_user["id"], title_ar, body_ar, "success", {
+                            "job": "payment", "credit_pack": pack,
+                            "title_ar": title_ar, "body_ar": body_ar,
+                            "title_en": title_en, "body_en": body_en,
+                        })
+                except Exception:
+                    pass
+            else:
+                logger.warning(f"order_paid webhook with unrecognized credit_pack={pack!r} — nothing granted")
 
         logger.info(f"{provider} webhook processed: {event['event_type']} kind={kind}")
         return {"status": "received", "kind": kind}
@@ -448,6 +502,7 @@ def register(app: FastAPI) -> None:
         "payment_gateway", "payment_mode", "multi_platform_discounts",
         "pricing_usd", "currency_table", "theme_default", "registration_cap",
         "polar_product_ids", "analytics_config",
+        "polar_credit_pack_ids", "credit_packs_pricing",
     )
 
     class SiteSettingsPayload(BaseModel):
@@ -459,6 +514,10 @@ def register(app: FastAPI) -> None:
         theme_default: Optional[str] = None
         registration_cap: Optional[int] = None
         analytics_config: Optional[dict] = None     # Phase 9.6: {enabled, posthog_key, posthog_host}
+        polar_product_ids: Optional[dict] = None      # {"facebook": "prod_xxx", ...} — pre-existing key,
+                                                       # was allow-listed but had no field until now
+        polar_credit_pack_ids: Optional[dict] = None  # {"credits_500": "prod_xxx", ...}
+        credit_packs_pricing: Optional[dict] = None   # {"credits_500": 9.0, ...} USD override
 
     @app.get("/api/admin/site-settings", tags=["Admin Console"])
     async def get_site_settings(request: Request):

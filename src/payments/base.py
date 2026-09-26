@@ -39,3 +39,9 @@ class PaymentProvider(ABC):
     def start_trial(self, user: Dict[str, Any], return_url: str) -> Dict[str, Any]:
         """Starts a trial WITH card capture (owner rule: card required even
         for the 3-day trial). Returns {checkout_url, provider_ref}."""
+
+    @abstractmethod
+    def create_credits_checkout(self, user: Dict[str, Any], pack_key: str,
+                                return_url: str) -> Dict[str, Any]:
+        """One-time checkout for a single AI-credit pack (self-serve top-up,
+        NOT a subscription). Returns {checkout_url, provider_ref}."""
