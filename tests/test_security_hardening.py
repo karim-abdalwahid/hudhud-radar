@@ -185,3 +185,65 @@ def test_lead_detail_scoped_for_regular_users(client_as_user: TestClient, client
     # regular user tries to read it
     r2 = client_as_user.get(f"/api/leads/{lead_id}")
     assert r2.status_code in (403, 404)
+
+
+# --------------------------------------------------------------------
+# 6. Origin-CSRF middleware: committed automation for the manual-only
+#    validation that previously lived as a checklist note. These lock in:
+#    mutating + evil Origin + protected path → 403; same-origin / no-Origin
+#    / GET / public-path / allowlisted-Origin all pass.
+# --------------------------------------------------------------------
+def test_csrf_blocks_evil_origin_post(client_as_user: TestClient):
+    r = client_as_user.post("/api/billing/checkout", json={"platforms": ["facebook"]},
+                            headers={"Origin": "https://evil.example"})
+    assert r.status_code == 403
+    assert "blocked" in r.json()["detail"].lower()
+
+
+def test_csrf_blocks_evil_origin_put(client_as_user: TestClient):
+    r = client_as_user.put("/api/admin/site-settings", json={},
+                           headers={"Origin": "https://evil.example"})
+    assert r.status_code == 403
+
+
+def test_csrf_blocks_evil_origin_delete(client_as_user: TestClient):
+    r = client_as_user.delete("/api/admin/billing/coupons/00000000-0000-0000-0000-000000000000",
+                              headers={"Origin": "https://evil.example"})
+    assert r.status_code == 403
+
+
+def test_csrf_allows_same_origin_post(client_as_user: TestClient):
+    # host is "testserver"; matching Origin must NOT be blocked (login navigations,
+    # same-tab fetch calls). Endpoint may 4xx for payload reasons — not 403.
+    r = client_as_user.post("/api/billing/checkout", json={"platforms": []},
+                            headers={"Origin": "http://testserver"})
+    assert r.status_code != 403
+
+
+def test_csrf_allows_no_origin_mutation(client_as_user: TestClient):
+    # server-to-server callers (webhooks, cron, tools) send no Origin header.
+    r = client_as_user.post("/api/billing/checkout", json={"platforms": ["facebook"]})
+    assert r.status_code != 403
+
+
+def test_csrf_ignores_get_evil_origin(client_as_user: TestClient):
+    # GET is not a mutating method — a foreign embed must not be blocked by CSRF.
+    r = client_as_user.get("/api/billing/quote", params={"platforms": "facebook"},
+                           headers={"Origin": "https://evil.example"})
+    assert r.status_code != 403
+
+
+def test_csrf_skips_public_paths(client_as_user: TestClient):
+    # payment webhooks are signature-verified, not session-protected — an
+    # Origin header from the gateway SDK must never trip the CSRF gate.
+    r = client_as_user.post("/api/payments/webhook/polar", content=b"{}",
+                            headers={"Origin": "https://api.polar.sh"})
+    assert r.status_code != 403
+
+
+def test_csrf_allowlist_can_override_origin(monkeypatch, client_as_user: TestClient):
+    import src.main as main_mod
+    monkeypatch.setattr(main_mod, "CSRF_ALLOWED_ORIGINS", {"https://trusted.example"})
+    r = client_as_user.post("/api/billing/checkout", json={"platforms": ["facebook"]},
+                            headers={"Origin": "https://trusted.example"})
+    assert r.status_code != 403

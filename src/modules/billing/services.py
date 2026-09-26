@@ -456,6 +456,7 @@ class PricingService:
             # The Polar discount reference driving checkout — null means the
             # coupon advertises a discount with no gateway discount behind it.
             "coupon_polar_id": (coupon or {}).get("polar_discount_id") or None,
+            "coupon_code": (coupon or {}).get("code") or None,
             "total_usd": final,
         }
 

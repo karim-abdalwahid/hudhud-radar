@@ -12,6 +12,7 @@ Endpoints:
 Gates: platform routes/pages use require_entitlement via the service
 (default-deny). Checkout creation arrives in 9.2 (Polar).
 """
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -39,6 +40,93 @@ def _require_admin(request: Request):
     return session
 
 
+def _coupon_redemption_count(coupon_id: str, user_id: Optional[str] = None) -> int:
+    """Number of recorded redemptions for a coupon (total, or per-user)."""
+    filters = {"coupon_id": coupon_id}
+    if user_id:
+        filters["user_id"] = user_id
+    try:
+        return len(supabase_db.select("coupon_redemptions", filters) or [])
+    except Exception as e:
+        logger.warning(f"coupon redemption count failed (fail-closed → 0): {e}")
+        return 0
+
+
+def _coupon_block_reason(coupon_row: Optional[dict],
+                         user_id: Optional[str] = None) -> Optional[str]:
+    """Why a coupon cannot be used right now, or None if it can.
+
+    Enforces the stored limits that previously nothing enforced:
+      - is_active
+      - expires_at
+      - max_total_uses   (count of all coupon_redemptions)
+      - max_uses_per_user (count of coupon_redemptions for this user)
+    Returns an Arabic message suitable for a 400 response.
+    """
+    if not coupon_row:
+        return "الكوبون غير صالح أو منتهي"
+    if not coupon_row.get("is_active"):
+        return "الكوبون غير صالح أو منتهي"
+    expires_at = coupon_row.get("expires_at")
+    if expires_at:
+        try:
+            now = datetime.now(timezone.utc)
+            exp = expires_at if isinstance(expires_at, datetime) else datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+            if exp <= now:
+                return "انتهت صلاحية الكوبون"
+        except (TypeError, ValueError):
+            now_iso = datetime.now(timezone.utc).isoformat()
+            if str(expires_at) <= now_iso:
+                return "انتهت صلاحية الكوبون"
+    coupon_id = coupon_row.get("id")
+    if not coupon_id:
+        return None
+    max_total = coupon_row.get("max_total_uses")
+    if max_total is not None:
+        try:
+            if _coupon_redemption_count(coupon_id) >= int(max_total):
+                return "تم استهلاك الكوبون بالكامل"
+        except (TypeError, ValueError):
+            pass
+    if user_id:
+        max_per_user = coupon_row.get("max_uses_per_user")
+        if max_per_user is not None:
+            try:
+                if _coupon_redemption_count(coupon_id, user_id) >= int(max_per_user):
+                    return "لقد استخدمت هذا الكوبون من قبل"
+            except (TypeError, ValueError):
+                pass
+    return None
+
+
+def _record_coupon_redemption(coupon_code: str, user_id: str) -> bool:
+    """Record one redemption per (coupon_id, user_id) — idempotent.
+
+    Called from the verified payment webhook so a coupon's usage counters
+    (max_total_uses / max_uses_per_user) become real.  The UNIQUE
+    (coupon_id, user_id) constraint makes double-counting impossible.
+    """
+    try:
+        rows = supabase_db.select("coupons", {"code": coupon_code.strip().upper()}) or []
+        if not rows:
+            logger.warning(f"redemption attempted with unknown coupon code {coupon_code!r}")
+            return False
+        coupon_id = rows[0].get("id")
+        if not coupon_id:
+            return False
+        existing = supabase_db.select("coupon_redemptions", {
+            "coupon_id": coupon_id, "user_id": user_id}) or []
+        if existing:
+            return False
+        supabase_db.insert("coupon_redemptions", {
+            "coupon_id": coupon_id, "user_id": user_id})
+        logger.info(f"Coupon {coupon_code} redeemed by {user_id}")
+        return True
+    except Exception as e:
+        logger.error(f"coupon redemption recording failed (fail-soft): {e}")
+        return False
+
+
 class CatalogUpdatePayload(BaseModel):
     price_usd: Optional[float] = None
     is_available: Optional[bool] = None
@@ -58,7 +146,7 @@ def register(app: FastAPI) -> None:
         coupon_row = None
         if coupon:
             rows = supabase_db.select("coupons", {"code": coupon.strip().upper()}) or []
-            if rows and rows[0].get("is_active"):
+            if rows and not _coupon_block_reason(rows[0]):
                 coupon_row = rows[0]
         return {"status": "success", **pricing_service.quote(plats, coupon_row)}
 
@@ -317,6 +405,14 @@ def register(app: FastAPI) -> None:
             else:
                 logger.warning(f"order_paid webhook with unrecognized credit_pack={pack!r} — nothing granted")
 
+        # Coupon usage-limit enforcement (real counters): a coupon is redeemed
+        # only once the FIRST payment for it actually lands (subscription
+        # activation or one-time paid order). Recording here — not at checkout
+        # creation — is what makes max_total_uses / max_uses_per_user honest.
+        coupon_code = event.get("coupon_code")
+        if target_user and coupon_code and kind in ("subscription_activated", "order_paid"):
+            _record_coupon_redemption(coupon_code, target_user["id"])
+
         logger.info(f"{provider} webhook processed: {event['event_type']} kind={kind}")
         return {"status": "received", "kind": kind}
 
@@ -335,9 +431,12 @@ def register(app: FastAPI) -> None:
         coupon_row = None
         if payload.coupon:
             rows = supabase_db.select("coupons", {"code": payload.coupon.strip().upper()}) or []
-            if not rows or not rows[0].get("is_active"):
+            if not rows:
                 raise HTTPException(status_code=400, detail="الكوبون غير صالح أو منتهي")
             coupon_row = rows[0]
+            reason = _coupon_block_reason(coupon_row, session["sub"])
+            if reason:
+                raise HTTPException(status_code=400, detail=reason)
             if coupon_row.get("applies_to_user"):
                 target = coupon_row["applies_to_user"].strip().lower()
                 me_email = session.get("email", "").strip().lower()

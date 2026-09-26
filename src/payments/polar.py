@@ -102,6 +102,10 @@ class PolarGateway(PaymentProvider):
             "metadata": {"user_id": str(user.get("id") or ""),
                          "platforms": ",".join(quote.get("platforms", []))},
         }
+        # Coupon code rides in metadata so the order.paid webhook can mark a
+        # redemption (usage-limit counters). Echoed verbatim by Polar on paid orders.
+        if quote.get("coupon_code"):
+            payload["metadata"]["coupon_code"] = str(quote["coupon_code"])
         # Coupon discount: ONLY applied when the coupon references a REAL Polar
         # discount id. A coupon showing discount_usd without coupon_polar_id
         # would silently charge full price — fail-closed instead.
@@ -282,6 +286,7 @@ class PolarGateway(PaymentProvider):
             "subscription_ref": data.get("subscription_id") or data.get("id"),
             "current_period_end": data.get("current_period_end") or subscription.get("current_period_end"),
             "credit_pack": meta.get("credit_pack") or None,
+            "coupon_code": meta.get("coupon_code") or None,
             "raw": payload,
         }
 

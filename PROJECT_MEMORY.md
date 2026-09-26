@@ -2699,3 +2699,15 @@ The owner approved a 6-item audit fix list and the fixes were applied surgically
   4. Confirm `POLAR_ACCESS_TOKEN` + `POLAR_WEBHOOK_SECRET` on Vercel belong to the live org; point Polar live webhook at production.
   5. Real small order end-to-end test.
 - Session log 2026-09-26 section "⏸️ قرار مؤجل" and "🔟" carry the details.
+
+## [Entry 075] 2026-09-26 - Coupon Usage-Limit Enforcement IMPLEMENTED (max_total_uses / max_uses_per_user / expires_at were stored but NEVER enforced) + Permanent CSRF Tests
+
+- **Trigger**: Owner asked "ايه اللي لسه متنفذش؟". Investigation proved coupon limits were a *fake* feature: `coupons.max_total_uses`, `coupons.max_uses_per_user`, `coupons.expires_at` (migration 009) had zero code enforcing them, and `coupon_redemptions` was NEVER written — a `max_uses_per_user:1` coupon was reusable infinitely. Owner approved: "صلح كل حاجه وتجاهل تدوير الـ Supabase PAT + مفتاح cron-job.org انا موافق" + add permanent CSRF automated tests.
+- **Now enforced (TDD, 12 new tests in tests/test_coupon_enforcement.py)**:
+  1. `get_quote` only applies a coupon when `_coupon_block_reason()` returns None (active + not expired + under max_total_uses). Unusable coupon → quote shows no discount instead of a phantom discount.
+  2. `create_checkout` hard-gates with user context: expired (`انتهت صلاحية الكوبون`), total-exhausted (`تم استهلاك الكوبون بالكامل`), per-user-exhausted (`لقد استخدمت هذا الكوبون من قبل`) → 400.
+  3. **Redemption recording on the real counters**: `order.paid`/`subscription_activated` webhook carrying metadata `coupon_code` → `_record_coupon_redemption()` inserts into `coupon_redemptions` (UNIQUE(coupon_id,user_id) → idempotent, no double-count; unknown code logged, no crash). This is what makes the counters real going forward.
+- **Metadata plumbing added**: `PricingService.quote()` now returns `coupon_code`; `PolarGateway.create_checkout()` echoes it into checkout `metadata.coupon_code` (Polar returns it verbatim on paid events); `parse_event()` exposes `coupon_code` for the webhook.
+- **Permanent CSRF tests** (8 new in tests/test_security_hardening.py): evil-Origin POST/PUT/DELETE → 403; same-origin → NOT blocked; no-Origin (server-to-server) → NOT blocked; GET + evil Origin → NOT blocked; public-path (Polar/API webhook) + evil Origin → NOT blocked; allowlist override honored. This converts the previously manual-only M2 validation into automated regression coverage.
+- **Verification**: `python -m pytest tests -q` → **447 passed / 0 failed** (was 427; +12 coupon +8 CSRF). `py_compile` clean on all touched files.
+- Commit + push (auto-deploys Vercel). No DB migration needed (coupon_redemptions/coupons columns already existed — only code that writes/reads them was missing).
