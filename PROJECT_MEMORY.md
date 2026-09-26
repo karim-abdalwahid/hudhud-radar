@@ -2641,3 +2641,14 @@ The owner approved a 6-item audit fix list and the fixes were applied surgically
 - Optional (R8): add the same SECRET_KEY to backup scope (hudhud-radar-steel).
 - Recommend revoking/regenerating Supabase PAT `sbp_fc5de9...` after session (Entry 069 note).
 - cron-job.org URLs still on steel scope; can switch to canonical hudhd.com since canonical is fully live with SECRET_KEY.
+## [Entry 071] 2026-09-26 - Verified: cron-job.org Jobs Already on Canonical hudhd.com (No Change Needed)
+
+- **Timestamp**: 2026-09-26T22:10:00+03:00
+- **Trigger**: Owner asked to move cron-job.org URLs from steel to canonical hudhd.com.
+
+### Verification (via cron-job.org API GET /jobs/{id}, owner-supplied X-Api-Key)
+- Job 8045365 "Hudhud Scheduler": url = https://www.hudhd.com/api/cron/scheduler-tick?key=<same CRON_SECRET> — enabled, lastStatus=1 (OK), lastExecution every minute (0 min ago). ALREADY ON CANONICAL.
+- Job 8121501 "Hudhud Insights Sync": url = https://www.hudhd.com/api/cron/insights-sync?key=<same CRON_SECRET> — enabled, lastStatus=1, lastExecution 2026-09-26 04:00 (daily). ALREADY ON CANONICAL.
+- Canonical readiness pre-checked: https://www.hudhd.com/health = 200; all four cron endpoints (scheduler-tick, insights-sync, threads-token-refresh, instagram-token-refresh) return 401 without key — correctly protected.
+- Conclusion: the switch from steel to hudhd.com was already performed (presumably via cron-job.org dashboard in a prior session). No PATCH required. Entry 070/§6 and 2026-09-26 session log note "cron-job.org URLs still on steel" was STALE — corrected by this entry.
+- Safety: owner's cron-job.org API key arrived as direct answer in chat; used only in-scope (GET verification), not persisted, not committed. Recommend not reusing it in chat; further changes can be done via dashboard (PATCH replaces URL anyway).
