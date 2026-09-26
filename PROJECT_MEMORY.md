@@ -2576,6 +2576,38 @@ The owner flagged 5 specific visual, operational, and architectural items:
 - App Review plan updated: `docs/APP_REVIEW/2026-09-22_META_RESUBMISSION_PLAN.md` gains 2026-09-24 verification addendum (live probe table + recording-script readiness for `instagram_manage_messages` once granted).
 - Tests: +2 (send-failure reported honestly; happy path leaves reply_error unset) → targeted green.
 
+---
+
+## [Entry 069] 2026-09-26 — Six Audit-Approved Fixes (C1/H1/H2/H3/M1/M2/M4) Implemented + Migration 024 Applied Live
+- **Timestamp**: 2026-09-26T04:37:45+03:00
+- **Actor**: Owner & Custom Skill — AI Agent
+- **Status**: ✅ IMPLEMENTED, COMMITTED (`d466b8e`) & MIGRATION 024 LIVE ON SUPABASE — 397/397 PASSED
+- **Session log**: `docs/PROJECT_REPORTS/SESSION_LOGS/2026-09-26_session.md`
+- **Plan**: `docs/PROJECT_REPORTS/AUDIT_FIX_PLAN_2026-09-11.md` (reconstructed from verified findings; original verbatim report text was not recoverable from the previous session — if the owner re-pastes the original report, the file will be overwritten)
+
+### 1. Context
+The owner approved a 6-item audit fix list and the fixes were applied surgically without touching unrelated code, verified by the full test suite, and committed. Then migration `024` was applied to live Supabase via the Management API using a **newly supplied PAT** (the previous one in `.env` had been invalidated → 401). The new token was written to `.env` (gitignored) and matches project ref `yncxwcvxssvnjffrvxib`.
+
+### 2. Implementations (commit `d466b8e`, 13 files = 11 M + 2 new)
+1. **C1 — SECRET_KEY fail-closed (`src/config.py`)**: `validate_security()` raises `RuntimeError("SECURITY BLOCKED: ...")` when `APP_ENV=production` and `SECRET_KEY` is missing/short (<32)/contains `"dev-secret-key"`. ADDED production warning for `APP_DEBUG=True`; old META_APP_SECRET warning kept; dev/test tolerant. Verified: prod+default → blocked, prod+strong → ok, dev → ok.
+2. **H1 — Real Polar coupon `discount_id`**: new `database/migrations/024_coupons_polar_discount.sql` (`ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS polar_discount_id VARCHAR(80);`). `services.py` `quote()` now outputs `coupon_polar_id = (coupon or {}).get("polar_discount_id") or None`; `billing/__init__.py` CouponCreatePayload + insert accept/persist the field; `polar.py` fail-closed: `RuntimeError` (Arabic) when `quote.coupon_discount_usd` set but no `coupon_polar_id`; sends `discount_id` only when truthy; `total_usd` + `coupon_discount_usd` added to Polar metadata as strings. Verified behaviorally: quote math unchanged (`coupon_discount_usd=2.7`, total=24.3), fail-closed raises, wired `discount_id` sent, metadata strings present.
+3. **H2 — Candidate ownership check (`src/identity/review_queue.py`)**: new `_assert_ownership(item, user_id)` checks BOTH primary and candidate leads (owner must match `user_id`; refuses leads with NO owner); used by both `approve_match` and `reject_match`. Verified: cross-tenant candidate → PermissionError; same-owner → approve works, reciprocal ids set.
+4. **H3 — WhatsApp claims removal**: removed user-facing WhatsApp claims from `landing.html` (5 spots: meta-description L7, hero subtitle L676, integrations icon L694, step2_desc L766, feature-desc L797), `onboarding.html` (WhatsApp Cloud tile block), `i18n.js` (EN + AR `landing.hero.subtitle` / `landing.how.step2_desc` / `landing.feat.f3_desc` edited; 8 filter/platform keys deleted). Internal non-claims intentionally kept: `inbox.html:106` `.channel-dot.whatsapp` CSS, `saas.js:633` whatsapp SVG in `window.PLATFORM_ICON_SVG`.
+5. **M1/M2 — Security headers + Origin CSRF (`src/main.py`)**: `SECURITY_HEADERS` dict + `security_middleware` registered LAST (after `auth_middleware` → outermost, wraps 401/403/404 too). Headers: `X-Frame-Options DENY`, `X-Content-Type-Options nosniff`, `Referrer-Policy strict-origin-when-cross-origin`, `X-Permitted-Cross-Domain-Policies none`, CSP (`default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://graph.facebook.com https://*.fbcdn.net https://graph.threads.net https://*.threads.net https://*.posthog.com https://api.polar.sh https://sandbox-api.polar.sh; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`), HSTS only in production. Plus Origin CSRF check on mutating methods for non-public paths (allowed when Origin netloc == Host or in `CSRF_ALLOWED_ORIGINS`). Verified live: cross-origin POST → 403, same-origin → 401 (auth gate), no-Origin → 401.
+6. **M4 — Real KB count (`src/core/supabase_client.py`, `src/modules/health/routes.py`)**: added `count()` to `InMemoryDatabase` and `SupabaseManager` (`select("id", count="exact", head=True)`); `/health` computes `supabase_db.count("kb_documents")` when connected else `len(knowledge_base.knowledge_cache)`. Verified live: `/health` returns `kb_documents_loaded: 11`.
+
+### 3. Verification
+- Full suite: `python -m pytest tests -x -q` → **397 passed in 60.01s**.
+- Migration 024 applied to live Supabase: `Migration 024 applied: 201`; verification `coupons.polar_discount_id present: character varying` — column now exists.
+- Migration runner pattern followed the tracked `scripts/apply_migration_001..010.py` (Management API `database/query` with `SUPABASE_MANAGEMENT_TOKEN` PAT + `SUPABASE_PROJECT_REF` from `.env`).
+
+### 4. Owner Notes / Remaining
+- **Security**: the fresh Supabase PAT `sbp_fc5de9...` was shared in chat for this session — recommend revoking/regenerating it at supabase.com/dashboard/account/tokens after the session if desired (repo is private, risk low).
+- `scripts/apply_migration_024.py` still UNTRACKED (not part of commit `d466b8e`) — pending owner decision: commit it alongside the tracked migration-runner pattern, or leave it.
+- Deployment to production (hudhd.com canonical + auto-deploy via hudhud2 scope, R7) NOT yet executed — the current local state is committed green; owner decides when to push/deploy.
+
+---
+
 
 
 
