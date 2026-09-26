@@ -89,8 +89,21 @@ class PolarGateway(PaymentProvider):
             "metadata": {"user_id": str(user.get("id") or ""),
                          "platforms": ",".join(quote.get("platforms", []))},
         }
+        # Coupon discount: ONLY applied when the coupon references a REAL Polar
+        # discount id. A coupon showing discount_usd without coupon_polar_id
+        # would silently charge full price — fail-closed instead.
+        discount_id = quote.get("coupon_polar_id")
         if quote.get("coupon_discount_usd"):
-            payload["discount_id"] = quote.get("coupon_polar_id")
+            if not discount_id:
+                raise RuntimeError(
+                    "كوبون الخصم غير مربوط بخصم حقيقي على Polar بعد — اربط "
+                    "coupon.polar_discount_id من لوحة الأدمن قبل تفعيله"
+                )
+            payload["discount_id"] = discount_id
+        # Expected charge for admin reconciliation (Polar computes its own final
+        # amount server-side; the quote total rides along in metadata).
+        payload["metadata"]["total_usd"] = str(quote.get("total_usd") or "")
+        payload["metadata"]["coupon_discount_usd"] = str(quote.get("coupon_discount_usd") or "")
         with httpx.Client(timeout=30, follow_redirects=True) as c:
             r = c.post(f"{self.api}/v1/checkouts/", headers=self._headers(), json=payload)
             if r.status_code not in (200, 201):

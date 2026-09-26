@@ -93,10 +93,18 @@ class Settings(BaseSettings):
     )
 
     def validate_security(self):
-        """Validates critical security settings for production deployments."""
+        """Validates critical security settings for production deployments.
+        Fail-closed, not warn-only: a production boot with the default or
+        short SECRET_KEY is a live credential compromise, so it must BLOCK."""
         if self.APP_ENV.lower() == "production":
-            if "dev-secret-key" in self.SECRET_KEY:
-                print("WARNING: Running in production with default SECRET_KEY. Please configure SECRET_KEY in environment variables.")
+            if not self.SECRET_KEY or "dev-secret-key" in self.SECRET_KEY or len(self.SECRET_KEY) < 32:
+                raise RuntimeError(
+                    "SECURITY BLOCKED: production is running with the default/short "
+                    "SECRET_KEY — every session and stored token is forgeable. "
+                    "Set a strong SECRET_KEY in environment variables."
+                )
+            if self.APP_DEBUG:
+                print("WARNING: APP_DEBUG=True in production exposes stack traces and internal state.")
             if not self.META_APP_SECRET:
                 print("WARNING: META_APP_SECRET is not configured in environment variables.")
 

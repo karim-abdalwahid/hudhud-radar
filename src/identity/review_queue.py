@@ -53,6 +53,27 @@ class IdentityReviewQueue:
             enriched.append(row)
         return enriched
 
+    def _assert_ownership(self, item: Dict[str, Any], user_id: Optional[str]) -> None:
+        """Tenant isolation on BOTH linked records before any write (H2 fix).
+
+        Previously only the primary lead was checked and the candidate lead was
+        updated unconditionally, letting a supervisor attach records from a peer
+        tenant. Now every written record must demonstrably belong to the caller;
+        a lead with NO owner is refused too (ownership cannot be verified)."""
+        if not user_id:
+            return
+        for role, lead_id in (("primary", item.get("primary_lead_id")),
+                              ("candidate", item.get("candidate_lead_id"))):
+            if not lead_id:
+                continue
+            rows = self.db.select("leads", {"id": lead_id})
+            rec = rows[0] if rows else {}
+            owner = rec.get("user_id")
+            if owner and owner != user_id:
+                raise PermissionError(f"Unauthorized: {role} lead {lead_id} belongs to another user.")
+            if not owner:
+                raise PermissionError(f"Unauthorized: {role} lead {lead_id} has no owner — ownership cannot be verified.")
+
     def approve_match(self, queue_id: str, reviewer_name: str, notes: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Explicitly confirms that two candidate accounts belong to the same person.
@@ -66,11 +87,7 @@ class IdentityReviewQueue:
         primary_id = item["primary_lead_id"]
         candidate_id = item["candidate_lead_id"]
 
-        if user_id:
-            lead_a = self.db.select("leads", {"id": primary_id})
-            la = lead_a[0] if lead_a else {}
-            if la.get("user_id") and la.get("user_id") != user_id:
-                raise PermissionError("Unauthorized: cannot modify review item belonging to another user.")
+        self._assert_ownership(item, user_id)
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -106,12 +123,7 @@ class IdentityReviewQueue:
             raise ValueError(f"Queue item {queue_id} not found.")
 
         item = items[0]
-        primary_id = item.get("primary_lead_id")
-        if user_id and primary_id:
-            lead_a = self.db.select("leads", {"id": primary_id})
-            la = lead_a[0] if lead_a else {}
-            if la.get("user_id") and la.get("user_id") != user_id:
-                raise PermissionError("Unauthorized: cannot modify review item belonging to another user.")
+        self._assert_ownership(item, user_id)
 
         now = datetime.now(timezone.utc).isoformat()
         updated_queue = self.db.update("identity_verification_queue", queue_id, {

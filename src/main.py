@@ -213,6 +213,71 @@ async def auth_middleware(request: Request, call_next):
 
 
 # --------------------------------------------------------------------
+# Security headers + Origin CSRF check (M1/M2 hardening)
+# Registered AFTER auth_middleware so Starlette builds it OUTERMOST and the
+# headers are attached to EVERY response — including 401/403/404 returned by
+# the inner uuid/auth middlewares.
+# --------------------------------------------------------------------
+SECURITY_HEADERS = {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Permitted-Cross-Domain-Policies": "none",
+    # Pragmatic CSP: the app uses extensive inline scripts/styles and a handful
+    # of external origins (Supabase storage, Meta graph/avatars, PostHog CDN,
+    # Polar). script-src keeps 'unsafe-inline' ON PURPOSE — tightening it would
+    # require nonces across every template and is out of scope for this fix.
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' https://*.supabase.co https://graph.facebook.com "
+        "https://*.fbcdn.net https://graph.threads.net https://*.threads.net "
+        "https://*.posthog.com https://api.polar.sh https://sandbox-api.polar.sh; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    ),
+}
+
+CSRF_MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+CSRF_ALLOWED_ORIGINS: set = set()  # extra origins trusted for cross-site mutations
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    """Attaches security headers + blocks cross-origin mutating requests.
+
+    Origin is honoured only when it matches the request Host (browser
+    same-origin) or an explicit allowlist. Server-to-server callers (Meta,
+    Polar, cron, webhooks) do not send an Origin header and pass unchanged;
+    public paths are skipped as they are HMAC/key-protected, not ambient-session
+    endpoints. This is defense-in-depth on top of SameSite=Lax cookies."""
+    if request.method in CSRF_MUTATING_METHODS and not _is_public(request.url.path):
+        origin = request.headers.get("origin")
+        if origin:
+            from urllib.parse import urlsplit
+            host = request.headers.get("host", "")
+            try:
+                origin_matches_host = urlsplit(origin).netloc == host
+            except Exception:
+                origin_matches_host = False
+            if origin not in CSRF_ALLOWED_ORIGINS and not origin_matches_host:
+                return JSONResponse(status_code=403,
+                                    content={"detail": "Cross-origin request blocked"})
+
+    response = await call_next(request)
+    for k, v in SECURITY_HEADERS.items():
+        response.headers.setdefault(k, v)
+    if settings.APP_ENV.lower() == "production":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
+# --------------------------------------------------------------------
 # Static assets (auth pages + dashboard pages) — served before module mounts
 # --------------------------------------------------------------------
 from src.core.http_utils import STATIC_DIR  # noqa: E402

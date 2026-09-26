@@ -76,6 +76,10 @@ class InMemoryDatabase:
         self.tables[table] = [r for r in rows if r.get("id") != record_id]
         return len(self.tables[table]) < initial_len
 
+    def count(self, table: str, filters: Dict[str, Any] = None) -> int:
+        """Row count with the same equality-filter semantics as select()."""
+        return len(self.select(table, filters))
+
 
 class SupabaseManager:
     """Manages connection to Supabase or routes to InMemoryDatabase in development/testing."""
@@ -187,6 +191,24 @@ class SupabaseManager:
                 logger.error(f"Error selecting from Supabase table {table}: {e}")
                 raise DatabaseConnectionError(f"Query failed on table {table}: {e}")
         return self.memory_db.select(table, filters)
+
+    def count(self, table: str, filters: Dict[str, Any] = None) -> int:
+        """Efficient row count — PostgREST head=exact, no row body over the wire."""
+        if self.is_connected and self.client:
+            try:
+                query = self.client.table(table).select("id", count="exact", head=True)
+                if filters:
+                    for k, v in filters.items():
+                        query = query.eq(k, v)
+                res = query.execute()
+                cnt = getattr(res, "count", None)
+                if cnt is not None:
+                    return int(cnt)
+                return len(res.data or [])
+            except Exception as e:
+                logger.error(f"Error counting rows in Supabase table {table}: {e}")
+                raise DatabaseConnectionError(f"Count failed on table {table}: {e}")
+        return self.memory_db.count(table, filters)
 
     def update(self, table: str, record_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Update a row in the specified table by ID."""

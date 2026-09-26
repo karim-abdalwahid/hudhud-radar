@@ -390,6 +390,7 @@ def register(app: FastAPI) -> None:
         max_total_uses: Optional[int] = None
         max_uses_per_user: int = 1
         expires_at: Optional[str] = None
+        polar_discount_id: Optional[str] = None    # REAL Polar discount reference (H1)
 
     @app.get("/api/admin/billing/coupons", tags=["Billing"])
     async def list_coupons(request: Request):
@@ -424,6 +425,7 @@ def register(app: FastAPI) -> None:
             "max_total_uses": payload.max_total_uses,
             "max_uses_per_user": payload.max_uses_per_user,
             "expires_at": payload.expires_at, "is_active": True,
+            "polar_discount_id": payload.polar_discount_id or None,
         })
         return {"status": "success", "coupon": created}
 

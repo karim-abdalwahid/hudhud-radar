@@ -428,6 +428,9 @@ class PricingService:
             "multi_platform_discount_percent": discount_pct,
             "multi_platform_discount_usd": discount_usd,
             "coupon_discount_usd": coupon_discount,
+            # The Polar discount reference driving checkout — null means the
+            # coupon advertises a discount with no gateway discount behind it.
+            "coupon_polar_id": (coupon or {}).get("polar_discount_id") or None,
             "total_usd": final,
         }
 

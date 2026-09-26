@@ -28,6 +28,14 @@ router = APIRouter()
 # --------------------------------------------------------------------
 @router.get("/health", tags=["System"])
 async def health_check():
+    # DB mode keeps no in-memory cache by design (per-tenant), so the honest
+    # metric is the real Supabase row count; fall back to the dev file-cache.
+    kb_loaded: Optional[int] = None
+    if supabase_db.is_connected:
+        try:
+            kb_loaded = supabase_db.count("kb_documents")
+        except Exception:
+            kb_loaded = None
     return {
         "status": "online",
         "app_env": settings.APP_ENV,
@@ -36,7 +44,7 @@ async def health_check():
         "cron_configured": bool(settings.CRON_SECRET),
         "supabase_connected": supabase_db.is_connected,
         "database_backend": "Supabase Cloud" if supabase_db.is_connected else "In-Memory Store (Dev)",
-        "kb_documents_loaded": len(knowledge_base.knowledge_cache),
+        "kb_documents_loaded": kb_loaded if kb_loaded is not None else len(knowledge_base.knowledge_cache),
         "enforce_24h_window": settings.ENFORCE_24H_WINDOW,
         "max_messages_per_minute": settings.MAX_MESSAGES_PER_MINUTE
     }
