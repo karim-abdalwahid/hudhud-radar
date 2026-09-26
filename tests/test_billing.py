@@ -13,7 +13,7 @@ import pytest
 from starlette.testclient import TestClient
 
 import src.modules.billing as billing
-from src.modules.billing.services import EntitlementService, PricingService
+from src.modules.billing.services import EntitlementService, PricingService, pricing_service
 
 
 @pytest.fixture
@@ -75,6 +75,8 @@ def fake_billing(client, monkeypatch):
             return subs[data["user_id"]]
         if table == "coupons":
             coupons[data["code"]] = {**data}
+            if "id" not in data:
+                coupons[data["code"]]["id"] = str(uuid.uuid4())
             return coupons[data["code"]]
         return data
 
@@ -99,6 +101,10 @@ def fake_billing(client, monkeypatch):
     def delete(table, rid):
         if table == "user_entitlements" and rid in ent:
             del ent[rid]
+        if table == "coupons":
+            coupons.pop(rid, None)
+            for key in [k for k, c in coupons.items() if c.get("id") == rid]:
+                coupons.pop(key, None)
         return True
 
     monkeypatch.setattr(billing.supabase_db, "select", select)
@@ -326,4 +332,58 @@ def test_auto_heal_existing_paid_user(fake_billing):
     assert res["plan"] == "scale"
     assert set(res["platforms"]) == {"facebook", "instagram", "threads"}
     assert res["can_connect"] is True
+
+
+# ── Coupons management UI backend (2026-09-26) ──────────────────────────
+def test_coupon_admin_create_with_polar_id(client: TestClient, fake_billing):
+    """Admin creates a percent coupon wired to a real Polar discount id."""
+    r = client.post("/api/admin/billing/coupons", json={
+        "code": "POLARWELCOME10", "kind": "percent", "value": 10,
+        "polar_discount_id": "pol_abc123"})
+    assert r.status_code == 200, r.text
+    coupon = r.json()["coupon"]
+    assert coupon["code"] == "POLARWELCOME10"
+    assert coupon["polar_discount_id"] == "pol_abc123"
+    assert coupon["is_active"] is True
+
+
+def test_coupon_admin_list_enriches_target_email(client: TestClient, fake_billing):
+    """List resolves applies_to_user UUID → applies_to_email for the console."""
+    target = fake_billing["register_and_track"](f"cpn_l_{uuid.uuid4().hex[:6]}@hudhud.test")
+    r = client.post("/api/admin/billing/coupons", json={
+        "code": "VIPONLY", "kind": "percent", "value": 20,
+        "applies_to_user": target["email"], "max_total_uses": 5})
+    assert r.status_code == 200, r.text
+    me = client.get("/auth/me").json()
+    assert me.get("role") == "admin", "fixture must run with the session admin"
+
+    rows = client.get("/api/admin/billing/coupons").json()["coupons"]
+    match = [c for c in rows if c["code"] == "VIPONLY"]
+    assert match, "coupon should be listed"
+    assert match[0]["applies_to_email"] == target["email"]
+
+
+def test_coupon_percent_without_polar_id_blocks_quote_fail_closed(
+        client: TestClient, fake_billing):
+    """H1 rule: a discount coupon with NO polar_discount_id must NOT silently
+    advertise a discount — polar gateway exposes the missing reference."""
+    r = client.post("/api/admin/billing/coupons", json={
+        "code": "BROKENPCT", "kind": "percent", "value": 15})
+    assert r.status_code == 200
+    row = list(fake_billing["coupons"].values())[-1]
+    quote = pricing_service.quote(["facebook"], row)
+    assert quote["coupon_discount_usd"] > 0
+    # H1: discount advertised but NO gateway reference behind it → exposed
+    assert quote["coupon_polar_id"] is None
+
+
+def test_coupon_admin_delete(client: TestClient, fake_billing):
+    r = client.post("/api/admin/billing/coupons", json={
+        "code": "DELETEME", "kind": "fixed", "value": 30})
+    assert r.status_code == 200, r.text
+    cid = r.json()["coupon"]["id"]
+    d = client.delete(f"/api/admin/billing/coupons/{cid}")
+    assert d.status_code == 200, d.text
+    remaining = fake_billing["coupons"]
+    assert all(c.get("id") != cid for c in remaining.values())
 

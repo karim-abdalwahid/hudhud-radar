@@ -604,6 +604,90 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Discount Coupons Management -->
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <div>
+                                <h3 class="panel-title" data-i18n="set.coupons_title">🎟️ Discount Coupons</h3>
+                                <div class="panel-desc" data-i18n="set.coupons_desc">Create and manage discount codes applied at Polar checkout. A coupon with a discount value must reference a real Polar discount id — otherwise checkout fails closed (by design).</div>
+                            </div>
+                            <button type="button" class="btn-primary" style="padding:6px 14px; font-size:12.5px;" onclick="toggleCouponForm()" data-i18n="set.coupons_new">+ New Coupon</button>
+                        </div>
+
+                        <div id="coupon-form-wrap" style="display:none; background:var(--bg-input); padding:18px; border:1px solid var(--border-default); border-radius:var(--radius-sm); margin-bottom:16px;">
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px;">
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_code">Code (uppercase)</label>
+                                    <input type="text" id="cp-code" class="form-input" placeholder="SUMMER20" style="width:100%; font-family:monospace; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary); direction:ltr;">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_kind">Kind</label>
+                                    <select id="cp-kind" class="form-input" style="width:100%; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary);" onchange="renderCouponKindHint()">
+                                        <option value="percent">percent</option>
+                                        <option value="fixed">fixed</option>
+                                        <option value="platform_unlock">platform_unlock</option>
+                                        <option value="credits">credits</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_value">Value</label>
+                                    <input type="number" id="cp-value" class="form-input" min="0" step="0.01" value="0" style="width:100%; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary);">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_platform">Platform (unlock only)</label>
+                                    <input type="text" id="cp-platform" class="form-input" placeholder="facebook | instagram | threads" style="width:100%; font-family:monospace; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary); direction:ltr;">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_applies_to">Target user (email — empty = anyone)</label>
+                                    <input type="text" id="cp-user" class="form-input" placeholder="user@example.com" style="width:100%; font-family:monospace; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary); direction:ltr;" onchange="resolveCouponUser(this)">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_max_total">Max total uses (empty = unlimited)</label>
+                                    <input type="number" id="cp-max-total" class="form-input" min="1" placeholder="100" style="width:100%; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary);">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_per_user">Max uses per user</label>
+                                    <input type="number" id="cp-per-user" class="form-input" min="1" value="1" style="width:100%; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary);">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_expires">Expires (ISO, empty = never)</label>
+                                    <input type="datetime-local" id="cp-expires" class="form-input" style="width:100%; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary);">
+                                </div>
+                                <div style="grid-column: 1 / -1;">
+                                    <label style="display:block; font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:6px;" data-i18n="set.coupons_polar_id">Polar discount id (REQUIRED for percent/fixed with a value)</label>
+                                    <input type="text" id="cp-polar-id" class="form-input" placeholder="pol_..." style="width:100%; font-family:monospace; font-size:13px; padding:8px 12px; border:1px solid var(--border-default); border-radius:6px; background:var(--bg-card); color:var(--text-primary); direction:ltr;">
+                                </div>
+                            </div>
+                            <div id="coupon-kind-hint" style="margin-top:12px; font-size:12px; font-weight:700; color:#d97706;"></div>
+                            <div id="coupon-user-resolution" style="margin-top:6px; font-size:12px; font-weight:700; color:var(--text-muted);"></div>
+                            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+                                <button type="button" class="btn-ghost" onclick="toggleCouponForm()" data-i18n="set.coupons_cancel">Cancel</button>
+                                <button type="button" class="btn-primary" onclick="saveCoupon(this)" style="padding:8px 20px; font-size:13px; font-weight:700;" data-i18n="set.coupons_create">➕ Create Coupon</button>
+                            </div>
+                        </div>
+
+                        <div style="overflow-x:auto;">
+                            <table class="url-hub-table" style="margin-top:0;">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="set.coupons_th_code">Code</th>
+                                        <th data-i18n="set.coupons_th_kind">Kind</th>
+                                        <th data-i18n="set.coupons_th_value">Value</th>
+                                        <th data-i18n="set.coupons_th_platform">Platform</th>
+                                        <th data-i18n="set.coupons_th_target">Target</th>
+                                        <th data-i18n="set.coupons_th_uses">Uses</th>
+                                        <th data-i18n="set.coupons_th_expires">Expires</th>
+                                        <th data-i18n="set.coupons_th_polar">Polar ID</th>
+                                        <th data-i18n="set.coupons_th_active">Active</th>
+                                        <th data-i18n="set.coupons_th_actions">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coupons-table-body">
+                                    <tr><td colspan="10" style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;" data-i18n="set.coupons_loading">Loading coupons…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                     <!-- Phase 9.6: Product Analytics (PostHog) -->
                     <div class="panel-section">
                         <div class="panel-header">
@@ -1156,8 +1240,165 @@
         window.loadAnalytics = loadAnalytics;
         window.saveAnalytics = saveAnalytics;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // ==================== DISCOUNT COUPONS MANAGEMENT ====================
+        let _couponTargetUserId = null;
+
+        function toggleCouponForm() {
+            const form = document.getElementById('coupon-form-wrap');
+            if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function renderCouponKindHint() {
+            const kind = document.getElementById('cp-kind').value;
+            const hint = document.getElementById('coupon-kind-hint');
+            if (!hint) return;
+            if (kind === 'percent' || kind === 'fixed') {
+                hint.textContent = '⚠️ Percent/Fixed coupons require a real Polar discount id — checkout fails closed without it.';
+            } else if (kind === 'platform_unlock') {
+                hint.textContent = 'ℹ️ platform_unlock requires the Platform field (facebook/instagram/threads).';
+            } else {
+                hint.textContent = '';
+            }
+        }
+
+        async function resolveCouponUser(input) {
+            const email = (input.value || '').trim().toLowerCase();
+            const out = document.getElementById('coupon-user-resolution');
+            _couponTargetUserId = null;
+            if (!email) { out.textContent = ''; return; }
+            try {
+                const r = await fetch(`/api/admin/users?search=${encodeURIComponent(email)}`);
+                const d = await r.json();
+                const users = d.users || [];
+                const match = users.find(u => (u.email || '').toLowerCase() === email);
+                if (match) {
+                    _couponTargetUserId = match.id;
+                    out.textContent = `✓ target: ${match.name || match.email} (resolved)`;
+                    out.style.color = '#059669';
+                } else {
+                    out.textContent = '✗ no user found for this email';
+                    out.style.color = '#dc2626';
+                }
+            } catch (e) {
+                out.textContent = '✗ could not resolve user';
+                out.style.color = '#dc2626';
+            }
+        }
+
+        async function saveCoupon(btn) {
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Saving...'; }
+            try {
+                const expires = document.getElementById('cp-expires').value;
+                const payload = {
+                    code: document.getElementById('cp-code').value.trim(),
+                    kind: document.getElementById('cp-kind').value,
+                    value: parseFloat(document.getElementById('cp-value').value || '0'),
+                    platform: document.getElementById('cp-platform').value.trim() || null,
+                    applies_to_user: _couponTargetUserId,
+                    max_total_uses: parseInt(document.getElementById('cp-max-total').value, 10) || null,
+                    max_uses_per_user: parseInt(document.getElementById('cp-per-user').value, 10) || 1,
+                    expires_at: expires ? new Date(expires).toISOString() : null,
+                    polar_discount_id: document.getElementById('cp-polar-id').value.trim() || null,
+                };
+                if (payload.code.length < 4) throw new Error('Code must be at least 4 characters');
+                const r = await fetch('/api/admin/billing/coupons', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+                });
+                const d = await r.json();
+                if (r.ok && d.status === 'success') {
+                    const msg = window.hudhudI18n ? window.hudhudI18n.t('set.coupons_created') : 'Coupon created!';
+                    if (window.hudhudToast) hudhudToast.success(`${msg} ${payload.code}`);
+                    document.getElementById('cp-code').value = '';
+                    document.getElementById('cp-platform').value = '';
+                    document.getElementById('cp-user').value = '';
+                    document.getElementById('cp-polar-id').value = '';
+                    document.getElementById('cp-max-total').value = '';
+                    document.getElementById('cp-expires').value = '';
+                    _couponTargetUserId = null;
+                    document.getElementById('coupon-user-resolution').textContent = '';
+                    toggleCouponForm();
+                    await loadCouponsTable();
+                } else {
+                    if (window.hudhudToast) hudhudToast.error(d.detail || 'Failed to create coupon');
+                }
+            } catch (e) {
+                if (window.hudhudToast) hudhudToast.error(e.message || 'Failed to create coupon');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = origText; }
+            }
+        }
+
+        async function deleteCoupon(id, code) {
+            if (!confirm(`Delete coupon "${code}"?`)) return;
+            try {
+                const r = await fetch(`/api/admin/billing/coupons/${id}`, { method: 'DELETE' });
+                if (r.ok) {
+                    if (window.hudhudToast) hudhudToast.info(`Deleted coupon ${code}`);
+                    await loadCouponsTable();
+                } else {
+                    const d = await r.json().catch(() => ({}));
+                    if (window.hudhudToast) hudhudToast.error(d.detail || 'Failed to delete coupon');
+                }
+            } catch (e) {
+                if (window.hudhudToast) hudhudToast.error('Error deleting coupon');
+            }
+        }
+
+        function _couponTargetLabel(row) {
+            if (row.applies_to_email) return `${row.applies_to_email}`;
+            if (row.applies_to_user) return `${String(row.applies_to_user).slice(0, 8)}…`;
+            return 'Anyone';
+        }
+
+        async function loadCouponsTable() {
+            const body = document.getElementById('coupons-table-body');
+            try {
+                const r = await fetch('/api/admin/billing/coupons');
+                if (!r.ok) {
+                    body.innerHTML = '<tr><td colspan="10" style="padding:20px; text-align:center; color:#dc2626; font-size:13px;">Failed to load coupons</td></tr>';
+                    return;
+                }
+                const d = await r.json();
+                const rows = d.coupons || [];
+                if (!rows.length) {
+                    body.innerHTML = '<tr><td colspan="10" style="padding:20px; text-align:center; color:var(--text-muted); font-size:13px;" data-i18n="set.coupons_empty">No coupons yet — create your first discount above.</td></tr>';
+                    return;
+                }
+                body.innerHTML = rows.map(c => {
+                    const needsPolar = (c.kind === 'percent' || c.kind === 'fixed') && Number(c.value) > 0 && !c.polar_discount_id;
+                    const polarBadge = c.polar_discount_id
+                        ? `<span style="color:#059669;">✓ ${c.polar_discount_id}</span>`
+                        : (needsPolar
+                            ? '<span style="color:#dc2626; font-weight:700;">⚠️ missing — checkout blocks</span>'
+                            : '<span style="color:var(--text-muted);">—</span>');
+                    return `<tr>
+                        <td><span class="url-code-cell">${c.code || ''}</span></td>
+                        <td>${c.kind || ''}</td>
+                        <td>${c.value ?? 0}</td>
+                        <td>${c.platform || '—'}</td>
+                        <td>${_couponTargetLabel(c)}</td>
+                        <td>${c.max_total_uses ?? '∞'}</td>
+                        <td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '—'}</td>
+                        <td>${polarBadge}</td>
+                        <td>${c.is_active ? '🟢' : '🔴'}</td>
+                        <td><button type="button" class="btn-ghost" style="padding:4px 10px; color:#dc2626; font-size:12px;" onclick="deleteCoupon('${c.id}', '${c.code}')">🗑</button></td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = '<tr><td colspan="10" style="padding:20px; text-align:center; color:#dc2626; font-size:13px;">Error loading coupons</td></tr>';
+            }
+        }
+        window.loadCouponsTable = loadCouponsTable;
+        window.saveCoupon = saveCoupon;
+        window.deleteCoupon = deleteCoupon;
+        window.toggleCouponForm = toggleCouponForm;
+        window.renderCouponKindHint = renderCouponKindHint;
+        window.resolveCouponUser = resolveCouponUser;
+
+document.addEventListener('DOMContentLoaded', () => {
             refreshAllStatusWithFeedback(null);
+            loadCouponsTable();
         });
     </script>
 </body>

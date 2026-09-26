@@ -397,6 +397,14 @@ def register(app: FastAPI) -> None:
         _require_admin(request)
         rows = supabase_db.select("coupons") or []
         rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+        from src.core.auth import user_store
+        for row in rows:
+            target_id = row.get("applies_to_user")
+            row["applies_to_email"] = ""
+            if target_id:
+                target = user_store.get_by_id(target_id)
+                if target:
+                    row["applies_to_email"] = target.get("email", "")
         return {"status": "success", "coupons": rows}
 
     @app.post("/api/admin/billing/coupons", tags=["Billing"])

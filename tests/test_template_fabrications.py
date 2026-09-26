@@ -74,3 +74,16 @@ def test_identity_thresholds_rendered_from_backend_not_hardcoded():
     src = (TEMPLATES / "identity.html").read_text(encoding="utf-8")
     assert "≥ 70% Confidence" not in src  # actual prod threshold is 60% — drift caught
     assert 'id="stat-threshold-val"' in src  # filled from /api/identity/queue policy
+
+
+def test_settings_dev_console_has_coupon_management_panel():
+    """Dev console must expose the discount coupon manager (2026-09-26) —
+    wired to the admin-only /api/admin/billing/coupons endpoints."""
+    src = (TEMPLATES / "settings.html").read_text(encoding="utf-8")
+    assert "cp-code" in src              # code input
+    assert "cp-polar-id" in src          # Polar discount id input (H1 wiring)
+    assert "cp-kind" in src              # kind select
+    assert "loadCouponsTable(" in src    # table loader wired
+    assert "saveCoupon(" in src          # create handler
+    assert "deleteCoupon(" in src        # delete handler
+    assert "fetch('/api/admin/billing/coupons'" in src
