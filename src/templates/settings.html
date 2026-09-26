@@ -1351,6 +1351,12 @@
             return 'Anyone';
         }
 
+        function _esc(v) {
+            return String(v == null ? '' : v).replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[m]);
+        }
+
         async function loadCouponsTable() {
             const body = document.getElementById('coupons-table-body');
             try {
@@ -1368,23 +1374,26 @@
                 body.innerHTML = rows.map(c => {
                     const needsPolar = (c.kind === 'percent' || c.kind === 'fixed') && Number(c.value) > 0 && !c.polar_discount_id;
                     const polarBadge = c.polar_discount_id
-                        ? `<span style="color:#059669;">✓ ${c.polar_discount_id}</span>`
+                        ? `<span style="color:#059669;">✓ ${_esc(c.polar_discount_id)}</span>`
                         : (needsPolar
                             ? '<span style="color:#dc2626; font-weight:700;">⚠️ missing — checkout blocks</span>'
                             : '<span style="color:var(--text-muted);">—</span>');
                     return `<tr>
-                        <td><span class="url-code-cell">${c.code || ''}</span></td>
-                        <td>${c.kind || ''}</td>
-                        <td>${c.value ?? 0}</td>
-                        <td>${c.platform || '—'}</td>
-                        <td>${_couponTargetLabel(c)}</td>
-                        <td>${c.max_total_uses ?? '∞'}</td>
-                        <td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '—'}</td>
+                        <td><span class="url-code-cell">${_esc(c.code)}</span></td>
+                        <td>${_esc(c.kind)}</td>
+                        <td>${_esc(c.value)}</td>
+                        <td>${_esc(c.platform)}</td>
+                        <td>${_esc(_couponTargetLabel(c))}</td>
+                        <td>${_esc(c.max_total_uses)}</td>
+                        <td>${c.expires_at ? _esc(new Date(c.expires_at).toLocaleDateString()) : '—'}</td>
                         <td>${polarBadge}</td>
                         <td>${c.is_active ? '🟢' : '🔴'}</td>
-                        <td><button type="button" class="btn-ghost" style="padding:4px 10px; color:#dc2626; font-size:12px;" onclick="deleteCoupon('${c.id}', '${c.code}')">🗑</button></td>
+                        <td><button type="button" class="btn-ghost" style="padding:4px 10px; color:#dc2626; font-size:12px;" data-coupon-id="${_esc(c.id)}" data-coupon-code="${_esc(c.code)}" data-coupon-delete>🗑</button></td>
                     </tr>`;
                 }).join('');
+                body.querySelectorAll('[data-coupon-delete]').forEach(btn => {
+                    btn.addEventListener('click', () => deleteCoupon(btn.dataset.couponId, btn.dataset.couponCode));
+                });
             } catch (e) {
                 body.innerHTML = '<tr><td colspan="10" style="padding:20px; text-align:center; color:#dc2626; font-size:13px;">Error loading coupons</td></tr>';
             }

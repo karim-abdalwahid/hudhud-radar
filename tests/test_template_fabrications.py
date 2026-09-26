@@ -87,3 +87,14 @@ def test_settings_dev_console_has_coupon_management_panel():
     assert "saveCoupon(" in src          # create handler
     assert "deleteCoupon(" in src        # delete handler
     assert "fetch('/api/admin/billing/coupons'" in src
+
+
+def test_coupon_table_escapes_rows_and_never_uses_inline_onclick():
+    """Coupon codes/ids are admin-managed but must never be interpolated raw
+    into innerHTML or inline handlers (XSS hardening, 2026-09-26)."""
+    src = (TEMPLATES / "settings.html").read_text(encoding="utf-8")
+    assert "function _esc(v)" in src                       # HTML-escape helper exists
+    assert 'data-coupon-delete' in src                     # handler wired via data-attributes
+    assert "data-coupon-id=\"${_esc(c.id)}\"" in src       # id escaped into attribute
+    assert "data-coupon-code=\"${_esc(c.code)}\"" in src   # code escaped into attribute
+    assert 'onclick="deleteCoupon(' not in src             # no raw inline handler remains
