@@ -2687,3 +2687,15 @@ The owner approved a 6-item audit fix list and the fixes were applied surgically
 - No CSRF test existed before — covered manually; recommend adding permanent tests later (out of current scope).
 - `_UUID_PATH_PATTERNS` already guards `/api/admin/billing/coupons/{id}` (404 on non-UUID) — benign.
 - Session log 2026-09-26 section 9 documents the full sweep.
+
+## [Entry 074] 2026-09-26 - Credit Packs Activated in Production (Sandbox); Live Migration DEFERRED Until Facebook App Review
+
+- Owner created the 3 one-time Polar products in **sandbox** and wired them via admin console: `PUT /api/admin/site-settings {"polar_credit_pack_ids":{credits_500,credits_2000,credits_5000}}` → `{"status":"success","updated":["polar_credit_pack_ids"]}`. Feature is LIVE now (checkout → sandbox Polar → webhook grants credits additively).
+- **EXPLICIT DECISION (owner)**: migration from sandbox → live is **DEFERRED until Meta/Facebook App Review is accepted**. Until then payment remains sandbox; `payment_mode` stays `sandbox` on purpose.
+- **Live migration checklist (execute ONLY after App Review approval)**:
+  1. Recreate credits_500/2000/5000 products in Polar **live** (separate environment — new product IDs).
+  2. Re-PUT `polar_credit_pack_ids` with the live IDs (same console method as above).
+  3. Flip `payment_mode` sandbox → live in site-settings.
+  4. Confirm `POLAR_ACCESS_TOKEN` + `POLAR_WEBHOOK_SECRET` on Vercel belong to the live org; point Polar live webhook at production.
+  5. Real small order end-to-end test.
+- Session log 2026-09-26 section "⏸️ قرار مؤجل" and "🔟" carry the details.
