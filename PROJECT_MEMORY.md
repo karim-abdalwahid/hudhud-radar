@@ -2652,3 +2652,28 @@ The owner approved a 6-item audit fix list and the fixes were applied surgically
 - Canonical readiness pre-checked: https://www.hudhd.com/health = 200; all four cron endpoints (scheduler-tick, insights-sync, threads-token-refresh, instagram-token-refresh) return 401 without key — correctly protected.
 - Conclusion: the switch from steel to hudhd.com was already performed (presumably via cron-job.org dashboard in a prior session). No PATCH required. Entry 070/§6 and 2026-09-26 session log note "cron-job.org URLs still on steel" was STALE — corrected by this entry.
 - Safety: owner's cron-job.org API key arrived as direct answer in chat; used only in-scope (GET verification), not persisted, not committed. Recommend not reusing it in chat; further changes can be done via dashboard (PATCH replaces URL anyway).
+
+## [Entry 072] 2026-09-26 - Applied External "Buy Credits" Patch (Self-Serve AI Credit Top-Up) — Honest Review Verdict
+
+- **Timestamp**: 2026-09-26T23:20:00+03:00
+- **Trigger**: Owner shared another agent's proposal + implementation files for a "شراء رصيد إضافي" (buy additional AI credits) feature, claimed "repo was updated 6 times while working", asked to study it critically and apply professionally if sound ("ادرسها كويس ولو كل شئ تمام وكلامه صح فعلا ابدأ طبقه").
+
+### Source files (NOT in repo — patch origin dir)
+- `C:\Users\Dell\Desktop\$AI_TESTING\hudhud-radar\polar_credits\`: `credit-purchases.patch` (45.9 KB), `test_credit_purchases.py` (24 tests), `usage.py` (post-patch copy of src/modules/billing/usage.py).
+
+### Honest verdict per claim
+- **TRUE (verified in current code before patch)**: (1) The feature was genuinely missing. (2) Pre-existing bug: `src/payments/polar.py:216-217` routed `order.paid` unconditionally to `kind="subscription_activated"` — a real credit-purchase order would have been misprocessed as a subscription activation. (3) `polar_product_ids` was allow-listed in ALLOWED_SETTING_KEYS but had NO SiteSettingsPayload field, so admins could never set it.
+- **FALSE / unverifiable**: "Repo updated 6 times while working" (git log shows no such commits — only our cbf1043/88e2334/b851c83/etc.); "421 passed + 3 old failures" (local baseline is 402 passed / 0 failed; after patch the REAL count is 426 passed / 0 failed — 402+24). Patch base blobs for billing/__init__.py, polar.py, services.py are OLDER than current tree (H1+coupon-era), but `git apply --check` passed because hunks don't overlap; merge was verified via tests, not assumed.
+
+### What was shipped (commit 634c575, pushed, auto-deploys Vercel)
+- `CREDIT_PACKS` = credits_500/2000/5000 with fallback USD prices 9/29/59 (`DEFAULT_CREDIT_PACK_PRICES_USD` in services.py), admin-overridable via `credit_packs_pricing`.
+- `POST /api/billing/credits/checkout` (one-time Polar checkout; `credit_pack` in metadata) + `GET /api/billing/credits/packs`; `/account` shows "Buy credits" card; dedicated success page via `/billing/success?type=credits` (skips platform-activation poll).
+- Webhook fix: `order.paid` WITH `credit_pack` metadata → `kind="order_paid"` → additive grant `grant_purchased_credits` (400+2000=2400, NOT clamped); without it → still `subscription_activated` (backward-compat proven at both parse_event and full signed-webhook levels). Event dedup via existing event_deduplicator.claim. Bilingual notification on grant.
+- Admin settings: added `polar_credit_pack_ids` + `credit_packs_pricing` fields AND fixed the missing `polar_product_ids` field.
+- My additions on top of the patch: `if not gateway` fail-closed 503 in credits_checkout (matches create_checkout/start_trial pattern); restored Arabic note line on success page (patch had removed the isAr note override, leaving the English default).
+
+### Verification
+- `python -m pytest tests -q` → **426 passed, 0 failures** (24 new tests assert additive math, order.paid backward-compat, dedup-once, 502 surfacing, HMAC-signed full webhook grant, admin settings). No skips/cheats in the new tests (reviewed).
+
+### Owner TODOs to activate the feature in production
+1. Create 3 one-time products in Polar dashboard (no recurring price). 2. PUT `/api/admin/site-settings` with e.g. `{"polar_credit_pack_ids": {"credits_500":"prod_xxx","credits_2000":"prod_yyy","credits_5000":"prod_zzz"}}` (optional `credit_packs_pricing` to override prices). Until mapped, `/api/billing/credits/checkout` returns 502 with a clear Arabic message.
