@@ -2677,3 +2677,13 @@ The owner approved a 6-item audit fix list and the fixes were applied surgically
 
 ### Owner TODOs to activate the feature in production
 1. Create 3 one-time products in Polar dashboard (no recurring price). 2. PUT `/api/admin/site-settings` with e.g. `{"polar_credit_pack_ids": {"credits_500":"prod_xxx","credits_2000":"prod_yyy","credits_5000":"prod_zzz"}}` (optional `credit_packs_pricing` to override prices). Until mapped, `/api/billing/credits/checkout` returns 502 with a clear Arabic message.
+
+## [Entry 073] 2026-09-26 - Full Site Audit After All Changes (Commit 23d9c42) + XSS Fix
+
+- **Trigger**: Owner asked for a full review of all recent changes and complete site testing to confirm no bugs.
+- **Result**: `python -m pytest tests` → **427 passed / 0 failed** (was 426; +1 new regression test). `py_compile` clean on all touched files. Production /health 200, security headers live (M1/M2), i18n parity 27 coupons keys ×2 (EN+AR) confirmed live.
+- **Live production access-control (verified via curl)**: all sensitive APIs return 401 unauthenticated (`credits/packs`, `credits/checkout`, `admin/billing/coupons`, `polar-diag`, `site-settings`, `subscription`, `usage`); `/account`, `/billing/checkout-page`, `/onboarding` → 303; `/login`, `/` → 200; Polar webhook forgery → 400 "Invalid signature" (fail-closed). CSRF M2 verified locally: evil Origin on POST/PUT → 403; same-origin and no-origin (server-to-server) pass.
+- **BUG FOUND & FIXED (commit 23d9c42)**: coupon table in settings.html interpolated `c.code` / `c.id` / `c.polar_discount_id` RAW into innerHTML and inline `onclick="deleteCoupon('${c.id}','${c.code}')"` — XSS risk if a code/id contains quotes. Fixed with `_esc()` HTML escaping on all fields + `data-coupon-*` attributes + addEventListener (no inline handlers) + regression test `test_coupon_table_escapes_rows_and_never_uses_inline_onclick`. Pushed (auto-deploy).
+- No CSRF test existed before — covered manually; recommend adding permanent tests later (out of current scope).
+- `_UUID_PATH_PATTERNS` already guards `/api/admin/billing/coupons/{id}` (404 on non-UUID) — benign.
+- Session log 2026-09-26 section 9 documents the full sweep.
