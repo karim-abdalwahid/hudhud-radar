@@ -2611,3 +2611,33 @@ The owner approved a 6-item audit fix list and the fixes were applied surgically
 
 
 
+## [Entry 070] 2026-09-26 - Pushed 6-Fixes + Coupons to GitHub, Set Production SECRET_KEY (C1 Go-Live), Production Boot Verified Online
+
+- **Timestamp**: 2026-09-26T04:52:00+03:00
+- **Trigger**: Owner: "yes التزم وبعد ما تخلص عايز اوضحلك ان التعديلات اللي انت عملتها في تنفيذ ال6 اصلاحات فوق وكمان موضوع الكوبونات لسه مترفعش علي github شوف المشكله فين والمشروع فيه طريقة الرفع علي github شوف كان بيرفع ازاي وارفع"
+
+### 1. Why GitHub Was Behind
+- Local `main` had 3 unpushed commits (`d466b8e` 6-fixes, `9c9cdf7` memory docs, `b851c83` coupons) while `origin/main` sat at `710fe56`. Root cause: the remote had never been pushed; pushes require an explicit `git push` (Entry 019 §7 method: HTTPS + Windows Credential Manager, S1 removed the old embedded PAT in Phase 0).
+
+### 2. Committed + Pushed
+- `b851c83` feat(admin): coupon manager panel (create/list/delete coupons, polar_discount_id wiring, target-user email enrichment, bilingual i18n, +5 tests) + `scripts/apply_migration_024.py` tracked (owner "yes التزم").
+- `git push origin main` → `b5abdac..b851c83`; `origin/main` now == local `main`. Vercel git-integration (hudhud2 scope, R7) auto-deployed on push.
+
+### 3. Production Boot Failure = C1 Worked (intended)
+- After auto-deploy, https://hudhud-radar.vercel.app/health → 500 with `RuntimeError` from `src/config.py:101` (C1): **production was running on the hardcoded default `dev-secret-key...`** because Vercel had NO `SECRET_KEY` env var. Every session/token was forgeable by anyone with the public source. C1 fail-closed block is the correct behavior.
+- Fix applied by owner (Entry 024 dashboard pattern): added `SECRET_KEY` (64-char hex from `.env` line 10) at vercel.com → hudhud2 scope → hudhud-radar → Settings → Environment Variables, then redeployed. Value + steps delivered in new `scratch/vercel-env-hudhud2.txt` (gitignored), incl. R8 note for backup steel scope.
+
+### 4. Live Verification After Redeploy (all green)
+- `/health` → 200 online, `supabase_connected:true`, `kb_documents_loaded:11` (M4 live count works).
+- `/` headers → `X-Frame-Options DENY`, `X-Content-Type-Options nosniff`, CSP present (M1/M2 live).
+- `/auth/google` → 303 (auth/Origin gate fine); `/static/i18n.js` → 200, `coupons_*` keys ×81 (coupon UI + EN/AR locales live).
+- `/settings` (dev console) → 303 when logged out (expected; coupon panel covered by tests: 402 passed, R14/R16 scans clean).
+
+### 5. Expected Side Effects of Secret Rotation (normal, documented)
+- Existing sessions invalidated → users re-login.
+- platform_connections tokens are Fernet-derived from SECRET_KEY (crypto.py:18) → stored tokens undecryptable after rotation → platforms must be re-connected once (SOP_03). No live data loss; documented rotation behavior.
+
+### 6. Remaining / Notes
+- Optional (R8): add the same SECRET_KEY to backup scope (hudhud-radar-steel).
+- Recommend revoking/regenerating Supabase PAT `sbp_fc5de9...` after session (Entry 069 note).
+- cron-job.org URLs still on steel scope; can switch to canonical hudhd.com since canonical is fully live with SECRET_KEY.
